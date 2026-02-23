@@ -343,11 +343,10 @@ export default function VendorPaymentPage() {
       });
     }
 
-    // Group by base_name / SKU — only keep one representative per group (the first product)
-    // so the list shows base names rather than every individual variation
+    // Deduplicate — only show one row per variation group (the first product encountered)
     const seenKeys = new Set<string>();
     return list.filter((p) => {
-      const key = (p as any).base_name?.trim().toLowerCase() || getVariantGroupKey(p) || String(p.id);
+      const key = getVariantGroupKey(p);
       if (seenKeys.has(key)) return false;
       seenKeys.add(key);
       return true;
@@ -455,10 +454,21 @@ export default function VendorPaymentPage() {
   }, [showAddPurchase, purchaseForm, poSearch, poCategoryId, poShowAllProducts]);
 
   const getVariantGroupKey = (p: Product): string => {
+    // base_name is the authoritative grouping key when available
+    const baseName = ((p as any).base_name || '').trim().toLowerCase();
+    if (baseName) return `bn:${baseName}`;
+
+    // SKU-based grouping: strip a trailing size/number suffix like "-40", "_L", " XL"
+    // BUT only if stripping leaves something non-empty — all-numeric SKUs must not collapse to ""
     const sku = (((p as any).sku || '') as string).trim().toLowerCase();
-    if (sku) return sku.replace(/[-_\s]?\d+$/i, '');
-    const name = (p.name || '').trim().toLowerCase();
-    return name.replace(/\s+\d+(?:\.\d+)?$/i, '').trim();
+    if (sku) {
+      const stripped = sku.replace(/[-_\s]?(?:xs|s|m|l|xl|xxl|\d+(?:\.\d+)?)$/i, '').trim();
+      if (stripped.length > 0) return `sku:${stripped}`;
+      return `sku:${sku}`; // full SKU if nothing useful was stripped
+    }
+
+    // Fall back to the product id — no grouping
+    return `id:${(p as any).id}`;
   };
 
   const extractTrailingSize = (p: Product): number | null => {
@@ -470,27 +480,19 @@ export default function VendorPaymentPage() {
   };
 
   const getVariantGroupProducts = (p: Product): Product[] => {
-    // If backend already returns variants, use them
+    // If backend already returns variants on the object, prefer that
     if (Array.isArray((p as any).variants) && (p as any).variants.length > 0) {
       const all = [p, ...(p as any).variants].filter(Boolean) as any[];
       const map = new Map<number, Product>();
-      all.forEach((x) => {
-        if (x?.id) map.set(Number(x.id), x);
-      });
+      all.forEach((x) => { if (x?.id) map.set(Number(x.id), x); });
       return Array.from(map.values());
     }
 
-    // Fallback: infer variants from the full product list by SKU prefix or name base
+    // Group by our stable key — only products sharing the exact same key are variations
     const key = getVariantGroupKey(p);
-    const grouped = products.filter((x) => getVariantGroupKey(x) === key);
-
-    if (grouped.length <= 1) {
-      const base = (p.name || '').trim().toLowerCase().replace(/\s+\d+(?:\.\d+)?$/i, '').trim();
-      const starts = products.filter((x) => (x.name || '').trim().toLowerCase().startsWith(base));
-      return starts;
-    }
-
-    return grouped;
+    // Never treat id-based keys as a group (each product is its own group)
+    if (key.startsWith('id:')) return [p];
+    return products.filter((x) => getVariantGroupKey(x) === key);
   };
 
   const openVariantPicker = (productId: string) => {
