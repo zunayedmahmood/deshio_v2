@@ -81,11 +81,14 @@ export default function HeroSection() {
     >
 
 
-      {/* ── Ambient glow blobs ── */}
+      {/* ── Hero-local ambient blobs (complement the global glow layer) ── */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-
-        <div className="absolute -right-20 bottom-0 h-[400px] w-[400px] rounded-full opacity-[0.05]"
-             style={{ background: 'radial-gradient(circle, #8fa0c8 0%, transparent 70%)' }} />
+        {/* Left gold — reinforces the global top-left bloom specifically inside hero */}
+        <div className="absolute -left-20 -top-20 h-[480px] w-[480px] rounded-full"
+             style={{ background: 'radial-gradient(circle, rgba(176,124,58,0.12) 0%, transparent 65%)', filter: 'blur(30px)' }} />
+        {/* Right cool */}
+        <div className="absolute -right-16 bottom-0 h-[360px] w-[360px] rounded-full"
+             style={{ background: 'radial-gradient(circle, rgba(90,110,160,0.07) 0%, transparent 65%)', filter: 'blur(40px)' }} />
       </div>
 
 
@@ -284,9 +287,7 @@ export default function HeroSection() {
         </div>
       </div>
 
-      {/* ── Bottom fade transition to page background ── */}
-      <div className="absolute bottom-0 inset-x-0 h-24 pointer-events-none"
-           style={{ background: 'linear-gradient(to bottom, transparent, rgba(13,13,13,0.6))' }} />
+
     </section>
   );
 }
