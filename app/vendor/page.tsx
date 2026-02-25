@@ -658,7 +658,7 @@ export default function VendorPaymentPage() {
   // Load products (safe chunked fetch to avoid 10k/100k payloads that can crash backend)
   const loadProducts = async () => {
     try {
-      const chunkSize = 20000;
+      const chunkSize = 2000;
       const first = await productService.getAll({ page: 1, per_page: chunkSize, is_archived: false });
       let all: Product[] = Array.isArray((first as any)?.data) ? ((first as any).data as Product[]) : [];
       const lastPage = Math.max(1, Number((first as any)?.last_page || 1));
