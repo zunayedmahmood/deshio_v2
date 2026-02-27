@@ -567,7 +567,7 @@ export default function CheckoutPage() {
   // Loading state
   if (isLoadingItems) {
     return (
-      <div className="ec-root min-h-screen">
+      <div className="ec-root ec-darkify min-h-screen">
         <Navigation />
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center">
@@ -582,7 +582,7 @@ export default function CheckoutPage() {
   // ✅ NEW: Show SSLCommerz payment screen
   if (showSSLCommerzPayment) {
     return (
-      <div className="ec-root min-h-screen">
+      <div className="ec-root ec-darkify min-h-screen">
         <Navigation />
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <button
@@ -615,7 +615,7 @@ export default function CheckoutPage() {
   // Guest checkout UI (no login required)
   if (isGuestCheckout()) {
     return (
-      <div className="ec-root min-h-screen">
+      <div className="ec-root ec-darkify min-h-screen">
         <Navigation />
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -857,7 +857,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="ec-root min-h-screen">
+    <div className="ec-root ec-darkify min-h-screen">
       <Navigation />
       
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

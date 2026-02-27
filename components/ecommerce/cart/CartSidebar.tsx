@@ -37,22 +37,30 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
       {/* 🔥 RIGHT-SIDE SLIDE OVER SIDEBAR */}
       <div
         className={`
-          fixed right-0 top-0 h-full w-full sm:w-96 bg-white shadow-2xl z-50 
+          fixed right-0 top-0 h-full w-full sm:w-96 z-50 
           flex flex-col transform transition-transform duration-300 ease-in-out
           ${isOpen 
             ? 'translate-x-0' 
             : 'translate-x-full sm:translate-x-full'
           }
         `}
+        style={{
+          background: '#0d0d0d',
+          borderLeft: '1px solid rgba(255,255,255,0.09)',
+          boxShadow: '0 0 0 1px rgba(255,255,255,0.03), -20px 0 60px rgba(0,0,0,0.75)',
+        }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b bg-white">
-          <h2 className="text-xl font-bold text-gray-900">Shopping cart</h2>
+        <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: 'rgba(255,255,255,0.09)' }}>
+          <h2 className="text-xl font-bold" style={{ color: 'rgba(255,255,255,0.92)', fontFamily: "'Cormorant Garamond', serif" }}>Shopping cart</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 rounded-full transition-colors"
+            style={{ color: 'rgba(255,255,255,0.7)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.10)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           >
-            <X size={24} className="text-gray-700" />
+            <X size={22} />
           </button>
         </div>
 
@@ -61,17 +69,18 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
           {/* Loading State */}
           {isLoading && (
             <div className="flex justify-center items-center py-12">
-              <Loader2 className="animate-spin text-gray-400" size={32} />
+              <Loader2 className="animate-spin" style={{ color: 'var(--gold)' }} size={32} />
             </div>
           )}
 
           {/* Empty State */}
           {!isLoading && cart.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-gray-500">Your cart is empty</p>
+              <p style={{ color: 'rgba(255,255,255,0.55)' }}>Your cart is empty</p>
               <button
                 onClick={onClose}
-                className="mt-4 text-teal-600 hover:text-teal-700 font-medium"
+                className="mt-4 font-medium"
+                style={{ color: 'var(--gold)' }}
               >
                 Continue Shopping
               </button>
@@ -93,14 +102,14 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
 
         {/* Footer */}
         {!isLoading && cart.length > 0 && (
-          <div className="border-t p-6 space-y-4 bg-white">
+          <div className="border-t p-6 space-y-4" style={{ borderColor: 'rgba(255,255,255,0.09)' }}>
             {/* Free Shipping Progress */}
             {remaining > 0 ? (
               <div>
-                <p className="text-sm text-gray-600 mb-2">
-                  Add <span className="font-bold text-neutral-900">৳{remaining.toFixed(2)}</span> to cart and get free shipping!
+                <p className="text-sm mb-2" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                  Add <span className="font-bold" style={{ color: 'rgba(255,255,255,0.92)' }}>৳{remaining.toFixed(2)}</span> to cart and get free shipping!
                 </p>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full rounded-full h-2" style={{ background: 'rgba(255,255,255,0.10)' }}>
                   <div 
                     className="bg-neutral-900 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${progress}%` }}
@@ -108,8 +117,8 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
                 </div>
               </div>
             ) : (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <p className="text-sm text-green-700 font-semibold">
+              <div className="rounded-lg p-3" style={{ background: 'rgba(34,197,94,0.10)', border: '1px solid rgba(34,197,94,0.18)' }}>
+                <p className="text-sm font-semibold" style={{ color: 'rgb(74 222 128)' }}>
                   🎉 You've qualified for free shipping!
                 </p>
               </div>
@@ -117,8 +126,8 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
 
             {/* Subtotal */}
             <div className="flex items-center justify-between">
-              <span className="text-lg font-semibold text-gray-900">Subtotal:</span>
-              <span className="text-2xl font-bold text-neutral-900">
+              <span className="text-lg font-semibold" style={{ color: 'rgba(255,255,255,0.75)' }}>Subtotal:</span>
+              <span className="text-2xl font-bold" style={{ color: 'rgba(255,255,255,0.92)' }}>
                 ৳{subtotal.toLocaleString('en-BD', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
@@ -127,13 +136,27 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
             <div className="space-y-3">
               <button
                 onClick={handleViewCart}
-                className="w-full bg-white border-2 border-gray-900 text-gray-900 py-3 rounded font-semibold hover:bg-gray-50 transition-colors"
+                className="w-full py-3 rounded font-semibold transition-colors"
+                style={{
+                  background: 'transparent',
+                  border: '1px solid rgba(255,255,255,0.18)',
+                  color: 'rgba(255,255,255,0.9)',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
                 VIEW CART
               </button>
               <button
                 onClick={handleCheckout}
-                className="w-full bg-neutral-900 text-white py-3 rounded font-semibold hover:bg-neutral-800 transition-colors"
+                className="w-full py-3 rounded font-semibold transition-colors"
+                style={{
+                  background: 'linear-gradient(180deg, rgba(176,124,58,0.28) 0%, rgba(176,124,58,0.12) 100%)',
+                  border: '1px solid rgba(176,124,58,0.35)',
+                  color: 'rgba(255,255,255,0.95)',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'linear-gradient(180deg, rgba(176,124,58,0.35) 0%, rgba(176,124,58,0.16) 100%)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'linear-gradient(180deg, rgba(176,124,58,0.28) 0%, rgba(176,124,58,0.12) 100%)')}
               >
                 CHECKOUT
               </button>

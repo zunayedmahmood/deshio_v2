@@ -347,4 +347,94 @@ body {
     border-color: var(--gold);
     background: rgba(255,255,255,0.07);
   }
+
+  /* ──────────────────────────────────────────────────────────────
+     Darkify wrapper
+     Use this to "convert" legacy light-tailwind pages (cart/checkout)
+     to match the site-wide dark background without rewriting every class.
+  ────────────────────────────────────────────────────────────── */
+
+  .ec-darkify {
+    color: rgba(255,255,255,0.9);
+  }
+
+  /* Card/section surfaces */
+  .ec-darkify .bg-white,
+  .ec-darkify.bg-white {
+    background-color: rgba(255,255,255,0.04) !important;
+  }
+  .ec-darkify .bg-neutral-50,
+  .ec-darkify .bg-gray-50,
+  .ec-darkify .bg-neutral-100,
+  .ec-darkify .bg-gray-100 {
+    background-color: rgba(255,255,255,0.05) !important;
+  }
+
+  /* Borders */
+  .ec-darkify .border,
+  .ec-darkify .border-b,
+  .ec-darkify .border-t,
+  .ec-darkify .border-l,
+  .ec-darkify .border-r,
+  .ec-darkify .border-neutral-200,
+  .ec-darkify .border-neutral-300,
+  .ec-darkify .border-gray-200,
+  .ec-darkify .border-gray-300 {
+    border-color: rgba(255,255,255,0.09) !important;
+  }
+
+  /* Text colors (neutral/gray scales) */
+  .ec-darkify .text-neutral-900,
+  .ec-darkify .text-gray-900 {
+    color: rgba(255,255,255,0.92) !important;
+  }
+  .ec-darkify .text-neutral-800,
+  .ec-darkify .text-gray-800 {
+    color: rgba(255,255,255,0.86) !important;
+  }
+  .ec-darkify .text-neutral-700,
+  .ec-darkify .text-gray-700 {
+    color: rgba(255,255,255,0.72) !important;
+  }
+  .ec-darkify .text-neutral-600,
+  .ec-darkify .text-gray-600 {
+    color: rgba(255,255,255,0.60) !important;
+  }
+  .ec-darkify .text-neutral-500,
+  .ec-darkify .text-gray-500 {
+    color: rgba(255,255,255,0.48) !important;
+  }
+  .ec-darkify .text-neutral-400,
+  .ec-darkify .text-gray-400 {
+    color: rgba(255,255,255,0.34) !important;
+  }
+
+  /* Inputs */
+  .ec-darkify input,
+  .ec-darkify textarea,
+  .ec-darkify select {
+    background-color: rgba(255,255,255,0.05) !important;
+    border-color: rgba(255,255,255,0.12) !important;
+    color: rgba(255,255,255,0.90) !important;
+  }
+  .ec-darkify input::placeholder,
+  .ec-darkify textarea::placeholder {
+    color: rgba(255,255,255,0.35) !important;
+  }
+
+  /* Hover states for common light utilities */
+  .ec-darkify .hover\:bg-gray-50:hover,
+  .ec-darkify .hover\:bg-neutral-50:hover,
+  .ec-darkify .hover\:bg-gray-100:hover,
+  .ec-darkify .hover\:bg-neutral-100:hover {
+    background-color: rgba(255,255,255,0.08) !important;
+  }
+
+  /* Subtle shadows (avoid bright card look on dark bg) */
+  .ec-darkify .shadow,
+  .ec-darkify .shadow-sm,
+  .ec-darkify .shadow-md,
+  .ec-darkify .shadow-lg {
+    box-shadow: 0 2px 28px rgba(0,0,0,0.55) !important;
+  }
 }

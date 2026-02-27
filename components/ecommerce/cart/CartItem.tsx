@@ -124,11 +124,14 @@ export default function CartItem({ item, onQuantityChange, onRemove, isUpdating:
   }
 
   return (
-    <div className="flex gap-4 border-b pb-4 relative">
+    <div className="flex gap-4 border-b pb-4 relative" style={{ borderColor: 'rgba(255,255,255,0.09)' }}>
       {/* Loading Overlay */}
       {isUpdating && (
-        <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10 rounded">
-          <Loader2 className="animate-spin text-gray-400" size={24} />
+        <div
+          className="absolute inset-0 flex items-center justify-center z-10 rounded"
+          style={{ background: 'rgba(13,13,13,0.78)', border: '1px solid rgba(255,255,255,0.10)' }}
+        >
+          <Loader2 className="animate-spin" style={{ color: 'var(--gold)' }} size={24} />
         </div>
       )}
 
@@ -149,15 +152,18 @@ export default function CartItem({ item, onQuantityChange, onRemove, isUpdating:
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1 min-w-0 pr-2">
             <h3 
-              className="text-sm font-semibold text-gray-900 line-clamp-2 cursor-pointer hover:text-teal-600 transition-colors"
+              className="text-sm font-semibold line-clamp-2 cursor-pointer transition-colors"
+              style={{ color: 'rgba(255,255,255,0.92)' }}
               onClick={handleNavigateToProduct}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--gold)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.92)')}
             >
               {item.name}
             </h3>
             
             {/* Variant Info */}
             {(item.color || item.size) && (
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.48)' }}>
                 {item.color && <span>Color: {item.color}</span>}
                 {item.color && item.size && <span> | </span>}
                 {item.size && <span>Size: {item.size}</span>}
@@ -165,27 +171,33 @@ export default function CartItem({ item, onQuantityChange, onRemove, isUpdating:
             )}
             
             {item.sku && (
-              <p className="text-xs text-gray-500 mt-1">SKU: {item.sku}</p>
+              <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.42)' }}>SKU: {item.sku}</p>
             )}
           </div>
           <button
             onClick={handleRemove}
             disabled={isUpdating}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-1 rounded-full transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Remove from cart"
+            style={{ color: 'rgba(255,255,255,0.65)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.10)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           >
-            <X size={16} className="text-gray-500" />
+            <X size={16} />
           </button>
         </div>
 
         {/* Quantity and Price */}
         <div className="flex items-center justify-between">
           {/* Quantity Controls */}
-          <div className="flex items-center border border-gray-300 rounded">
+          <div className="flex items-center rounded" style={{ border: '1px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.04)' }}>
             <button
               onClick={() => handleQuantityChange(-1)}
               disabled={isUpdating || item.quantity <= 1}
-              className="p-1.5 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ color: 'rgba(255,255,255,0.75)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
               <Minus size={14} />
             </button>
@@ -199,13 +211,22 @@ export default function CartItem({ item, onQuantityChange, onRemove, isUpdating:
                 }
               }}
               disabled={isUpdating}
-              className="w-12 text-center border-x border-gray-300 outline-none text-sm font-semibold disabled:bg-gray-50 disabled:cursor-not-allowed"
+              className="w-12 text-center outline-none text-sm font-semibold disabled:cursor-not-allowed"
+              style={{
+                borderLeft: '1px solid rgba(255,255,255,0.12)',
+                borderRight: '1px solid rgba(255,255,255,0.12)',
+                background: 'transparent',
+                color: 'rgba(255,255,255,0.92)',
+              }}
               min="1"
             />
             <button
               onClick={() => handleQuantityChange(1)}
               disabled={isUpdating}
-              className="p-1.5 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ color: 'rgba(255,255,255,0.75)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
               <Plus size={14} />
             </button>
@@ -213,10 +234,10 @@ export default function CartItem({ item, onQuantityChange, onRemove, isUpdating:
 
           {/* Price */}
           <div className="text-right">
-            <p className="text-xs text-gray-500 mb-1">
+            <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.45)' }}>
               ৳{price.toLocaleString('en-BD', { minimumFractionDigits: 2 })} each
             </p>
-            <p className="text-sm font-bold text-neutral-900">
+            <p className="text-sm font-bold" style={{ color: 'var(--gold)' }}>
               ৳{itemTotal.toLocaleString('en-BD', { minimumFractionDigits: 2 })}
             </p>
           </div>

@@ -226,7 +226,7 @@ export default function CartPage() {
 
   if (isLoading) {
     return (
-      <div className="ec-root min-h-screen">
+      <div className="ec-root ec-darkify min-h-screen">
         <Navigation />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center">
@@ -240,7 +240,7 @@ export default function CartPage() {
 
   if (error && !cart) {
     return (
-      <div className="ec-root min-h-screen">
+      <div className="ec-root ec-darkify min-h-screen">
         <Navigation />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center">
@@ -261,7 +261,7 @@ export default function CartPage() {
 
   if (!cart?.cart_items || cart.cart_items.length === 0) {
     return (
-      <div className="ec-root min-h-screen">
+      <div className="ec-root ec-darkify min-h-screen">
         <Navigation />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center">
@@ -281,7 +281,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="ec-root min-h-screen">
+    <div className="ec-root ec-darkify min-h-screen">
       <Navigation />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         
@@ -310,7 +310,7 @@ export default function CartPage() {
                   type="checkbox"
                   checked={selectedItems.size === cart.cart_items.length && cart.cart_items.length > 0}
                   onChange={toggleSelectAll}
-                  className="w-5 h-5 cursor-pointer accent-neutral-900"
+                  className="w-5 h-5 cursor-pointer accent-amber-600"
                 />
                 <span className="text-neutral-700 font-medium">
                   SELECT ALL ({cart.cart_items.length} ITEM{cart.cart_items.length !== 1 ? 'S' : ''})
@@ -375,7 +375,7 @@ export default function CartPage() {
                         checked={selectedItems.has(item.id)}
                         onChange={() => toggleSelectItem(item.id)}
                         disabled={isItemUpdating}
-                        className="w-5 h-5 cursor-pointer accent-neutral-900 disabled:cursor-not-allowed"
+                        className="w-5 h-5 cursor-pointer accent-amber-600 disabled:cursor-not-allowed"
                       />
                     </div>
 
@@ -588,7 +588,14 @@ export default function CartPage() {
 
                 <button
                   onClick={() => router.push('/e-commerce')}
-                  className="w-full bg-white text-neutral-900 border-2 border-neutral-900 py-3 rounded-lg font-semibold hover:bg-neutral-50 transition-colors mt-3"
+                  className="w-full py-3 rounded-lg font-semibold transition-colors mt-3"
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.18)',
+                    color: 'rgba(255,255,255,0.9)',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   Continue Shopping
                 </button>
