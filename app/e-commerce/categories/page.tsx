@@ -15,6 +15,41 @@ const PALETTE = [
   ['#e0e4e8','#9aaab8'],['#ece8e0','#ccc0a0'],['#e4e8e4','#a0b8a0'],['#e8e4e0','#c0b8b0'],
 ];
 
+/** Image card that gracefully falls back to a colour gradient on load error */
+function CategoryImage({
+  src,
+  alt,
+  gradientFrom,
+  gradientTo,
+  className = '',
+}: {
+  src: string;
+  alt: string;
+  gradientFrom: string;
+  gradientTo: string;
+  className?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  if (!src || failed) {
+    return (
+      <div
+        className={`absolute inset-0 ${className}`}
+        style={{ background: `linear-gradient(160deg, ${gradientFrom} 0%, ${gradientTo} 100%)` }}
+      />
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={`absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 ${className}`}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<CatalogCategory[]>([]);
   const [loading,    setLoading]    = useState(true);
@@ -103,11 +138,12 @@ export default function CategoriesPage() {
                               className="group block"
                             >
                               <div className="relative overflow-hidden rounded-xl transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-lg" style={{ aspectRatio: '3/4' }}>
-                                {cImg ? (
-                                  <img src={cImg} alt={child.name} className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" onError={e => { (e.currentTarget as HTMLImageElement).style.display='none'; }} />
-                                ) : (
-                                  <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${cf} 0%, ${ct} 100%)` }} />
-                                )}
+                                <CategoryImage
+                                  src={cImg}
+                                  alt={child.name}
+                                  gradientFrom={cf}
+                                  gradientTo={ct}
+                                />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
                                 <div className="absolute inset-x-0 bottom-0 p-2">
                                   <p className="text-white font-medium leading-tight text-[11px]" style={{ fontFamily: "'Jost', sans-serif" }}>{child.name}</p>
@@ -121,11 +157,12 @@ export default function CategoriesPage() {
                       /* Leaf category (no children) - bigger card */
                       <Link href={href} className="group block">
                         <div className="relative overflow-hidden rounded-2xl h-24 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-lg">
-                          {imgSrc ? (
-                            <img src={imgSrc} alt={cat.name} className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" onError={e => { (e.currentTarget as HTMLImageElement).style.display='none'; }} />
-                          ) : (
-                            <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${from} 0%, ${to} 100%)` }} />
-                          )}
+                          <CategoryImage
+                            src={imgSrc}
+                            alt={cat.name}
+                            gradientFrom={from}
+                            gradientTo={to}
+                          />
                           <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent" />
                           <div className="absolute inset-0 flex items-center px-5">
                             <p className="text-white text-lg font-semibold" style={{ fontFamily: "'Cormorant Garamond', serif" }}>{cat.name}</p>
