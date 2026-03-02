@@ -102,7 +102,10 @@ const productMatchesAllowedCategory = (
 
 const UI_CARDS_PER_PAGE = 20;
 const MAX_API_PAGES = 50;
-const API_PER_PAGE = 100; // Fetch more raw rows because variants are grouped into one card.
+// Backend now supports category_slug filtering on /api/catalog/products.
+// Keep a moderate page size for fast first paint, and "fill" by requesting
+// additional pages only when grouping reduces visible cards.
+const API_PER_PAGE = 60;
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
@@ -277,16 +280,22 @@ export default function CategoryPage() {
       if (!Number.isNaN(max)) baseParams.max_price = max;
     }
 
-    const decodedSlugName = decodeURIComponent(categorySlug || '').replace(/-/g, ' ').trim();
-    if (activeCategory?.id) {
+    // Prefer backend-side filtering so pagination happens *within the category*.
+    // This avoids the "empty page" issue when the first N global products don't
+    // include the desired category.
+    if (activeCategory?.id || activeCategory?.slug) {
       return {
         ...baseParams,
-        category_id: activeCategory.id,
-        category: activeCategory.slug || activeCategory.name,
+        category_id: activeCategory?.id,
+        category_slug: activeCategory?.slug,
       };
     }
-    if (decodedSlugName) return { ...baseParams, category: decodedSlugName };
-    if (categorySlug) return { ...baseParams, category: categorySlug };
+    if (categorySlug) {
+      return {
+        ...baseParams,
+        category_slug: categorySlug,
+      };
+    }
     return { ...baseParams };
   };
 
@@ -305,13 +314,20 @@ export default function CategoryPage() {
   const ensureCardsForUiPage = async (entry: CacheEntry, uiPage: number) => {
     const targetCards = uiPage * UI_CARDS_PER_PAGE;
     const allowedCategory = buildAllowedCategoryKeys(activeCategory || null, categorySlug);
+    const serverSideCategoryFiltered = Boolean(
+      (entry.attemptParams as any)?.category_slug || (entry.attemptParams as any)?.category_id
+    );
 
     const appendFilteredUniqueProducts = (items: (Product | SimpleProduct)[] | undefined | null) => {
       if (!Array.isArray(items) || items.length === 0) return 0;
       let added = 0;
       for (const rawItem of items) {
         if (!rawItem) continue;
-        if (!productMatchesAllowedCategory(rawItem, allowedCategory)) continue;
+        // If backend is filtering by category already, avoid extra client filtering.
+        // Keep the fallback filter for older deployments.
+        if (!serverSideCategoryFiltered) {
+          if (!productMatchesAllowedCategory(rawItem, allowedCategory)) continue;
+        }
 
         const itemId = Number((rawItem as any).id || 0);
         if (itemId > 0) {
