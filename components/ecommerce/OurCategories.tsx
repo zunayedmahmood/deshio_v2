@@ -3,6 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import catalogService, { CatalogCategory } from '@/services/catalogService';
+import { toAbsoluteAssetUrl } from '@/lib/assetUrl';
 import SectionHeader from '@/components/ecommerce/ui/SectionHeader';
 
 const slugify = (v: string) =>
@@ -109,7 +110,7 @@ const OurCategories: React.FC<OurCategoriesProps> = ({ categories: categoriesPro
 
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
             {display.map((cat, i) => {
-              const imgSrc = cat.image || cat.image_url || '';
+              const imgSrc = toAbsoluteAssetUrl(cat.image || cat.image_url || '');
               const [from, to] = PALETTE[i % PALETTE.length];
 
               return (

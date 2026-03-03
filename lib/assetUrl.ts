@@ -46,14 +46,63 @@ function shouldKeepAsLocalFrontendPath(value: string): boolean {
 }
 
 /**
+ * Normalizes legacy media paths for category images.
+ *
+ * We have seen these variants in API responses / DB:
+ * - categories/xxx.jpg        (missing /storage)
+ * - category/xxx.jpg          (legacy singular)
+ * - /storage/category/xxx.jpg (wrong folder name)
+ *
+ * Correct public path should be:
+ * - /storage/categories/xxx.jpg
+ */
+function normalizeLegacyAssetPath(inputPath: string): string {
+  let path = inputPath;
+
+  // If full URL was passed in, extract pathname only (we will rebuild later).
+  // This function is meant to work on raw paths too.
+  path = path.replace(/^['"]|['"]$/g, '');
+
+  // Convert singular folder to plural inside /storage
+  path = path.replace(/\/storage\/category\//gi, '/storage/categories/');
+
+  // categories/...  -> /storage/categories/...
+  if (/^\/?categories\//i.test(path) && !/\/storage\/categories\//i.test(path)) {
+    path = path.replace(/^\/?categories\//i, '/storage/categories/');
+  }
+
+  // category/... -> /storage/categories/...
+  if (/^\/?category\//i.test(path) && !/\/storage\/categories\//i.test(path)) {
+    path = path.replace(/^\/?category\//i, '/storage/categories/');
+  }
+
+  return path;
+}
+
+/**
  * Converts relative media path to absolute backend asset URL.
- * Leaves absolute URLs, data/blob URLs, and local frontend assets unchanged.
+ * Leaves data/blob URLs and local frontend assets unchanged.
  */
 export function toAbsoluteAssetUrl(value?: string | null): string {
   const raw = String(value || '').trim();
   if (!raw) return '';
 
-  if (isAbsoluteHttpUrl(raw) || raw.startsWith('data:') || raw.startsWith('blob:')) {
+  // Handle absolute URLs too (some APIs return full backend URLs).
+  if (isAbsoluteHttpUrl(raw)) {
+    try {
+      const u = new URL(raw);
+      const normalizedPath = normalizeLegacyAssetPath(u.pathname);
+      if (normalizedPath !== u.pathname) {
+        u.pathname = normalizedPath;
+        return u.toString();
+      }
+    } catch {
+      // fall through and return raw
+    }
+    return raw;
+  }
+
+  if (raw.startsWith('data:') || raw.startsWith('blob:')) {
     return raw;
   }
 
@@ -68,13 +117,7 @@ export function toAbsoluteAssetUrl(value?: string | null): string {
     return raw;
   }
 
-  let path = raw.replace(/^['"]|['"]$/g, '');
-
-  // Legacy category image paths
-  // Some API responses return `category/...` but the real public path is `/storage/category/...`.
-  if (/^\/?category\//i.test(path) && !/\/storage\/category\//i.test(path)) {
-    path = path.replace(/^\/?category\//i, '/storage/category/');
-  }
+  let path = normalizeLegacyAssetPath(raw);
 
   // Some backends return /api/storage/... for files; strip /api for direct asset access.
   if (/^\/?api\//i.test(path) && /\/storage\//i.test(path)) {
