@@ -42,8 +42,11 @@ export default function ProductPage() {
   const [vendorsById, setVendorsById] = useState<Record<number, string>>({});
   const [catalogMetaById, setCatalogMetaById] = useState<Record<number, { selling_price: number | null; in_stock: boolean; stock_quantity: number }>>({});
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [serverLastPage, setServerLastPage] = useState(1);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [vendorsList, setVendorsList] = useState<Vendor[]>([]);
@@ -52,7 +55,8 @@ export default function ProductPage() {
   const [maxPrice, setMaxPrice] = useState<string>('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-  const itemsPerPage = 10;
+  const SERVER_PAGE_SIZE = 60;
+  const SEARCH_DEBOUNCE_MS = 350;
 
   // If permissions are not yet reliably resolved from the API (common when /me does not
   // include role.permissions), do NOT block the page. Backend will still enforce 403.
@@ -107,6 +111,7 @@ const goToPage = useCallback(
     const pageRaw = Number(searchParams.get('page') ?? '1');
 
     setSearchQuery(q);
+    setDebouncedSearchQuery(q);
     setSelectedCategory(category);
     setSelectedVendor(vendor);
     setMinPrice(minP);
@@ -118,38 +123,20 @@ const goToPage = useCallback(
   }, [searchParams]);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    const timer = window.setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+    }, SEARCH_DEBOUNCE_MS);
 
-  const fetchAllProductsSafely = async (): Promise<Product[]> => {
-    const chunkSize = 1000;
-    const first = await productService.getAll({ page: 1, per_page: chunkSize });
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
 
-    let all: Product[] = Array.isArray(first.data) ? [...first.data] : [];
-    const lastPage = Math.max(1, Number(first.last_page || 1));
-
-    if (lastPage > 1) {
-      for (let page = 2; page <= lastPage; page++) {
-        const next = await productService.getAll({ page, per_page: chunkSize });
-        if (!Array.isArray(next.data) || next.data.length === 0) break;
-        all = all.concat(next.data);
-      }
-    }
-
-    return all;
-  };
-
-  const fetchData = async () => {
-    setIsLoading(true);
+  const fetchFilterData = useCallback(async () => {
     try {
-      const [allProducts, categoriesData, vendorsData] = await Promise.all([
-        fetchAllProductsSafely(),
-        // Only count/show active categories in product list stats & filters
+      const [categoriesData, vendorsData] = await Promise.all([
         categoryService.getTree(true),
         vendorService.getAll(),
       ]);
 
-      setProducts(Array.isArray(allProducts) ? allProducts : []);
       setCategories(Array.isArray(categoriesData) ? categoriesData : []);
       const vendorsArr: Vendor[] = Array.isArray(vendorsData) ? vendorsData : [];
       const vmap: Record<number, string> = {};
@@ -164,17 +151,56 @@ const goToPage = useCallback(
           .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
       );
     } catch (err) {
-      console.error('Error fetching data:', err);
-      setToast({ message: 'Failed to load products', type: 'error' });
-      setProducts([]);
+      console.error('Error fetching filter data:', err);
       setCategories([]);
       setVendorsById({});
       setVendorsList([]);
+    }
+  }, []);
+
+  const fetchData = useCallback(async (pageOverride?: number) => {
+    setIsLoading(true);
+    try {
+      const pageToLoad = Number.isFinite(pageOverride) && pageOverride && pageOverride > 0 ? pageOverride : currentPage;
+      const response = await productService.getAll({
+        page: pageToLoad,
+        per_page: SERVER_PAGE_SIZE,
+        search: debouncedSearchQuery || undefined,
+        category_id: selectedCategory ? Number(selectedCategory) : undefined,
+        vendor_id: selectedVendor ? Number(selectedVendor) : undefined,
+      });
+
+      const nextProducts = Array.isArray(response.data) ? response.data : [];
+      const nextLastPage = Math.max(1, Number(response.last_page || 1));
+      const safePage = Math.min(pageToLoad, nextLastPage);
+
+      setProducts(nextProducts);
+      setTotalProducts(Number(response.total || 0));
+      setServerLastPage(nextLastPage);
+
+      if (safePage !== currentPage) {
+        setCurrentPage(safePage);
+        updateQueryParams({ page: String(safePage) }, 'replace');
+      }
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setToast({ message: 'Failed to load products', type: 'error' });
+      setProducts([]);
+      setTotalProducts(0);
+      setServerLastPage(1);
       setCatalogMetaById({});
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage, debouncedSearchQuery, selectedCategory, selectedVendor, updateQueryParams]);
+
+  useEffect(() => {
+    fetchFilterData();
+  }, [fetchFilterData]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleRefresh = async () => {
     await fetchData();
@@ -397,37 +423,8 @@ const goToPage = useCallback(
     return Array.from(groups.values());
   }, [products, categories, vendorsById]);
 
-  // Enhanced filtering with category + vendor + search support (price is handled separately)
-  const baseFilteredGroups = useMemo(() => {
-    let filtered = productGroups;
-
-    // Category filter
-    if (selectedCategory) {
-      filtered = filtered.filter((group) => String(group.category_id) === selectedCategory);
-    }
-
-    // Vendor filter
-    if (selectedVendor) {
-      filtered = filtered.filter((group) => String(group.vendorId ?? '') === selectedVendor);
-    }
-
-    // Search filter
-    const q = searchQuery.toLowerCase().trim();
-    if (q) {
-      filtered = filtered.filter((group) => {
-        const nameMatch = group.baseName.toLowerCase().includes(q);
-        const skuMatch = group.sku.toLowerCase().includes(q);
-        const categoryMatch = group.categoryPath.toLowerCase().includes(q);
-        const vendorMatch = (group.vendorName || '').toLowerCase().includes(q);
-        const colorMatch = group.variants.some((v) => v.color?.toLowerCase().includes(q));
-        const sizeMatch = group.variants.some((v) => v.size?.toLowerCase().includes(q));
-
-        return nameMatch || skuMatch || categoryMatch || vendorMatch || colorMatch || sizeMatch;
-      });
-    }
-
-    return filtered;
-  }, [productGroups, searchQuery, selectedCategory, selectedVendor]);
+  // Search/category/vendor filters are handled server-side for fast paginated loading.
+  const baseFilteredGroups = useMemo(() => productGroups, [productGroups]);
 
   const priceFilterActive = Boolean(minPrice || maxPrice);
 
@@ -507,18 +504,8 @@ const goToPage = useCallback(
     });
   }, [baseFilteredGroups, priceFilterActive, minPrice, maxPrice, catalogMetaById]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredGroups.length / itemsPerPage));
-
-  // Clamp page if filters reduce results
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      goToPage(totalPages);
-    }
-  }, [currentPage, totalPages, goToPage]);
-  const paginatedGroups = filteredGroups.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const totalPages = Math.max(1, serverLastPage);
+  const paginatedGroups = filteredGroups;
 
   // Fetch selling price + stock info (only for visible items, cached)
   useEffect(() => {
@@ -596,7 +583,7 @@ const goToPage = useCallback(
       setToast({ message: 'Product deleted successfully', type: 'success' });
       
       // Refresh data to update counts
-      await fetchData();
+      await fetchData(currentPage);
     } catch (err) {
       console.error('Error deleting product:', err);
       setToast({ message: 'Failed to delete product', type: 'error' });
@@ -781,16 +768,16 @@ const goToPage = useCallback(
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                   <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Products</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{products.length}</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalProducts}</p>
                   </div>
                   <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Product Groups</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{productGroups.length}</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalProducts > 0 ? `${productGroups.length} on this page` : 0}</p>
                   </div>
                   <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">With Variations</p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {productGroups.filter(g => g.hasVariations).length}
+                      {totalProducts > 0 ? `${productGroups.filter(g => g.hasVariations).length} on this page` : 0}
                     </p>
                   </div>
                   <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
@@ -1008,7 +995,7 @@ const goToPage = useCallback(
               {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Showing <span className="font-medium text-gray-900 dark:text-white">{((currentPage - 1) * itemsPerPage) + 1}</span> to <span className="font-medium text-gray-900 dark:text-white">{Math.min(currentPage * itemsPerPage, filteredGroups.length)}</span> of <span className="font-medium text-gray-900 dark:text-white">{filteredGroups.length}</span> groups
+                    Showing <span className="font-medium text-gray-900 dark:text-white">{totalProducts === 0 ? 0 : ((currentPage - 1) * SERVER_PAGE_SIZE) + 1}</span> to <span className="font-medium text-gray-900 dark:text-white">{Math.min((currentPage - 1) * SERVER_PAGE_SIZE + paginatedGroups.length, totalProducts)}</span> of <span className="font-medium text-gray-900 dark:text-white">{totalProducts}</span> products
                   </p>
                   <div className="flex gap-2">
                     <button
