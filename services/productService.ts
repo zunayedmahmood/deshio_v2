@@ -165,7 +165,8 @@ export const productService = {
     category_id?: number;
     vendor_id?: number;
     search?: string;
-    is_archived?: boolean;
+    sort_by?: string;
+    sort_direction?: 'asc' | 'desc';
     /** Proposal 1: return SKU-grouped response instead of flat variant rows */
     group_by_sku?: boolean;
     /** Proposal 2: server-side price filter (BDT) */

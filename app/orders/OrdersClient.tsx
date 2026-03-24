@@ -571,47 +571,69 @@ const [paymentStatusFilter, setPaymentStatusFilter] = useState('All Payment Stat
   const parseMoney = (val: any) => Number(String(val ?? '0').replace(/[^0-9.-]/g, ''));
   const cleanText = (val: any) => (val == null ? '' : String(val)).trim();
 
+  const normalizeShippingObject = (shipping: any): any => {
+    if (!shipping || typeof shipping !== 'object') return shipping;
+    if (shipping.address && typeof shipping.address === 'object') return shipping.address;
+    if (shipping.data && typeof shipping.data === 'object') {
+      if (shipping.data.address && typeof shipping.data.address === 'object') return shipping.data.address;
+      return shipping.data;
+    }
+    return shipping;
+  };
+
   const formatShippingAddress = (shipping: any): string => {
     if (!shipping) return '';
     if (typeof shipping === 'string') return shipping;
 
-    const s: any = shipping || {};
-    const line1 = s.address_line1 || s.address_line_1 || s.street || s.address || '';
+    const s: any = normalizeShippingObject(shipping) || {};
+
+    const line1 =
+      s.address_line1 ||
+      s.address_line_1 ||
+      s.street ||
+      (typeof s.address === 'string' ? s.address : '') ||
+      s.formatted_address ||
+      s.full_address ||
+      '';
+
     const line2 = s.address_line2 || s.address_line_2 || '';
 
-    // E-commerce pattern
     if (line1 || line2) {
       const parts: string[] = [];
       if (line1) parts.push(String(line1));
       if (line2) parts.push(String(line2));
+
       const cityState = [s.city, s.state].filter(Boolean).join(', ');
       const pc = s.postal_code || s.postalCode || '';
+
       if (cityState) parts.push(pc ? `${cityState} ${pc}` : cityState);
       else if (pc) parts.push(String(pc));
+
+      if (s.area) parts.push(String(s.area));
+      if (s.zone || s.zone_name) parts.push(String(s.zone || s.zone_name));
       if (s.country) parts.push(String(s.country));
       if (s.landmark) parts.push(`Landmark: ${String(s.landmark)}`);
+
       return parts.filter(Boolean).join(', ');
     }
 
-    // Social commerce / Pathao pattern
-    if (s.street || s.city || s.area || s.zone || s.postal_code) {
+    if (s.street || s.city || s.area || s.zone || s.zone_name || s.postal_code) {
       const parts: string[] = [];
       if (s.street) parts.push(String(s.street));
       if (s.area) parts.push(String(s.area));
-      if (s.zone) parts.push(String(s.zone));
+      if (s.zone || s.zone_name) parts.push(String(s.zone || s.zone_name));
       if (s.city) parts.push(String(s.city));
+
       const pc = s.postal_code || s.postalCode || '';
       const out = parts.filter(Boolean).join(', ');
       return pc ? `${out}${out ? ' - ' : ''}${pc}` : out;
     }
 
-    // Fallbacks
-    if (s.address) return String(s.address);
-    try {
-      return JSON.stringify(s);
-    } catch {
-      return String(s);
-    }
+    if (typeof s.address === 'string') return s.address;
+    if (typeof s.formatted_address === 'string') return s.formatted_address;
+    if (typeof s.full_address === 'string') return s.full_address;
+
+    return '';
   };
 
 
@@ -655,10 +677,11 @@ const [paymentStatusFilter, setPaymentStatusFilter] = useState('All Payment Stat
     if (!showEditModal || !editableOrder) return;
 
     const orderType = normalize(editableOrder.orderType);
-    const sa: any =
+    const sa: any = normalizeShippingObject(
       editableOrder.shipping_address && typeof editableOrder.shipping_address === 'object'
         ? editableOrder.shipping_address
-        : {};
+        : {}
+    ) || {};
 
     if (orderType === 'social_commerce') {
       const isIntl = !!sa?.country && !sa?.pathao_city_id;
@@ -2771,7 +2794,7 @@ amount: newOrderTotal,
 
       let shipping_address: any =
         editableOrder.shipping_address && typeof editableOrder.shipping_address === 'object'
-          ? { ...(editableOrder.shipping_address as any) }
+          ? { ...(normalizeShippingObject(editableOrder.shipping_address as any) || {}) }
           : {};
 
       let customer_address_text =
@@ -2832,6 +2855,7 @@ amount: newOrderTotal,
               address_line1: scStreetAddress,
               address_line_1: scStreetAddress,
               area: areaObj?.area_name || shipping_address.area || '',
+              zone: zoneObj?.zone_name || shipping_address.zone || '',
               city: cityObj?.city_name || shipping_address.city || '',
               country: shipping_address.country || 'Bangladesh',
               pathao_city_id: cityIdNum,

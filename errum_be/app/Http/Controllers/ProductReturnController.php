@@ -7,6 +7,8 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Employee;
 use App\Models\ProductBatch;
+use App\Models\ProductBarcode;
+use App\Models\ProductMovement;
 use App\Traits\DatabaseAgnosticSearch;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -166,6 +168,16 @@ class ProductReturnController extends Controller
                     throw new \Exception("Cannot return {$item['quantity']} units. Only {$availableForReturn} available for return.");
                 }
 
+                // Requirement: only barcode-tracked sold items are returnable.
+                if (empty($orderItem->product_barcode_id) && empty($orderItem->product_batch_id)) {
+                    throw new \Exception("Item {$orderItem->id} is not barcode-trackable. Returns require barcode-tracked items.");
+                }
+
+                $returnableBarcodes = $this->getReturnableBarcodesForOrderItem($order, $orderItem, (int) $item['quantity']);
+                if ($returnableBarcodes->count() < (int) $item['quantity']) {
+                    throw new \Exception("Unable to identify {$item['quantity']} sold barcode unit(s) for {$orderItem->product_name}. Return requires sold barcode tracking.");
+                }
+
                 $itemReturnValue = $item['quantity'] * $orderItem->unit_price;
                 $totalReturnValue += $itemReturnValue;
 
@@ -178,6 +190,8 @@ class ProductReturnController extends Controller
                     'unit_price' => $orderItem->unit_price,
                     'total_price' => $itemReturnValue,
                     'reason' => $item['reason'] ?? null,
+                    'returned_barcode_ids' => $returnableBarcodes->pluck('id')->values()->all(),
+                    'returned_barcodes' => $returnableBarcodes->pluck('barcode')->values()->all(),
                 ];
             }
 
@@ -329,6 +343,10 @@ class ProductReturnController extends Controller
             }
 
             $return->approve($employee);
+
+            // Requirement: accepted return should immediately restore inventory in receiving store.
+            $this->restoreInventoryForReturn($return, $employee);
+
             $return->save();
 
             DB::commit();
@@ -405,98 +423,9 @@ class ProductReturnController extends Controller
                 throw new \Exception('Employee authentication required');
             }
 
-            // Restore inventory only if quality check has passed and it's requested
+            // Keep endpoint backward-compatible but make restoration idempotent.
             if ($request->get('restore_inventory', true)) {
-                // Check if quality check is required and has been performed
-                if ($return->quality_check_passed === null) {
-                    throw new \Exception('Quality check must be performed before processing return with inventory restoration');
-                }
-                
-                if ($return->quality_check_passed === false) {
-                    throw new \Exception('Cannot restore inventory - return failed quality check');
-                }
-                
-                // Determine the store where the return was received
-                $returnStore = $return->received_at_store_id ?? $return->store_id;
-                
-                foreach ($return->return_items as $item) {
-                    if (isset($item['product_batch_id'])) {
-                        $originalBatch = \App\Models\ProductBatch::find($item['product_batch_id']);
-                        if (!$originalBatch) {
-                            continue;
-                        }
-
-                        // Check if we're returning to the same store as original purchase
-                        if ($originalBatch->store_id == $returnStore) {
-                            // Same store - simple increment
-                            $originalBatch->increment('quantity', $item['quantity']);
-                            $targetBatch = $originalBatch;
-                            $isNewBatch = false;
-                        } else {
-                            // Different store - find or create batch at return store
-                            $targetBatch = \App\Models\ProductBatch::firstOrCreate([
-                                'product_id' => $item['product_id'],
-                                'store_id' => $returnStore,
-                                'batch_number' => $originalBatch->batch_number,
-                            ], [
-                                'quantity' => 0,
-                                'cost_price' => $originalBatch->cost_price,
-                                'sell_price' => $originalBatch->sell_price,
-                                'manufactured_date' => $originalBatch->manufactured_date,
-                                'expiry_date' => $originalBatch->expiry_date,
-                                'availability' => true,
-                                'is_active' => true,
-                                'notes' => "Cross-store return batch created from original batch: {$originalBatch->batch_number}",
-                            ]);
-                            $isNewBatch = $targetBatch->wasRecentlyCreated;
-                            $targetBatch->increment('quantity', $item['quantity']);
-                        }
-                        
-                        // Update barcodes to reflect new location
-                        $barcodes = \App\Models\ProductBarcode::where('product_id', $item['product_id'])
-                            ->where('batch_id', $item['product_batch_id'])
-                            ->where('current_status', 'with_customer')
-                            ->limit($item['quantity'])
-                            ->get();
-                            
-                        foreach ($barcodes as $barcode) {
-                            $barcode->updateLocation(
-                                $returnStore,
-                                'in_return',
-                                [
-                                    'return_id' => $return->id,
-                                    'return_reason' => $return->return_reason,
-                                    'cross_store_return' => $originalBatch->store_id !== $returnStore,
-                                    'original_store_id' => $originalBatch->store_id,
-                                ]
-                            );
-                            
-                            // Update batch_id to new batch if cross-store
-                            if ($originalBatch->store_id !== $returnStore) {
-                                $barcode->update(['batch_id' => $targetBatch->id]);
-                            }
-                        }
-                            
-                        // Log inventory movement
-                        \App\Models\ProductMovement::create([
-                            'product_id' => $item['product_id'],
-                            'product_batch_id' => $targetBatch->id,
-                            'product_barcode_id' => $targetBatch->barcode_id ?? null,
-                            'from_store_id' => $originalBatch->store_id !== $returnStore ? $originalBatch->store_id : null,
-                            'to_store_id' => $returnStore,
-                            'movement_type' => $originalBatch->store_id !== $returnStore ? 'cross_store_return' : 'return',
-                            'quantity' => $item['quantity'],
-                            'unit_cost' => $item['unit_price'],
-                            'total_cost' => $item['total_price'],
-                            'reference_type' => 'return',
-                            'reference_id' => $return->id,
-                            'notes' => $originalBatch->store_id !== $returnStore 
-                                ? "Cross-store return: {$return->return_number} - From Store ID {$originalBatch->store_id} to Store ID {$returnStore}" . ($isNewBatch ? ' (New batch created)' : '')
-                                : "Product return: {$return->return_number} (Quality approved)",
-                            'performed_by' => $employee->id,
-                        ]);
-                    }
-                }
+                $this->restoreInventoryForReturn($return, $employee);
             }
 
             $return->process($employee);
@@ -553,11 +482,11 @@ class ProductReturnController extends Controller
                 foreach ($return->return_items as $item) {
                     if (isset($item['product_batch_id'])) {
                         try {
-                            // Find barcodes associated with this batch in the store
-                            $barcodes = \App\Models\ProductBarcode::where('product_id', $item['product_id'])
+                            $returnStore = $return->received_at_store_id ?? $return->store_id;
+                            $barcodes = ProductBarcode::where('product_id', $item['product_id'])
                                 ->where('batch_id', $item['product_batch_id'])
-                                ->where('current_store_id', $return->store_id)
-                                ->where('current_status', '!=', 'defective')
+                                ->where('current_store_id', $returnStore)
+                                ->whereIn('current_status', ['in_warehouse', 'in_shop', 'on_display'])
                                 ->where('is_active', true)
                                 ->limit($item['quantity'])
                                 ->get();
@@ -568,7 +497,7 @@ class ProductReturnController extends Controller
                                 
                                 // Mark as defective
                                 $defectiveProduct = $barcode->markAsDefective([
-                                    'store_id' => $return->store_id,
+                                    'store_id' => $returnStore,
                                     'product_batch_id' => $item['product_batch_id'],
                                     'defect_type' => $defectType,
                                     'defect_description' => "Auto-marked from return #{$return->return_number}: {$return->return_reason}" . 
@@ -619,6 +548,200 @@ class ProductReturnController extends Controller
                 'message' => 'Failed to complete return: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Link a completed return to a replacement purchase (exchange = return + new purchase).
+     */
+    public function exchange(Request $request, $id): JsonResponse
+    {
+        $request->validate([
+            'new_order_id' => 'required|exists:orders,id',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $return = ProductReturn::findOrFail($id);
+            $newOrder = Order::findOrFail($request->new_order_id);
+
+            if (!in_array($return->status, ['approved', 'processing', 'completed', 'refunded'])) {
+                throw new \Exception('Return must be approved or later to link exchange.');
+            }
+
+            if ((int) $newOrder->customer_id !== (int) $return->customer_id) {
+                throw new \Exception('Exchange order must belong to the same customer.');
+            }
+
+            if ($newOrder->status === 'cancelled') {
+                throw new \Exception('Cannot link a cancelled order as exchange purchase.');
+            }
+
+            $history = $return->status_history ?? [];
+            $history[] = [
+                'status' => 'exchange_linked',
+                'changed_at' => now()->toISOString(),
+                'changed_by' => auth()->id(),
+                'notes' => $request->notes,
+                'new_order_id' => $newOrder->id,
+                'new_order_number' => $newOrder->order_number,
+            ];
+
+            $return->status_history = $history;
+            $return->internal_notes = trim(($return->internal_notes ? $return->internal_notes . "\n" : '') .
+                'Exchange linked to order #' . $newOrder->order_number . ($request->notes ? ' | ' . $request->notes : ''));
+            $return->save();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Exchange linked successfully (return + new purchase).',
+                'data' => [
+                    'return_id' => $return->id,
+                    'return_number' => $return->return_number,
+                    'new_order_id' => $newOrder->id,
+                    'new_order_number' => $newOrder->order_number,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to link exchange: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function getReturnableBarcodesForOrderItem(Order $order, OrderItem $orderItem, int $requiredQty)
+    {
+        $query = ProductBarcode::where('product_id', $orderItem->product_id)
+            ->where('batch_id', $orderItem->product_batch_id)
+            ->whereIn('current_status', ['with_customer', 'sold'])
+            ->where('is_defective', false)
+            ->orderByDesc('location_updated_at')
+            ->orderByDesc('id');
+
+        $query->where(function ($q) use ($order, $orderItem) {
+            $q->where('location_metadata->order_id', $order->id)
+                ->orWhere('location_metadata->order_number', $order->order_number);
+
+            if (!empty($orderItem->product_barcode_id)) {
+                $q->orWhere('id', $orderItem->product_barcode_id);
+            }
+        });
+
+        return $query->take($requiredQty)->get();
+    }
+
+    private function restoreInventoryForReturn(ProductReturn $return, Employee $employee): void
+    {
+        if ($this->isInventoryRestored($return)) {
+            return;
+        }
+
+        if ($return->quality_check_passed === null) {
+            throw new \Exception('Quality check must be performed before inventory restoration.');
+        }
+
+        if ($return->quality_check_passed === false) {
+            throw new \Exception('Cannot restore inventory because return failed quality check.');
+        }
+
+        $returnStore = $return->received_at_store_id ?? $return->store_id;
+
+        foreach ($return->return_items ?? [] as $item) {
+            if (!isset($item['product_batch_id'], $item['product_id'], $item['quantity'])) {
+                continue;
+            }
+
+            $originalBatch = ProductBatch::find($item['product_batch_id']);
+            if (!$originalBatch) {
+                throw new \Exception("Original batch not found for returned item (batch_id={$item['product_batch_id']}).");
+            }
+
+            if ((int) $originalBatch->store_id === (int) $returnStore) {
+                $targetBatch = $originalBatch;
+                $isNewBatch = false;
+            } else {
+                $targetBatch = ProductBatch::firstOrCreate([
+                    'product_id' => $item['product_id'],
+                    'store_id' => $returnStore,
+                    'batch_number' => $originalBatch->batch_number,
+                ], [
+                    'quantity' => 0,
+                    'cost_price' => $originalBatch->cost_price,
+                    'sell_price' => $originalBatch->sell_price,
+                    'tax_percentage' => $originalBatch->tax_percentage,
+                    'manufactured_date' => $originalBatch->manufactured_date,
+                    'expiry_date' => $originalBatch->expiry_date,
+                    'availability' => true,
+                    'is_active' => true,
+                    'notes' => "Cross-store return batch created from original batch: {$originalBatch->batch_number}",
+                ]);
+                $isNewBatch = $targetBatch->wasRecentlyCreated;
+            }
+
+            $targetBatch->increment('quantity', (int) $item['quantity']);
+
+            $barcodeIds = collect($item['returned_barcode_ids'] ?? [])->filter()->values();
+            if ($barcodeIds->isEmpty()) {
+                $barcodes = ProductBarcode::where('product_id', $item['product_id'])
+                    ->where('batch_id', $item['product_batch_id'])
+                    ->whereIn('current_status', ['with_customer', 'sold'])
+                    ->limit((int) $item['quantity'])
+                    ->get();
+            } else {
+                $barcodes = ProductBarcode::whereIn('id', $barcodeIds)->get();
+            }
+
+            foreach ($barcodes as $barcode) {
+                $barcode->updateLocation(
+                    $returnStore,
+                    'in_warehouse',
+                    [
+                        'return_id' => $return->id,
+                        'return_reason' => $return->return_reason,
+                        'returned_at' => now()->toISOString(),
+                        'cross_store_return' => (int) $originalBatch->store_id !== (int) $returnStore,
+                        'original_store_id' => $originalBatch->store_id,
+                    ],
+                    false
+                );
+
+                $barcode->is_active = true;
+                if ((int) $originalBatch->store_id !== (int) $returnStore) {
+                    $barcode->batch_id = $targetBatch->id;
+                }
+                $barcode->save();
+
+                ProductMovement::create([
+                    'product_id' => $item['product_id'],
+                    'product_batch_id' => $targetBatch->id,
+                    'product_barcode_id' => $barcode->id,
+                    'from_store_id' => (int) $originalBatch->store_id !== (int) $returnStore ? $originalBatch->store_id : null,
+                    'to_store_id' => $returnStore,
+                    'movement_type' => 'return',
+                    'quantity' => 1,
+                    'unit_cost' => $item['unit_price'] ?? 0,
+                    'total_cost' => $item['unit_price'] ?? 0,
+                    'reference_type' => 'return',
+                    'reference_id' => $return->id,
+                    'notes' => (int) $originalBatch->store_id !== (int) $returnStore
+                        ? "Cross-store return: {$return->return_number}" . ($isNewBatch ? ' (New batch created)' : '')
+                        : "Product return: {$return->return_number}",
+                    'performed_by' => $employee->id,
+                ]);
+            }
+        }
+    }
+
+    private function isInventoryRestored(ProductReturn $return): bool
+    {
+        return ProductMovement::where('reference_type', 'return')
+            ->where('reference_id', $return->id)
+            ->whereIn('movement_type', ['return', 'cross_store_return'])
+            ->exists();
     }
 
     /**

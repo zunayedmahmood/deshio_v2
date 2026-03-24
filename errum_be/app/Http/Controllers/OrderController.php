@@ -700,7 +700,7 @@ class OrderController extends Controller
 
             // Update order fields
             if ($request->has('shipping_address')) {
-                $order->shipping_address = json_encode($request->shipping_address);
+                $order->shipping_address = $request->shipping_address;
             }
 
             if ($request->has('discount_amount')) {

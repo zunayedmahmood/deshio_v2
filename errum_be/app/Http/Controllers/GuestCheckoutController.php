@@ -194,7 +194,7 @@ class GuestCheckoutController extends Controller
                     'order_type' => 'ecommerce',
                     'is_preorder' => false, // eCommerce orders are NOT pre-orders
                     'preorder_notes' => null,
-                    'status' => 'pending',
+                    'status' => 'pending_assignment',
                     'payment_status' => $request->payment_method === 'cod' ? 'pending' : 'unpaid',
                     'payment_method' => $request->payment_method,
                     'subtotal' => $subtotal,

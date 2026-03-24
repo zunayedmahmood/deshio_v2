@@ -1,53 +1,3 @@
-Update the e-commerce/[slug] page.tsx . 
-
-What I want you to do is:
-->go through that page and all the relevant components, services the pages calls and uses.
-->go through the backend codes which are used.
-
-These are the changes I want:
-->use premiumProductCard for displaying the products
-currently all products (in stock and out of stock) are being sent backend
-->change that so that, only in stock products are sent back. then, in frontend, remove the Availability selection from the sidebar.
-->make a detailed md file titled "Category Feed Page Changes" It should discuss and explain in detail how the current e-commerce/[slug] page fucntions, examples and edge cases.
-->within the changed codes, always add comments to help understand the functions and changes.
-
-Do NOT change any additional UI or logic. ONLY change the code that is strictly necessary.
-Whenever you are copying features and there's texts, DO NOT put in your own words. instead use the original texts.
-
-
-Completely rewrite the e-commerce/search page.tsx and search-client.tsx .
-What I want you to do is:
-->go through that page and all the relevant components, services the pages calls and uses.
-->go through the backend codes which are used.
-
-These are the changes I want:
-->use premiumProductCard for displaying the products
-->If the page currently has no pagination, add a 15 product (SKU group) per page pagination.
-->Add a price range sidebar and a filter dropdown with (newest, price low to high and high to low)
-->in the searchBar, it should fire every time a character changes (with 500 ms debounce).
-
-->make a detailed md file titled "Search Feed Page Changes" It should discuss and explain in detail how the new e-commerce/search page fucntions, examples and edge cases.
-
-Make the UI and logic consistent with the e-commerce/[slug] page.tsx  and e-commerce/products page.tsx .
-DO NOT change any UI in e-commerce/[slug] page.tsx  and e-commerce/products page.tsx. IN backend, change only the code that is strictly necessary.
-
-update e-commerce/search page.tsx and search-client.tsx and their components for the following:
-->the Category dropdown for subcategories should be scrollable.
-Do NOT change any additional UI or logic. ONLY change the stricly necessary code.
-
-
-see errors.txt to understand the issues.
-
-update the e-commerce/product e-commerce/[slug] pages accordingly to solve the issue.
-
-What else i want you to do:
-->currently, the EcommerceCatalogController.php currently paginates first, then applies all params
-->Update the method so that it applies filters first, then paginate.
-
-make a detailed md file titled "Slug SQL fix and price issue fixes" It should discuss and explain in detail how the new pages and controller fucntions, examples and edge cases.
-
-
-
 Go through errors.txt and see the errors.
 
 
@@ -120,4 +70,12 @@ It has a search bar, filter and min-max input fields. I want you to check and do
 check the backend controllers and models that are called by these frontend code. make sure that the entire data fetching and request sending is seamless and smooth.
 The page is currently working absolutely fine with proper logic. so ONLY edit if stricly necessary. DO NOT change anything unnecessarily. 
 
+
+okay there has been 2 issues.... One is from social commerce page... when i am placing an order... address is not getting stored... and also when i am editing the address... kinda like whole api response of the customer is getting stored in the address bar... the pages are app/social-commerce and app/orders/
+I gave this problem to an AI model and found these issues and solve:
+
+
+Update the code accordingly.
+DO NOT change anything else.
+generate an md file titled: "24_Mar_26 Order Address issues fix.md" in Documentation folder. It should discuss and explain in detail how the new pages behave, examples and edge cases and th files affected.
 

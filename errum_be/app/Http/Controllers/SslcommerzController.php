@@ -157,7 +157,7 @@ class SslcommerzController extends Controller
 
                 // Keep order open for retry. Do NOT mark as paid/completed.
                 $order->update([
-                    'status' => 'pending_payment',
+                    'status' => 'pending',
                     'payment_status' => 'unpaid',
                 ]);
             }
@@ -200,7 +200,7 @@ class SslcommerzController extends Controller
 
                 // User backed out; keep order open for retry.
                 $order->update([
-                    'status' => 'pending_payment',
+                    'status' => 'pending',
                     'payment_status' => 'unpaid',
                 ]);
             }
@@ -289,7 +289,7 @@ class SslcommerzController extends Controller
                 } else {
                     // Keep order open for retry when payment is not completed
                     $order->update([
-                        'status' => 'pending_payment',
+                        'status' => 'pending',
                         'payment_status' => 'unpaid',
                     ]);
                 }

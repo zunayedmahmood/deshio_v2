@@ -22,7 +22,7 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Product::with(['category', 'vendor', 'productFields.field', 'images' => function($q) {
+        $query = Product::select('products.*')->with(['category', 'vendor', 'productFields.field', 'images' => function($q) {
             $q->where('is_active', true)->orderBy('is_primary', 'desc')->orderBy('sort_order');
         }]);
 
@@ -89,8 +89,18 @@ class ProductController extends Controller
         $sortBy = $request->get('sort_by', 'created_at');
         $sortDirection = $request->get('sort_direction', 'desc');
         
-        $allowedSortFields = ['name', 'sku', 'created_at', 'updated_at'];
-        if (in_array($sortBy, $allowedSortFields)) {
+        $allowedSortFields = ['name', 'sku', 'created_at', 'updated_at', 'price'];
+        
+        if ($sortBy === 'price') {
+            $query->addSelect([
+                'min_price' => \App\Models\ProductBatch::select('sell_price')
+                    ->whereColumn('product_id', 'products.id')
+                    ->where('is_active', true)
+                    ->where('availability', true)
+                    ->orderBy('sell_price', 'asc')
+                    ->limit(1)
+            ])->orderBy('min_price', $sortDirection);
+        } elseif (in_array($sortBy, $allowedSortFields)) {
             $query->orderBy($sortBy, $sortDirection);
         }
 

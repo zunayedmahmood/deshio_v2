@@ -59,6 +59,7 @@ export default function ProductPage() {
   const [maxPrice, setMaxPrice] = useState<string>('');
   const [debouncedMinPrice, setDebouncedMinPrice] = useState<string>('');
   const [debouncedMaxPrice, setDebouncedMaxPrice] = useState<string>('');
+  const [sortBy, setSortBy] = useState<string>('newest');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const SERVER_PAGE_SIZE = 60;
@@ -121,12 +122,15 @@ export default function ProductPage() {
     const maxP = searchParams.get('maxPrice') ?? '';
     const pageRaw = Number(searchParams.get('page') ?? '1');
 
+    const sort = searchParams.get('sortBy') ?? 'newest';
+    
     setSearchQuery(q);
     setDebouncedSearchQuery(q);
     setSelectedCategory(category);
     setSelectedVendor(vendor);
     setMinPrice(minP);
     setMaxPrice(maxP);
+    setSortBy(sort);
     setCurrentPage(Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1);
 
     setSelectMode(searchParams.get('selectMode') === 'true');
@@ -206,6 +210,19 @@ export default function ProductPage() {
 
       let response: { data: any[]; total: number; current_page: number; last_page: number };
 
+      let apiSortBy = 'created_at';
+      let apiSortDir: 'asc' | 'desc' = 'desc';
+
+      if (sortBy === 'oldest') {
+        apiSortDir = 'asc';
+      } else if (sortBy === 'price_asc') {
+        apiSortBy = 'price';
+        apiSortDir = 'asc';
+      } else if (sortBy === 'price_desc') {
+        apiSortBy = 'price';
+        apiSortDir = 'desc';
+      }
+
       // Proposal 5: use advanced search when query is ≥ 2 chars
       if (debouncedSearchQuery.trim().length >= 2) {
         try {
@@ -228,6 +245,8 @@ export default function ProductPage() {
             group_by_sku: true,
             min_price: minPrice ? Number(minPrice) : undefined,
             max_price: maxPrice ? Number(maxPrice) : undefined,
+            sort_by: apiSortBy,
+            sort_direction: apiSortDir,
           });
         }
       } else {
@@ -241,6 +260,8 @@ export default function ProductPage() {
           group_by_sku: true,
           min_price: minPrice ? Number(minPrice) : undefined,
           max_price: maxPrice ? Number(maxPrice) : undefined,
+          sort_by: apiSortBy,
+          sort_direction: apiSortDir,
         });
       }
 
@@ -724,12 +745,22 @@ export default function ProductPage() {
 
   const clearFilters = () => {
     setSearchQuery('');
+    setDebouncedSearchQuery('');
     setSelectedCategory('');
     setSelectedVendor('');
     setMinPrice('');
     setMaxPrice('');
+    setSortBy('newest');
     setCurrentPage(1);
-    updateQueryParams({ q: null, category: null, vendor: null, minPrice: null, maxPrice: null, page: '1' });
+    updateQueryParams({
+      q: null,
+      category: null,
+      vendor: null,
+      minPrice: null,
+      maxPrice: null,
+      sortBy: null,
+      page: '1',
+    });
   };
 
   const hasActiveFilters = Boolean(searchQuery || selectedCategory || selectedVendor || minPrice || maxPrice);
@@ -851,6 +882,23 @@ export default function ProductPage() {
                     />
                   </div>
 
+                  {/* Sort Dropdown */}
+                  <select
+                    value={sortBy}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSortBy(val);
+                      setCurrentPage(1);
+                      updateQueryParams({ sortBy: val, page: '1' });
+                    }}
+                    className="px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-500 transition-colors shadow-sm cursor-pointer"
+                  >
+                    <option value="newest">Newest</option>
+                    <option value="oldest">Oldest</option>
+                    <option value="price_asc">Price: Low to High</option>
+                    <option value="price_desc">Price: High to Low</option>
+                  </select>
+
                   {/* Filter Toggle Button */}
                   <button
                     onClick={() => setShowFilters(!showFilters)}
@@ -863,7 +911,7 @@ export default function ProductPage() {
                     <span className="font-medium">Filters</span>
                     {hasActiveFilters && (
                       <span className="px-2 py-0.5 text-xs bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-full">
-                        {(searchQuery ? 1 : 0) + (selectedCategory ? 1 : 0) + (selectedVendor ? 1 : 0) + (minPrice || maxPrice ? 1 : 0)}
+                        {(searchQuery ? 1 : 0) + (selectedCategory ? 1 : 0) + (selectedVendor ? 1 : 0) + (minPrice || maxPrice ? 1 : 0) + (sortBy !== 'newest' ? 1 : 0)}
                       </span>
                     )}
                   </button>

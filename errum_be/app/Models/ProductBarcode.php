@@ -243,7 +243,7 @@ class ProductBarcode extends Model
     {
         $this->update([
             'is_active' => true,  // Reactivate for resale
-            'current_status' => 'in_return',
+            'current_status' => 'in_warehouse',
             'location_updated_at' => now(),
             'location_metadata' => array_merge($this->location_metadata ?? [], [
                 'returned_at' => now()->toDateTimeString(),
