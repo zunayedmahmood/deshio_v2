@@ -21,11 +21,10 @@ import {
 } from '@/types/product';
 
 export default function ProductPage() {
-  const { hasAnyPermission, hasPermission, permissionsResolved } = useAuth();
-  const canViewProducts = hasAnyPermission(['products.view', 'products.create', 'products.edit', 'products.delete']);
-  const canCreateProducts = hasPermission('products.create');
-  const canEditProducts = hasPermission('products.edit');
-  const canDeleteProducts = hasPermission('products.delete');
+  const { isRole } = useAuth();
+  const canCreateProducts = isRole(['super-admin', 'admin', 'online-moderator']);
+  const canEditProducts = isRole(['super-admin', 'admin', 'online-moderator']);
+  const canDeleteProducts = isRole(['super-admin', 'admin']);
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -66,11 +65,6 @@ export default function ProductPage() {
   const SERVER_PAGE_SIZE = 60;
   const SEARCH_DEBOUNCE_MS = 1000;
 
-  // If permissions are not yet reliably resolved from the API (common when /me does not
-  // include role.permissions), do NOT block the page. Backend will still enforce 403.
-  if (permissionsResolved && !canViewProducts) {
-    return <AccessDenied />;
-  }
 
   const updateQueryParams = useCallback(
     (
@@ -137,13 +131,13 @@ export default function ProductPage() {
     if (maxP !== maxPrice) setMaxPrice(maxP);
     if (sort !== sortBy) setSortBy(sort);
     if (stock !== stockStatus) setStockStatus(stock);
-    
+
     const nextP = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
     if (nextP !== currentPage) setCurrentPage(nextP);
 
     const sm = searchParams.get('selectMode') === 'true';
     if (sm !== selectMode) setSelectMode(sm);
-    
+
     const rp = searchParams.get('redirect') || '';
     if (rp !== redirectPath) setRedirectPath(rp);
   }, [searchParams, searchQuery, selectedCategory, selectedVendor, minPrice, maxPrice, sortBy, stockStatus, currentPage, selectMode, redirectPath]);
@@ -1019,9 +1013,9 @@ export default function ProductPage() {
                             const val = e.target.value as 'all' | 'in_stock' | 'not_in_stock';
                             setStockStatus(val);
                             setCurrentPage(1);
-                            updateQueryParams({ 
-                              in_stock: val === 'in_stock' ? 'true' : val === 'not_in_stock' ? 'false' : null, 
-                              page: '1' 
+                            updateQueryParams({
+                              in_stock: val === 'in_stock' ? 'true' : val === 'not_in_stock' ? 'false' : null,
+                              page: '1'
                             });
                           }}
                           className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-500 transition-colors cursor-pointer"

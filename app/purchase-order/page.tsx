@@ -1048,24 +1048,26 @@ export default function PurchaseOrdersPage() {
 
                   {/* PO Summary */}
                   <div className="p-4 bg-gray-50 dark:bg-gray-700/30 grid grid-cols-4 gap-4">
-                    <div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">Total Amount</p>
-                      <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                        ৳{formatCurrency(po.total_amount)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">Paid Amount</p>
-                      <p className="text-lg font-semibold text-green-600 dark:text-green-400">
-                        ৳{formatCurrency(po.paid_amount)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">Outstanding</p>
-                      <p className="text-lg font-semibold text-yellow-600 dark:text-yellow-400">
-                        ৳{formatCurrency(po.outstanding_amount)}
-                      </p>
-                    </div>
+                    <AccessControl roles={['super-admin', 'admin']}>
+                      <div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">Total Amount</p>
+                        <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                          ৳{formatCurrency(po.total_amount)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">Paid Amount</p>
+                        <p className="text-lg font-semibold text-green-600 dark:text-green-400">
+                          ৳{formatCurrency(po.paid_amount)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">Outstanding</p>
+                        <p className="text-lg font-semibold text-yellow-600 dark:text-yellow-400">
+                          ৳{formatCurrency(po.outstanding_amount)}
+                        </p>
+                      </div>
+                    </AccessControl>
                     <div>
                       <p className="text-xs text-gray-600 dark:text-gray-400">Expected Delivery</p>
                       <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
