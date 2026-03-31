@@ -294,5 +294,6 @@ export function useAuth() {
     canAccessPurchaseOrders:   isRole(['super-admin', 'admin', 'branch-manager', 'online-moderator']),
     canAccessPackagePage:      isRole(['super-admin', 'admin', 'branch-manager', 'pos-salesman']),
     canAccessStoreAssignment:  isRole(['super-admin', 'admin', 'branch-manager', 'online-moderator']),
+    canAccessDailyCashReport:  isRole(['super-admin', 'admin', 'branch-manager']),
   };
 }

@@ -108,12 +108,22 @@ What you need to know:
 
 
 ### page responsiveness and new pages 
+read the entire frontend to understand how roles access different pages and role based page responsiveness.
+see Documentation/Rbac centralised reference.md
 
-Updates related to Online Moderators:
-update the purchase-order page: currently, when we add new product to an existing PO inside edit modal, we need to add cost price (while Actions coloumn is blocked). This should be stopped so that online Moderators don't have to add cost price for updating (change backend accordingly)
-perhaps there's some service file that's preventing purchase order creation and purchase order edit from not having cost price. 
-check the purchase-order page and all Unit Costs should be hidden from online Moderators. For product list in edit/view PO, the unit cost should be hidden for online moderators. instead show Selling price.
-edit the purchase order page, view/edit modal. products should show the product image .
+we are adding this new role now:
 
-recheck to ensure product cost price, approve for PO in purchase-order, vendor is only vissible to super-admin and admin.
-DO NOT make any other changes.
+branch manager:
+-view only (disable the edit order, add order marker, send to pathao for super admin, admin and online moderator) order list on packing panel only for that branch
+-has access to orders on social-commerce/package but for only his branch
+-has access to /purchase-history but for his branch only 
+-full access of /pos (can use daily cash report button. this button is accessible to super admin, admin and branch manager) but for his branch only 
+-full access to /accounting page. 
+
+These are the chnages we want for all:
+-everybody will have full access to inventory pages (except report. only admins and super admin get that) and it should have information of all stores 
+-everybody (except employees) have full access to extras panel (for all stores)
+
+make the least possible change in backend. we've shifted role based checks and permissions to frontend.
+ONLY make the absolutely stricly necessary changes.
+These changes should be primarily frontend.
