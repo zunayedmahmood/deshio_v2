@@ -5,6 +5,7 @@ import { X, Loader2, ShoppingCart } from 'lucide-react';
 import { useCart } from '../../../app/e-commerce/CartContext';
 import { useRouter } from 'next/navigation';
 import CartItem from './CartItem';
+import checkoutService from '../../../services/checkoutService';
 
 const formatBDT = (value: number) => {
   return `৳${value.toLocaleString('en-BD', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -20,9 +21,8 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
   const router = useRouter();
   
   const subtotal = getTotalPrice();
-  const freeShippingThreshold = 5000;
-  const remaining = Math.max(0, freeShippingThreshold - subtotal);
-  const progress = Math.min(100, (subtotal / freeShippingThreshold) * 100);
+  const deliveryCharge = checkoutService.calculateDeliveryCharge('Dhaka');
+  const total = subtotal + deliveryCharge;
 
   const handleCheckout = () => {
     router.push('/e-commerce/checkout');
@@ -115,38 +115,25 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
         {/* Footer */}
         {!isLoading && cart.length > 0 && (
           <div className="border-t border-white/5 p-6 space-y-5 bg-white/[0.02]">
-            {/* Free Shipping Progress */}
-            {remaining > 0 ? (
-              <div className="space-y-2">
-                <div className="flex justify-between items-end">
-                  <p className="text-[11px] font-bold tracking-wide text-white/30 uppercase" style={{ fontFamily: "'DM Mono', monospace" }}>
-                    Free Shipping
-                  </p>
-                  <p className="text-[11px] font-semibold text-white/60">
-                    ৳{remaining.toFixed(2)} AWAY
-                  </p>
-                </div>
-                <div className="w-full rounded-full h-1 bg-white/5 overflow-hidden">
-                  <div 
-                    className="h-full rounded-full transition-all duration-700 bg-[var(--gold)]"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-xl p-3 flex items-center gap-3" style={{ background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.1)' }}>
-                <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                <p className="text-[11px] font-bold text-green-500 uppercase tracking-wider" style={{ fontFamily: "'DM Mono', monospace" }}>
-                  Complimentary Shipping Applied
-                </p>
-              </div>
-            )}
 
-            {/* Subtotal */}
-            <div className="flex items-center justify-between py-2 border-y border-white/5">
-              <span className="text-sm font-medium text-white/40">Estimated Total:</span>
-              <span className="text-xl font-bold text-white">
+            <div className="flex items-center justify-between py-2 border-t border-white/5">
+              <span className="text-sm font-medium text-white/40">Subtotal:</span>
+              <span className="text-base font-semibold text-white/80">
                 {formatBDT(subtotal)}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between py-2 border-white/5">
+              <span className="text-sm font-medium text-white/40">Delivery:</span>
+              <span className="text-base font-semibold text-white/80">
+                {formatBDT(deliveryCharge)}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between py-3 border-t border-white/10">
+              <span className="text-sm font-bold text-white/60 uppercase tracking-widest" style={{ fontFamily: "'DM Mono', monospace" }}>Total:</span>
+              <span className="text-2xl font-bold text-[var(--gold)]">
+                {formatBDT(total)}
               </span>
             </div>
 

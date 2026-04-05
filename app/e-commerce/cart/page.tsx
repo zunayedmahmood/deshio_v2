@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { X, ShoppingCart, Loader2, AlertCircle } from 'lucide-react';
 import Navigation from '@/components/ecommerce/Navigation';
 import cartService, { CartItem, Cart } from '@/services/cartService';
+import checkoutService from '@/services/checkoutService';
 
 export default function CartPage() {
   const router = useRouter();
@@ -178,10 +179,7 @@ export default function CartPage() {
 
   // Calculate totals
   const subtotal = getSelectedTotal();
-  const freeShippingThreshold = 5000;
-  const remaining = Math.max(0, freeShippingThreshold - subtotal);
-  const progress = Math.min(100, (subtotal / freeShippingThreshold) * 100);
-  const shippingFee = subtotal >= freeShippingThreshold ? 0 : 60;
+  const shippingFee = checkoutService.calculateDeliveryCharge('Dhaka');
   const total = subtotal + shippingFee;
 
   // ✅ CRITICAL FIX: Synchronous localStorage save before navigation
@@ -285,20 +283,6 @@ export default function CartPage() {
       <Navigation />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         
-        {/* Free Shipping Progress */}
-        {remaining > 0 && (
-          <div className="mb-8 p-6 border-2 border-dashed border-neutral-300 rounded-lg-xl">
-            <p className="text-neutral-700 mb-3">
-              Add <span className="font-bold text-amber-600">৳{remaining.toFixed(2)}</span> to cart and get free shipping!
-            </p>
-            <div className="w-full bg-neutral-200 rounded-lg-full h-3">
-              <div 
-                className="bg-neutral-900 h-3 rounded-lg-full transition-all duration-300"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-        )}
 
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Cart Items */}
@@ -551,11 +535,7 @@ export default function CartPage() {
                   <div className="flex justify-between">
                     <span className="text-neutral-700">Shipping</span>
                     <span className="font-semibold text-neutral-900">
-                      {shippingFee > 0 ? (
-                        `৳${shippingFee.toFixed(2)}`
-                      ) : (
-                        <span className="text-green-600">Free shipping</span>
-                      )}
+                      ৳{shippingFee.toFixed(2)}
                     </span>
                   </div>
                   <button 

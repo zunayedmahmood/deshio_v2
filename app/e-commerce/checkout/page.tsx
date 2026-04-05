@@ -20,7 +20,7 @@ export default function CheckoutPage() {
   const [isLoadingItems, setIsLoadingItems] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-  
+
   // Address management
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
@@ -28,7 +28,7 @@ export default function CheckoutPage() {
   const [selectedBillingAddressId, setSelectedBillingAddressId] = useState<number | null>(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [editingAddressId, setEditingAddressId] = useState<number | null>(null);
-  
+
   const getEmptyAddressForm = (): Omit<Address, 'id'> => ({
     name: '',
     phone: '',
@@ -100,10 +100,10 @@ export default function CheckoutPage() {
   useEffect(() => {
     const loadCheckoutItems = async () => {
       console.log('🔍 === CHECKOUT LOAD START ===');
-      
+
       const selectedIdsStr = localStorage.getItem('checkout-selected-items');
       console.log('📋 localStorage checkout items:', selectedIdsStr);
-      
+
       if (!selectedIdsStr) {
         console.warn('⚠️ No selected items in localStorage, redirecting to cart...');
         setIsLoadingItems(false);
@@ -114,7 +114,7 @@ export default function CheckoutPage() {
       try {
         const ids = JSON.parse(selectedIdsStr);
         console.log('🔢 Selected IDs:', ids);
-        
+
         if (!Array.isArray(ids) || ids.length === 0) {
           console.error('❌ Invalid selected items format');
           localStorage.removeItem('checkout-selected-items');
@@ -127,12 +127,12 @@ export default function CheckoutPage() {
         console.log('📦 Fetching cart from backend...');
         const cartData = await cartService.getCart();
         console.log('✅ Cart data loaded:', cartData);
-        
+
         // ✅ Filter by selected IDs
         const items = cartData.cart_items.filter(item => ids.includes(item.id));
         console.log('✅ Filtered checkout items:', items);
         console.log('✅ Item count:', items.length);
-        
+
         if (items.length === 0) {
           console.error('❌ No matching items found in cart!');
           alert('Selected items are no longer in your cart. Redirecting...');
@@ -141,7 +141,7 @@ export default function CheckoutPage() {
           router.push('/e-commerce/cart');
           return;
         }
-        
+
         // ✅ Transform to match expected format
         const transformedItems = items.map(item => ({
           id: item.id,
@@ -155,12 +155,12 @@ export default function CheckoutPage() {
           variant_options: item.variant_options,
           notes: item.notes,
         }));
-        
+
         console.log('✅ Setting selected items:', transformedItems);
         setSelectedItems(transformedItems);
         setIsLoadingItems(false);
         console.log('🔍 === CHECKOUT LOAD END ===');
-        
+
       } catch (error) {
         console.error('❌ Error loading checkout items:', error);
         localStorage.removeItem('checkout-selected-items');
@@ -180,20 +180,20 @@ export default function CheckoutPage() {
       try {
         setLoadingAddresses(true);
         const result = await checkoutService.getAddresses();
-        
+
         console.log('📍 Fetched addresses:', result);
         setAddresses(result.addresses);
-        
+
         if (result.default_shipping) {
           setSelectedShippingAddressId(result.default_shipping.id!);
         } else if (result.addresses.length > 0) {
           setSelectedShippingAddressId(result.addresses[0].id!);
         }
-        
+
         if (result.default_billing) {
           setSelectedBillingAddressId(result.default_billing.id!);
         }
-        
+
       } catch (error: any) {
         console.error('Failed to fetch addresses:', error);
         setError('Failed to load addresses');
@@ -212,7 +212,7 @@ export default function CheckoutPage() {
         const methods = await checkoutService.getPaymentMethods();
         console.log('💳 Fetched payment methods:', methods);
         setPaymentMethods(methods);
-        
+
         // Set default payment method by CODE
         if (methods.length > 0) {
           const defaultMethod = methods.find(m => m.code === 'cash') || methods[0];
@@ -220,7 +220,7 @@ export default function CheckoutPage() {
         }
       } catch (error) {
         console.error('Failed to fetch payment methods:', error);
-        
+
         const fallbackMethods: PaymentMethod[] = [
           {
             id: 1,
@@ -271,7 +271,7 @@ export default function CheckoutPage() {
   const orderItems: OrderItem[] = selectedItems.map(item => {
     const unitPrice = typeof item.unit_price === 'string' ? parseFloat(item.unit_price) : item.unit_price;
     const totalPrice = typeof item.total_price === 'string' ? parseFloat(item.total_price) : item.total_price;
-    
+
     return {
       product_id: item.product_id,
       product_name: item.name,
@@ -287,34 +287,34 @@ export default function CheckoutPage() {
 
   const handleSaveAddress = async () => {
     setError(null);
-    
+
     if (!addressForm.name.trim()) {
       setError('Name is required');
       return;
     }
-    
+
     if (!addressForm.phone.trim() || addressForm.phone.length !== 11) {
       setError('Valid 11-digit phone number is required');
       return;
     }
-    
+
     if (!addressForm.address_line_1.trim()) {
       setError('Address is required');
       return;
     }
-    
+
     if (!addressForm.city || addressForm.city === '') {
       setError('City is required');
       return;
     }
-    
+
     if (!addressForm.state || addressForm.state === '') {
       setError('State/Division is required');
       return;
     }
-    
+
     // Postal code is optional
-    
+
     try {
       setIsProcessing(true);
 
@@ -323,7 +323,7 @@ export default function CheckoutPage() {
           ...addressForm,
           postal_code: addressForm.postal_code || undefined
         });
-        setAddresses(prev => prev.map(addr => 
+        setAddresses(prev => prev.map(addr =>
           addr.id === editingAddressId ? result.address : addr
         ));
       } else {
@@ -332,7 +332,7 @@ export default function CheckoutPage() {
           postal_code: addressForm.postal_code || undefined
         });
         setAddresses(prev => [...prev, result.address]);
-        
+
         if (addresses.length === 0 || addressForm.is_default_shipping) {
           setSelectedShippingAddressId(result.address.id!);
         }
@@ -364,7 +364,7 @@ export default function CheckoutPage() {
     try {
       await checkoutService.deleteAddress(id);
       setAddresses(prev => prev.filter(addr => addr.id !== id));
-      
+
       if (selectedShippingAddressId === id) {
         const remainingAddresses = addresses.filter(addr => addr.id !== id);
         setSelectedShippingAddressId(remainingAddresses[0]?.id || null);
@@ -385,7 +385,7 @@ export default function CheckoutPage() {
     }
 
     const result = checkoutService.validateCoupon(couponCode, summary.subtotal);
-    
+
     if (result.valid) {
       setAppliedCoupon({ discount: result.discount, message: result.message });
       setError(null);
@@ -573,7 +573,7 @@ export default function CheckoutPage() {
 
     // ✅ Find the selected payment method object
     const paymentMethod = paymentMethods.find(pm => pm.code === selectedPaymentMethod);
-    
+
     if (!paymentMethod) {
       setError('Invalid payment method selected');
       return;
@@ -684,7 +684,7 @@ export default function CheckoutPage() {
           >
             ← Back to Review Order
           </button>
-          
+
           <SSLCommerzPayment
             shippingAddressId={selectedShippingAddressId!}
             billingAddressId={sameAsShipping ? selectedShippingAddressId! : (selectedBillingAddressId ?? undefined)}
@@ -940,10 +940,6 @@ export default function CheckoutPage() {
                 >
                   {isProcessing ? 'Processing…' : `Place Order – ৳${summary.total_amount.toFixed(0)}`}
                 </button>
-
-                <p className="text-xs text-neutral-500 mt-3">
-                  By placing your order, you agree to receive an order confirmation call/SMS.
-                </p>
               </div>
             </div>
           </div>
@@ -955,7 +951,7 @@ export default function CheckoutPage() {
   return (
     <div className="ec-root ec-darkify min-h-screen pb-20">
       <Navigation />
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
         {/* Step Progress Indicator - Polished for Mobile */}
         <div className="flex items-center justify-between mb-10 overflow-x-auto pb-4 scrollbar-hide sm:justify-start sm:gap-12">
@@ -967,13 +963,12 @@ export default function CheckoutPage() {
             const isActive = currentStep === step.id;
             const isCompleted = ['shipping', 'payment', 'review'].indexOf(currentStep) > idx;
             const Icon = step.icon;
-            
+
             return (
               <div key={step.id} className="flex items-center gap-3 flex-shrink-0">
-                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500 ${
-                  isActive ? 'bg-neutral-900 text-white shadow-lg shadow-neutral-200 scale-110' : 
-                  isCompleted ? 'bg-green-500 text-white' : 'bg-neutral-100 text-neutral-400'
-                }`}>
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500 ${isActive ? 'bg-neutral-900 text-white shadow-lg shadow-neutral-200 scale-110' :
+                    isCompleted ? 'bg-green-500 text-white' : 'bg-neutral-100 text-neutral-400'
+                  }`}>
                   {isCompleted ? <CheckCircle size={18} /> : <Icon size={18} />}
                 </div>
                 <div className="flex flex-col">
@@ -1066,7 +1061,7 @@ export default function CheckoutPage() {
                             ×
                           </button>
                         </div>
-                        
+
                         <div className="grid md:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-neutral-700 mb-1">
@@ -1080,7 +1075,7 @@ export default function CheckoutPage() {
                               placeholder="John Doe"
                             />
                           </div>
-                          
+
                           <div>
                             <label className="block text-sm font-medium text-neutral-700 mb-1">
                               Phone Number <span className="text-rose-600">*</span>
@@ -1282,11 +1277,10 @@ export default function CheckoutPage() {
                         {addresses.map((address) => (
                           <label
                             key={address.id}
-                            className={`block p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                              selectedShippingAddressId === address.id
+                            className={`block p-4 border-2 rounded-xl cursor-pointer transition-all ${selectedShippingAddressId === address.id
                                 ? 'border-neutral-900 bg-neutral-50'
                                 : 'border-neutral-200 hover:border-neutral-300'
-                            }`}
+                              }`}
                           >
                             <div className="flex items-start gap-3">
                               <input
@@ -1369,11 +1363,10 @@ export default function CheckoutPage() {
                   {paymentMethods.map((method) => (
                     <label
                       key={method.code}
-                      className={`flex items-start gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                        selectedPaymentMethod === method.code
+                      className={`flex items-start gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${selectedPaymentMethod === method.code
                           ? 'border-neutral-900 bg-neutral-50'
                           : 'border-neutral-200 hover:border-neutral-300'
-                      }`}
+                        }`}
                     >
                       <input
                         type="radio"
@@ -1520,7 +1513,7 @@ export default function CheckoutPage() {
                 {selectedItems.map((item: any) => {
                   const unitPrice = typeof item.unit_price === 'string' ? parseFloat(item.unit_price) : item.unit_price;
                   const totalPrice = typeof item.total_price === 'string' ? parseFloat(item.total_price) : item.total_price;
-                  
+
                   return (
                     <div key={item.id} className="flex gap-3">
                       <img
@@ -1529,8 +1522,8 @@ export default function CheckoutPage() {
                         className="w-16 h-16 object-cover rounded"
                         onError={(e) => {
                           if (!e.currentTarget.src.includes('/placeholder-product.png')) {
-                        e.currentTarget.src = '/placeholder-product.png';
-                      }
+                            e.currentTarget.src = '/placeholder-product.png';
+                          }
                         }}
                       />
                       <div className="flex-1">
@@ -1597,7 +1590,7 @@ export default function CheckoutPage() {
                       className="flex-1 px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:ring-2 focus:ring-neutral-200 focus:border-transparent"
                       disabled={!!appliedCoupon}
                     />
-                    <button 
+                    <button
                       onClick={handleApplyCoupon}
                       disabled={!!appliedCoupon}
                       className="px-4 py-2 bg-neutral-900 text-white rounded-xl text-sm font-medium hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed"

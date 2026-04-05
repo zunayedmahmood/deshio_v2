@@ -105,10 +105,6 @@ const Navbar = () => {
 
   return (
     <>
-      {/* ── Top announcement bar ─────────────────────────────────────── */}
-      <div className="ec-root hidden sm:block bg-[var(--gold)] text-white text-center py-2 text-[11px] font-medium tracking-widest uppercase">
-        Free delivery on orders above ৳1,000 · Bangladesh-wide shipping
-      </div>
 
       {/* ── Main navbar ─────────────────────────────────────────────── */}
       <nav
