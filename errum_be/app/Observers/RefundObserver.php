@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Refund;
+use App\Models\ProductReturn;
 use App\Models\Transaction as AccountingTransaction;
 
 class RefundObserver
@@ -12,8 +13,11 @@ class RefundObserver
      */
     public function created(Refund $refund): void
     {
-        // Create transaction when refund is created
+        // Create cash/revenue transaction when refund is created
         AccountingTransaction::createFromRefund($refund);
+
+        // Also create COGS/Inventory reversal if there is a linked restocked ProductReturn
+        $this->createCOGSReversalIfApplicable($refund);
     }
 
     /**
@@ -27,7 +31,7 @@ class RefundObserver
             $transaction = AccountingTransaction::byReference(Refund::class, $refund->id)->first();
 
             if ($transaction) {
-                // Update existing transaction
+                // Update existing transaction to completed
                 $transaction->update([
                     'status' => 'completed',
                     'transaction_date' => $refund->completed_at ?? now(),
@@ -36,6 +40,9 @@ class RefundObserver
                 // Create new transaction if it doesn't exist
                 AccountingTransaction::createFromRefund($refund);
             }
+
+            // Create COGS/Inventory reversal if applicable (on completion)
+            $this->createCOGSReversalIfApplicable($refund);
         }
     }
 
@@ -66,5 +73,37 @@ class RefundObserver
     {
         // Permanently delete related transactions
         AccountingTransaction::byReference(Refund::class, $refund->id)->delete();
+    }
+
+    /**
+     * Create COGS/Inventory reversal if the refund has a linked ProductReturn
+     * with a positive total_return_value (items confirmed restocked).
+     * Uses order_id to find the most recent completed ProductReturn for this order.
+     */
+    private function createCOGSReversalIfApplicable(Refund $refund): void
+    {
+        if (!$refund->order_id) {
+            return;
+        }
+
+        // Find linked ProductReturn for the same order
+        $productReturn = ProductReturn::where('order_id', $refund->order_id)
+            ->whereIn('status', ['completed', 'refunded'])
+            ->latest()
+            ->first();
+
+        if (!$productReturn || (float)$productReturn->total_return_value <= 0) {
+            return;
+        }
+
+        // Avoid duplicate COGS reversal entries for this ProductReturn
+        $existingCOGS = AccountingTransaction::where('reference_type', ProductReturn::class)
+            ->where('reference_id', $productReturn->id)
+            ->where('type', 'debit') // Inventory debit = restocking entry
+            ->exists();
+
+        if (!$existingCOGS) {
+            AccountingTransaction::createFromRefundCOGS($productReturn);
+        }
     }
 }

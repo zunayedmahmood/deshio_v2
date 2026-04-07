@@ -693,7 +693,7 @@ class ProductDispatchController extends Controller
 
         $item = ProductDispatchItem::where('id', $itemId)
             ->where('product_dispatch_id', $dispatchId)
-            ->with(['scannedBarcodes.product', 'scannedBarcodes.store'])
+            ->with(['scannedBarcodes.product', 'scannedBarcodes.currentStore'])
             ->first();
 
         if (!$item) {
@@ -712,8 +712,8 @@ class ProductDispatchController extends Controller
                     'name' => $barcode->product->name,
                 ],
                 'current_store' => [
-                    'id' => $barcode->store->id,
-                    'name' => $barcode->store->name,
+                    'id' => $barcode->currentStore->id ?? null,
+                    'name' => $barcode->currentStore->name ?? 'Unknown',
                 ],
                 'scanned_at' => $barcode->pivot->scanned_at,
                 'scanned_by' => $barcode->pivot->scannedByEmployee->name ?? 'Unknown',

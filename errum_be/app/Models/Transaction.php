@@ -313,46 +313,301 @@ class Transaction extends Model
         $transactionDate = $refund->completed_at ?? now();
         $cashAccountId = static::getCashAccountId($refund->order->store_id ?? null);
         $salesRevenueAccountId = static::getSalesRevenueAccountId();
+        $taxLiabilityAccountId = static::getTaxLiabilityAccountId();
+
+        $refundAmount = (float)$refund->refund_amount;
+
+        // Calculate proportional tax reversal (inclusive tax system)
+        $order = $refund->order;
+        if ($order && $order->total_amount > 0 && $order->tax_amount > 0) {
+            $taxRatio = (float)$order->tax_amount / (float)$order->total_amount;
+            $taxAmount = round($refundAmount * $taxRatio, 2);
+        } else {
+            $taxAmount = 0;
+        }
+        $revenueAmount = $refundAmount - $taxAmount;
 
         $metadata = [
             'refund_method' => $refund->refund_method,
-            'order_number' => $refund->order->order_number ?? null,
+            'order_number' => $order->order_number ?? null,
             'customer_name' => $refund->customer->name ?? null,
             'refund_type' => $refund->refund_type,
+            'includes_tax_reversal' => $taxAmount > 0,
+            'tax_amount_reversed' => $taxAmount,
         ];
 
-        // DOUBLE-ENTRY BOOKKEEPING (Reverse of sale):
-        // 1. Credit Cash Account (Asset decreases - money going out)
+        // DOUBLE-ENTRY BOOKKEEPING (Reversal of sale):
+        // 1. Credit Cash Account (Asset decreases - money going out as refund)
         $creditTransaction = static::create([
             'transaction_date' => $transactionDate,
-            'amount' => $refund->refund_amount,
+            'amount' => $refundAmount,
             'type' => 'credit',
             'account_id' => $cashAccountId,
             'reference_type' => Refund::class,
             'reference_id' => $refund->id,
-            'description' => "Refund - {$refund->refund_number}",
-            'store_id' => $refund->order->store_id ?? null,
+            'description' => "Cash Refund - {$refund->refund_number}",
+            'store_id' => $order->store_id ?? null,
             'created_by' => $refund->processed_by,
             'metadata' => $metadata,
             'status' => $status,
         ]);
 
-        // 2. Debit Sales Revenue Account (Revenue decreases - reverse sale)
+        // 2. Debit Sales Revenue Account (Revenue decreases - reverse net revenue)
         static::create([
             'transaction_date' => $transactionDate,
-            'amount' => $refund->refund_amount,
+            'amount' => $revenueAmount,
             'type' => 'debit',
             'account_id' => $salesRevenueAccountId,
             'reference_type' => Refund::class,
             'reference_id' => $refund->id,
-            'description' => "Refund - {$refund->refund_number}",
-            'store_id' => $refund->order->store_id ?? null,
+            'description' => "Revenue Reversal (excl. tax) - {$refund->refund_number}",
+            'store_id' => $order->store_id ?? null,
             'created_by' => $refund->processed_by,
             'metadata' => $metadata,
             'status' => $status,
         ]);
 
+        // 3. Debit Tax Liability Account (Liability decreases - tax being refunded)
+        if ($taxAmount > 0) {
+            static::create([
+                'transaction_date' => $transactionDate,
+                'amount' => $taxAmount,
+                'type' => 'debit',
+                'account_id' => $taxLiabilityAccountId,
+                'reference_type' => Refund::class,
+                'reference_id' => $refund->id,
+                'description' => "Tax Reversal - {$refund->refund_number}",
+                'store_id' => $order->store_id ?? null,
+                'created_by' => $refund->processed_by,
+                'metadata' => $metadata,
+                'status' => $status,
+            ]);
+        }
+
         return $creditTransaction;
+    }
+
+    /**
+     * Create COGS/Inventory reversal entries when a return is accepted (items going back to stock).
+     * Call this after createFromRefund when the return items are confirmed as restocked.
+     */
+    public static function createFromRefundCOGS(\App\Models\ProductReturn $productReturn): void
+    {
+        $status = 'completed';
+        $transactionDate = $productReturn->updated_at ?? now();
+        $inventoryAccountId = static::getInventoryAccountId();
+        $cogsAccountId = static::getCOGSAccountId();
+        $storeId = $productReturn->order->store_id ?? null;
+
+        // Calculate total return value (cost basis of returned items)
+        $returnCostValue = (float)$productReturn->total_return_value;
+
+        if ($returnCostValue <= 0) {
+            return; // Nothing to reverse
+        }
+
+        $metadata = [
+            'return_number' => $productReturn->return_number,
+            'order_number' => $productReturn->order->order_number ?? null,
+            'customer_name' => $productReturn->customer->name ?? null,
+            'return_reason' => $productReturn->reason,
+        ];
+
+        // DOUBLE-ENTRY BOOKKEEPING (Reverse of COGS recognized at sale):
+        // 1. Debit Inventory (Asset increases - items back in stock)
+        static::create([
+            'transaction_date' => $transactionDate,
+            'amount' => $returnCostValue,
+            'type' => 'debit',
+            'account_id' => $inventoryAccountId,
+            'reference_type' => \App\Models\ProductReturn::class,
+            'reference_id' => $productReturn->id,
+            'description' => "Return - Inventory Restored - {$productReturn->return_number}",
+            'store_id' => $storeId,
+            'created_by' => $productReturn->processed_by,
+            'metadata' => $metadata,
+            'status' => $status,
+        ]);
+
+        // 2. Credit COGS (Expense decreases - reversing cost of sold goods)
+        static::create([
+            'transaction_date' => $transactionDate,
+            'amount' => $returnCostValue,
+            'type' => 'credit',
+            'account_id' => $cogsAccountId,
+            'reference_type' => \App\Models\ProductReturn::class,
+            'reference_id' => $productReturn->id,
+            'description' => "Return - COGS Reversal - {$productReturn->return_number}",
+            'store_id' => $storeId,
+            'created_by' => $productReturn->processed_by,
+            'metadata' => $metadata,
+            'status' => $status,
+        ]);
+    }
+
+    /**
+     * Create double-entry journal for a product exchange (return old item + give new item).
+     * Handles three scenarios:
+     *   A) Same price: Only COGS/Inventory swap, no cash/revenue impact.
+     *   B) New item more expensive: Customer pays the difference (cash in, revenue credit).
+     *   C) New item less expensive: Store refunds the difference (cash out, revenue debit).
+     */
+    public static function createFromExchange(\App\Models\ProductReturn $productReturn, Order $newOrder): void
+    {
+        $status = 'completed';
+        $transactionDate = now();
+        $inventoryAccountId = static::getInventoryAccountId();
+        $cogsAccountId = static::getCOGSAccountId();
+        $cashAccountId = static::getCashAccountId($newOrder->store_id);
+        $salesRevenueAccountId = static::getSalesRevenueAccountId();
+        $storeId = $newOrder->store_id;
+
+        $oldItemValue = (float)$productReturn->total_return_value;
+        $newOrderTotal = (float)$newOrder->total_amount;
+        $netDifference = round($newOrderTotal - $oldItemValue, 2); // positive = customer pays more
+
+        $metadata = [
+            'exchange_type' => $netDifference > 0 ? 'upgrade' : ($netDifference < 0 ? 'downgrade' : 'even'),
+            'return_number' => $productReturn->return_number,
+            'old_item_value' => $oldItemValue,
+            'new_order_number' => $newOrder->order_number,
+            'new_order_total' => $newOrderTotal,
+            'net_difference' => $netDifference,
+        ];
+
+        // === ENTRY 1: Reverse old item inventory (back to stock) ===
+        // Debit Inventory (old item returned to shelf)
+        if ($oldItemValue > 0) {
+            static::create([
+                'transaction_date' => $transactionDate,
+                'amount' => $oldItemValue,
+                'type' => 'debit',
+                'account_id' => $inventoryAccountId,
+                'reference_type' => \App\Models\ProductReturn::class,
+                'reference_id' => $productReturn->id,
+                'description' => "Exchange - Old Item Returned to Stock - {$productReturn->return_number}",
+                'store_id' => $storeId,
+                'created_by' => auth()->id(),
+                'metadata' => $metadata,
+                'status' => $status,
+            ]);
+
+            // Credit COGS (reversing cost of old item)
+            static::create([
+                'transaction_date' => $transactionDate,
+                'amount' => $oldItemValue,
+                'type' => 'credit',
+                'account_id' => $cogsAccountId,
+                'reference_type' => \App\Models\ProductReturn::class,
+                'reference_id' => $productReturn->id,
+                'description' => "Exchange - Old Item COGS Reversal - {$productReturn->return_number}",
+                'store_id' => $storeId,
+                'created_by' => auth()->id(),
+                'metadata' => $metadata,
+                'status' => $status,
+            ]);
+        }
+
+        // === ENTRY 2: Record new item COGS ===
+        // Debit COGS (cost of new item given out)
+        if ($newOrderTotal > 0) {
+            static::create([
+                'transaction_date' => $transactionDate,
+                'amount' => $newOrderTotal,
+                'type' => 'debit',
+                'account_id' => $cogsAccountId,
+                'reference_type' => Order::class,
+                'reference_id' => $newOrder->id,
+                'description' => "Exchange - New Item COGS - {$newOrder->order_number}",
+                'store_id' => $storeId,
+                'created_by' => auth()->id(),
+                'metadata' => $metadata,
+                'status' => $status,
+            ]);
+
+            // Credit Inventory (new item removed from stock)
+            static::create([
+                'transaction_date' => $transactionDate,
+                'amount' => $newOrderTotal,
+                'type' => 'credit',
+                'account_id' => $inventoryAccountId,
+                'reference_type' => Order::class,
+                'reference_id' => $newOrder->id,
+                'description' => "Exchange - New Item Out of Stock - {$newOrder->order_number}",
+                'store_id' => $storeId,
+                'created_by' => auth()->id(),
+                'metadata' => $metadata,
+                'status' => $status,
+            ]);
+        }
+
+        // === ENTRY 3: Handle net cash/revenue difference ===
+        if ($netDifference > 0) {
+            // Scenario B: New item more expensive, customer pays the difference
+            // Debit Cash (money in)
+            static::create([
+                'transaction_date' => $transactionDate,
+                'amount' => $netDifference,
+                'type' => 'debit',
+                'account_id' => $cashAccountId,
+                'reference_type' => Order::class,
+                'reference_id' => $newOrder->id,
+                'description' => "Exchange Upcharge (Cash In) - {$newOrder->order_number}",
+                'store_id' => $storeId,
+                'created_by' => auth()->id(),
+                'metadata' => $metadata,
+                'status' => $status,
+            ]);
+
+            // Credit Sales Revenue (additional revenue)
+            static::create([
+                'transaction_date' => $transactionDate,
+                'amount' => $netDifference,
+                'type' => 'credit',
+                'account_id' => $salesRevenueAccountId,
+                'reference_type' => Order::class,
+                'reference_id' => $newOrder->id,
+                'description' => "Exchange Revenue (Price Upcharge) - {$newOrder->order_number}",
+                'store_id' => $storeId,
+                'created_by' => auth()->id(),
+                'metadata' => $metadata,
+                'status' => $status,
+            ]);
+        } elseif ($netDifference < 0) {
+            // Scenario C: New item less expensive, store refunds the difference
+            $refundDiff = abs($netDifference);
+
+            // Debit Sales Revenue (revenue reduced)
+            static::create([
+                'transaction_date' => $transactionDate,
+                'amount' => $refundDiff,
+                'type' => 'debit',
+                'account_id' => $salesRevenueAccountId,
+                'reference_type' => \App\Models\ProductReturn::class,
+                'reference_id' => $productReturn->id,
+                'description' => "Exchange Revenue Reduction (Price Downgrade) - {$productReturn->return_number}",
+                'store_id' => $storeId,
+                'created_by' => auth()->id(),
+                'metadata' => $metadata,
+                'status' => $status,
+            ]);
+
+            // Credit Cash (money out - store owes customer the difference)
+            static::create([
+                'transaction_date' => $transactionDate,
+                'amount' => $refundDiff,
+                'type' => 'credit',
+                'account_id' => $cashAccountId,
+                'reference_type' => \App\Models\ProductReturn::class,
+                'reference_id' => $productReturn->id,
+                'description' => "Exchange Refund (Cash Out) - {$productReturn->return_number}",
+                'store_id' => $storeId,
+                'created_by' => auth()->id(),
+                'metadata' => $metadata,
+                'status' => $status,
+            ]);
+        }
+        // Scenario A (even): No cash/revenue entries needed
     }
 
     public static function createFromExpense(Expense $expense): self
@@ -404,32 +659,73 @@ class Transaction extends Model
     public static function createFromVendorPayment(VendorPayment $payment): self
     {
         $status = $payment->status === 'completed' ? 'completed' : 'pending';
+        $transactionDate = $payment->processed_at ?? $payment->payment_date ?? now();
+        $inventoryAccountId = static::getInventoryAccountId();
+        $cashAccountId = static::getCashAccountId();
 
-        return static::create([
-            'transaction_date' => $payment->processed_at ?? $payment->payment_date ?? now(),
+        $metadata = [
+            'payment_method' => $payment->paymentMethod->name ?? 'Unknown',
+            'vendor_name' => $payment->vendor->name ?? null,
+            'payment_type' => $payment->payment_type,
+            'allocated_amount' => $payment->allocated_amount,
+            'unallocated_amount' => $payment->unallocated_amount,
+        ];
+
+        // DOUBLE-ENTRY BOOKKEEPING:
+        // 1. Debit Inventory Account (Asset increases - stock received)
+        $debitTransaction = static::create([
+            'transaction_date' => $transactionDate,
             'amount' => $payment->amount,
-            'type' => 'credit', // Money going out to vendor
-            'account_id' => static::getCashAccountId(),
+            'type' => 'debit',
+            'account_id' => $inventoryAccountId,
+            'reference_type' => VendorPayment::class,
+            'reference_id' => $payment->id,
+            'description' => "Inventory Purchase - {$payment->payment_number}",
+            'created_by' => $payment->employee_id,
+            'metadata' => $metadata,
+            'status' => $status,
+        ]);
+
+        // 2. Credit Cash Account (Asset decreases - money going out to vendor)
+        static::create([
+            'transaction_date' => $transactionDate,
+            'amount' => $payment->amount,
+            'type' => 'credit',
+            'account_id' => $cashAccountId,
             'reference_type' => VendorPayment::class,
             'reference_id' => $payment->id,
             'description' => "Vendor Payment - {$payment->payment_number}",
             'created_by' => $payment->employee_id,
-            'metadata' => [
-                'payment_method' => $payment->paymentMethod->name ?? 'Unknown',
-                'vendor_name' => $payment->vendor->name ?? null,
-                'payment_type' => $payment->payment_type,
-                'allocated_amount' => $payment->allocated_amount,
-                'unallocated_amount' => $payment->unallocated_amount,
-            ],
+            'metadata' => $metadata,
             'status' => $status,
         ]);
+
+        return $debitTransaction;
     }
 
     public static function createFromOrderCOGS(Order $order): self
     {
+        $cogsAccountId = static::getCOGSAccountId();
+
+        // [EXCHANGE DOUBLE-COUNT GUARD]
+        // If this order was the "new item" in an exchange (ProductReturn::class reference exists
+        // for this order_id in the COGS account), skip to avoid booking the cost twice.
+        $exchangeCOGSExists = static::where('account_id', $cogsAccountId)
+            ->where('reference_type', \App\Models\ProductReturn::class)
+            ->whereJsonContains('metadata->new_order_id', $order->id)
+            ->exists();
+
+        if ($exchangeCOGSExists) {
+            // Return an empty/dummy instance — caller can discard it; no DB entry is needed.
+            return new static([
+                'amount' => 0,
+                'type' => 'debit',
+                'description' => 'COGS skipped — already recorded via exchange',
+            ]);
+        }
+
         $status = $order->status === 'completed' ? 'completed' : 'pending';
         $transactionDate = $order->completed_at ?? now();
-        $cogsAccountId = static::getCOGSAccountId();
         $inventoryAccountId = static::getInventoryAccountId();
         
         // Calculate total COGS from all order items

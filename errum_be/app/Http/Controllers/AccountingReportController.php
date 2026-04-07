@@ -45,7 +45,7 @@ class AccountingReportController extends Controller
         // Calculate opening balance (all transactions before date_from)
         $openingBalance = Transaction::where('account_id', $accountId)
             ->where('transaction_date', '<', $dateFrom)
-            ->sum(DB::raw('CASE WHEN type = "Debit" THEN amount ELSE -amount END'));
+            ->sum(DB::raw('CASE WHEN type = "debit" THEN amount ELSE -amount END'));
 
         $debitEntries = [];
         $creditEntries = [];
@@ -60,7 +60,7 @@ class AccountingReportController extends Controller
                 'balance' => null
             ];
 
-            if ($transaction->type === 'Debit') {
+            if ($transaction->type === 'debit') {
                 $runningBalance += $transaction->amount;
                 $entry['balance'] = number_format((float)$runningBalance, 2);
                 $debitEntries[] = $entry;
@@ -72,8 +72,8 @@ class AccountingReportController extends Controller
         }
 
         // Calculate totals
-        $totalDebits = $transactions->where('type', 'Debit')->sum('amount');
-        $totalCredits = $transactions->where('type', 'Credit')->sum('amount');
+        $totalDebits = $transactions->where('type', 'debit')->sum('amount');
+        $totalCredits = $transactions->where('type', 'credit')->sum('amount');
         $closingBalance = $openingBalance + $totalDebits - $totalCredits;
 
         return response()->json([
@@ -81,10 +81,10 @@ class AccountingReportController extends Controller
             'data' => [
                 'account' => [
                     'id' => $account->id,
-                    'code' => $account->account_code,
-                    'name' => $account->account_name,
-                    'type' => $account->account_type,
-                    'category' => $account->category
+                    'account_code' => $account->account_code,
+                    'name' => $account->name,
+                    'type' => $account->type,
+                    'sub_type' => $account->sub_type
                 ],
                 'period' => [
                     'from' => $dateFrom,
@@ -124,7 +124,7 @@ class AccountingReportController extends Controller
             $balance = Transaction::where('account_id', $account->id)
                 ->where('transaction_date', '<=', $asOfDate)
                 ->where('status', 'completed')
-                ->sum(DB::raw('CASE WHEN type = "Debit" THEN amount ELSE -amount END'));
+                ->sum(DB::raw('CASE WHEN type = "debit" THEN amount ELSE -amount END'));
 
             if ($balance != 0) {
                 $debitBalance = $balance > 0 ? $balance : 0;
@@ -135,8 +135,8 @@ class AccountingReportController extends Controller
 
                 $accountBalances[] = [
                     'account_code' => $account->account_code,
-                    'account_name' => $account->account_name,
-                    'account_type' => $account->account_type,
+                    'account_name' => $account->name,
+                    'account_type' => $account->type,
                     'debit_balance' => $debitBalance > 0 ? number_format($debitBalance, 2) : '-',
                     'credit_balance' => $creditBalance > 0 ? number_format($creditBalance, 2) : '-',
                     'raw_balance' => $balance
@@ -170,24 +170,26 @@ class AccountingReportController extends Controller
         $dateFrom = $request->input('date_from', now()->startOfMonth()->toDateString());
         $dateTo = $request->input('date_to', now()->toDateString());
 
-        // Revenue (Sales)
-        $totalRevenue = OrderPayment::whereBetween('payment_date', [$dateFrom, $dateTo])
-            ->where('payment_status', 'completed')
+        // Revenue: Credit entries to Sales Revenue account = Gross Sales
+        $salesRevenueAccountId = Transaction::getSalesRevenueAccountId();
+        $totalRevenue = Transaction::where('account_id', $salesRevenueAccountId)
+            ->where('type', 'credit')
+            ->where('status', 'completed')
+            ->whereBetween('transaction_date', [$dateFrom, $dateTo])
             ->sum('amount');
 
         $salesCount = Order::whereBetween('created_at', [$dateFrom, $dateTo])
             ->where('status', 'completed')
             ->count();
 
-        // Cost of Goods Sold (COGS)
-        $cogs = Order::whereBetween('created_at', [$dateFrom, $dateTo])
+        // [ARCHITECTURAL FIX] COGS now queries the COGS Account ledger (debit = expense increase)
+        // This respects manual journal entries and exchange adjustments.
+        $cogsAccountId = Transaction::getCOGSAccountId();
+        $cogs = Transaction::where('account_id', $cogsAccountId)
+            ->where('type', 'debit')
             ->where('status', 'completed')
-            ->get()
-            ->sum(function($order) {
-                return $order->items->sum(function($item) {
-                    return $item->quantity * ($item->batch->cost_price ?? 0);
-                });
-            });
+            ->whereBetween('transaction_date', [$dateFrom, $dateTo])
+            ->sum('amount');
 
         // Gross Profit
         $grossProfit = $totalRevenue - $cogs;
@@ -267,27 +269,30 @@ class AccountingReportController extends Controller
             $balance = Transaction::where('account_id', $account->id)
                 ->where('transaction_date', '<=', $asOfDate)
                 ->where('status', 'completed')
-                ->sum(DB::raw('CASE WHEN type = "Debit" THEN amount ELSE -amount END'));
+                ->sum(DB::raw('CASE WHEN type = "debit" THEN amount ELSE -amount END'));
             
             if ($balance != 0) {
                 $totalCash += $balance;
                 $cashBreakdown[] = [
-                    'account' => $account->account_name,
+                    'account' => $account->name,
                     'balance' => number_format($balance, 2)
                 ];
             }
         }
 
-        // Inventory Value
-        $inventoryValue = DB::table('product_batches')
-            ->where('is_active', true)
-            ->sum(DB::raw('quantity * cost_price'));
+        // [ARCHITECTURAL FIX] Inventory Value: Use the Inventory Account balance from the ledger.
+        // This respects manual write-offs and journal adjustments to the Inventory account.
+        $inventoryAccountId = Transaction::getInventoryAccountId();
+        $inventoryValue = Transaction::where('account_id', $inventoryAccountId)
+            ->where('transaction_date', '<=', $asOfDate)
+            ->where('status', 'completed')
+            ->sum(DB::raw('CASE WHEN type = "debit" THEN amount ELSE -amount END'));
 
         // Accounts Receivable (unpaid orders)
         $accountsReceivable = Order::where('status', 'completed')
             ->where('created_at', '<=', $asOfDate)
-            ->where('payment_status', '!=', 'fully_paid')
-            ->sum('total_amount');
+            ->whereIn('payment_status', ['pending', 'partially_paid'])
+            ->sum('outstanding_amount');
 
         $totalCurrentAssets = $totalCash + $inventoryValue + $accountsReceivable;
 
@@ -296,7 +301,7 @@ class AccountingReportController extends Controller
         $accountsPayable = DB::table('purchase_orders')
             ->where('status', 'received')
             ->where('created_at', '<=', $asOfDate)
-            ->where('payment_status', '!=', 'fully_paid')
+            ->whereNotIn('payment_status', ['paid', 'fully_paid'])
             ->sum('total_amount');
 
         // Other liabilities from liability accounts
@@ -311,12 +316,12 @@ class AccountingReportController extends Controller
             $balance = Transaction::where('account_id', $account->id)
                 ->where('transaction_date', '<=', $asOfDate)
                 ->where('status', 'completed')
-                ->sum(DB::raw('CASE WHEN type = "Credit" THEN amount ELSE -amount END'));
+                ->sum(DB::raw('CASE WHEN type = "credit" THEN amount ELSE -amount END'));
             
             if ($balance != 0) {
                 $otherLiabilities += $balance;
                 $liabilityBreakdown[] = [
-                    'account' => $account->account_name,
+                    'account' => $account->name,
                     'balance' => number_format($balance, 2)
                 ];
             }
@@ -336,12 +341,12 @@ class AccountingReportController extends Controller
             $balance = Transaction::where('account_id', $account->id)
                 ->where('transaction_date', '<=', $asOfDate)
                 ->where('status', 'completed')
-                ->sum(DB::raw('CASE WHEN type = "Credit" THEN amount ELSE -amount END'));
+                ->sum(DB::raw('CASE WHEN type = "credit" THEN amount ELSE -amount END'));
             
             if ($balance != 0) {
                 $ownerEquity += $balance;
                 $equityBreakdown[] = [
-                    'account' => $account->account_name,
+                    'account' => $account->name,
                     'balance' => number_format($balance, 2)
                 ];
             }
@@ -411,15 +416,16 @@ class AccountingReportController extends Controller
         $dateTo = $request->input('date_to', now()->toDateString());
 
         // Operating Activities
-        $cashFromSales = OrderPayment::whereBetween('payment_date', [$dateFrom, $dateTo])
-            ->where('payment_status', 'completed')
+        $cashFromSales = OrderPayment::whereBetween('completed_at', [$dateFrom, $dateTo])
+            ->where('status', 'completed')
             ->sum('amount');
 
         $cashPaidToVendors = VendorPayment::whereBetween('payment_date', [$dateFrom, $dateTo])
             ->where('payment_status', 'completed')
             ->sum('amount');
 
-        $cashPaidForExpenses = ExpensePayment::whereBetween('payment_date', [$dateFrom, $dateTo])
+        $cashPaidForExpenses = ExpensePayment::whereBetween('completed_at', [$dateFrom, $dateTo])
+            ->where('status', 'completed')
             ->whereHas('expense', function($q) {
                 $q->where('status', 'approved');
             })
@@ -621,13 +627,13 @@ class AccountingReportController extends Controller
                 $amount = (float)$transaction->amount;
                 
                 $entry['entries'][] = [
-                    'account_code' => $transaction->account->account_code,
-                    'account_name' => $transaction->account->account_name,
-                    'debit' => $transaction->type === 'Debit' ? number_format($amount, 2) : '-',
-                    'credit' => $transaction->type === 'Credit' ? number_format($amount, 2) : '-'
+                    'account_code' => $transaction->account->account_code ?? null,
+                    'account_name' => $transaction->account->name ?? null,
+                    'debit' => $transaction->type === 'debit' ? number_format($amount, 2) : '-',
+                    'credit' => $transaction->type === 'credit' ? number_format($amount, 2) : '-'
                 ];
 
-                if ($transaction->type === 'Debit') {
+                if ($transaction->type === 'debit') {
                     $totalDebit += $amount;
                 } else {
                     $totalCredit += $amount;
@@ -662,18 +668,20 @@ class AccountingReportController extends Controller
      */
     private function calculateRetainedEarnings($asOfDate)
     {
-        $revenue = OrderPayment::where('payment_date', '<=', $asOfDate)
-            ->where('payment_status', 'completed')
+        $salesRevenueAccountId = Transaction::getSalesRevenueAccountId();
+        $revenue = Transaction::where('account_id', $salesRevenueAccountId)
+            ->where('type', 'credit')
+            ->where('status', 'completed')
+            ->where('transaction_date', '<=', $asOfDate)
             ->sum('amount');
 
-        $cogs = Order::where('created_at', '<=', $asOfDate)
+        // [ARCHITECTURAL FIX] Use COGS account ledger instead of OrderItems loop
+        $cogsAccountId = Transaction::getCOGSAccountId();
+        $cogs = Transaction::where('account_id', $cogsAccountId)
+            ->where('type', 'debit')
             ->where('status', 'completed')
-            ->get()
-            ->sum(function($order) {
-                return $order->items->sum(function($item) {
-                    return $item->quantity * ($item->batch->cost_price ?? 0);
-                });
-            });
+            ->where('transaction_date', '<=', $asOfDate)
+            ->sum('amount');
 
         $expenses = Expense::where('expense_date', '<=', $asOfDate)
             ->where('status', 'approved')
@@ -695,6 +703,6 @@ class AccountingReportController extends Controller
         return Transaction::whereIn('account_id', $cashAccounts)
             ->where('transaction_date', $operator, $date)
             ->where('status', 'completed')
-            ->sum(DB::raw('CASE WHEN type = "Debit" THEN amount ELSE -amount END'));
+            ->sum(DB::raw('CASE WHEN type = "debit" THEN amount ELSE -amount END'));
     }
 }

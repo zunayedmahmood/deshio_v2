@@ -9,10 +9,12 @@ use App\Models\Employee;
 use App\Models\ProductBatch;
 use App\Models\ProductBarcode;
 use App\Models\ProductMovement;
+use App\Models\Transaction;
 use App\Traits\DatabaseAgnosticSearch;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 
 class ProductReturnController extends Controller
@@ -317,6 +319,12 @@ class ProductReturnController extends Controller
                 ];
             }
 
+            // Determine processing fee if provided
+            $processingFee = $request->processing_fee ?? 0;
+            
+            // Calculate refund amount (default to full value minus fee)
+            $totalRefundAmount = max(0, $totalReturnValue - $processingFee);
+
             // Create return
             $return = ProductReturn::create([
                 'return_number' => $this->generateReturnNumber(),
@@ -329,8 +337,8 @@ class ProductReturnController extends Controller
                 'status' => 'pending',
                 'return_date' => now(),
                 'total_return_value' => $totalReturnValue,
-                'total_refund_amount' => $totalReturnValue, // Default to full refund, can be adjusted
-                'processing_fee' => 0,
+                'total_refund_amount' => $totalRefundAmount,
+                'processing_fee' => $processingFee,
                 'customer_notes' => $request->customer_notes,
                 'return_items' => $returnItems,
                 'attachments' => $request->attachments ?? [],
@@ -699,32 +707,70 @@ class ProductReturnController extends Controller
                 throw new \Exception('Cannot link a cancelled order as exchange purchase.');
             }
 
+            // Calculate price difference for accounting
+            $returnValue = (float)$return->total_refund_amount;
+            $newOrderTotal = (float)$newOrder->total_amount;
+            $difference = $returnValue - $newOrderTotal;
+
+            $exchangeData = [
+                'return_id' => $return->id,
+                'return_number' => $return->return_number,
+                'return_value' => $returnValue,
+                'new_order_id' => $newOrder->id,
+                'new_order_number' => $newOrder->order_number,
+                'new_order_total' => $newOrderTotal,
+                'difference' => $difference,
+            ];
+
+            // If return value is higher than new order, create a "Store Credit" or "Balance Carryover"
+            if ($difference > 0) {
+                // Return is higher: we owe the customer money
+                // Link this to a potentially new refund record for the difference
+                $exchangeData['balance_type'] = 'refund_due';
+                $exchangeData['refund_due_amount'] = $difference;
+                
+                // Logic for Store Credit could be added here
+                Log::info("Exchange result: Refund of {$difference} due to customer for cheaper exchange.", $exchangeData);
+            } elseif ($difference < 0) {
+                // New order is more expensive: customer pays net difference
+                $exchangeData['balance_type'] = 'payment_required';
+                $exchangeData['payment_required_amount'] = abs($difference);
+                Log::info("Exchange result: Customer owes " . abs($difference) . " for more expensive exchange.", $exchangeData);
+            } else {
+                $exchangeData['balance_type'] = 'even_exchange';
+            }
+
             $history = $return->status_history ?? [];
             $history[] = [
                 'status' => 'exchange_linked',
                 'changed_at' => now()->toISOString(),
                 'changed_by' => auth()->id(),
                 'notes' => $request->notes,
-                'new_order_id' => $newOrder->id,
-                'new_order_number' => $newOrder->order_number,
+                'exchange_info' => $exchangeData,
             ];
 
             $return->status_history = $history;
             $return->internal_notes = trim(($return->internal_notes ? $return->internal_notes . "\n" : '') .
-                'Exchange linked to order #' . $newOrder->order_number . ($request->notes ? ' | ' . $request->notes : ''));
+                'Exchange linked to order #' . $newOrder->order_number . 
+                " | Bal: {$difference} | " . ($request->notes ? $request->notes : ''));
+            
+            // Mark as refunded if the balance is fully covered by the new order
+            if ($difference <= 0 && $return->status !== 'refunded') {
+                $return->status = 'refunded';
+            }
+            
             $return->save();
+
+            // Create double-entry accounting journal for this exchange
+            // This handles all 3 scenarios: same price, more expensive, less expensive
+            Transaction::createFromExchange($return, $newOrder);
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Exchange linked successfully (return + new purchase).',
-                'data' => [
-                    'return_id' => $return->id,
-                    'return_number' => $return->return_number,
-                    'new_order_id' => $newOrder->id,
-                    'new_order_number' => $newOrder->order_number,
-                ],
+                'data' => $exchangeData,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();

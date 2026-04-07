@@ -12,6 +12,13 @@ class OrderPaymentObserver
      */
     public function created(OrderPayment $orderPayment): void
     {
+        // Skip exchange balance carryover and store credit payments — these are not
+        // real cash inflows. The cash/revenue side is already handled by createFromExchange().
+        $nonCashTypes = ['exchange_balance', 'store_credit', 'balance_carryover'];
+        if (in_array($orderPayment->payment_type, $nonCashTypes)) {
+            return;
+        }
+
         // Create transaction when payment is created
         AccountingTransaction::createFromOrderPayment($orderPayment);
     }

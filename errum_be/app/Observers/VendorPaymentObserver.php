@@ -40,23 +40,40 @@ class VendorPaymentObserver
             }
         }
 
-        // Handle refunds - when vendor payment is refunded, money comes back (debit)
+        // Handle vendor refunds - when vendor payment is refunded, money comes back (debit cash)
+        // and inventory is returned to vendor (credit inventory)
         if ($vendorPayment->wasChanged('status') && $vendorPayment->status === 'refunded') {
-            // Create debit transaction for refund received from vendor
+            $metadata = [
+                'payment_method' => $vendorPayment->paymentMethod->name ?? 'Unknown',
+                'vendor_name' => $vendorPayment->vendor->name ?? null,
+                'refund_reason' => 'Vendor payment refund',
+            ];
+
+            // 1. Debit Cash (money coming back to business)
             AccountingTransaction::create([
                 'transaction_date' => now(),
                 'amount' => $vendorPayment->amount,
-                'type' => 'debit', // Money coming back to business
+                'type' => 'debit',
                 'account_id' => AccountingTransaction::getCashAccountId(),
                 'reference_type' => VendorPayment::class,
                 'reference_id' => $vendorPayment->id,
-                'description' => "Refund from Vendor Payment - {$vendorPayment->payment_number}",
+                'description' => "Vendor Refund (Cash Received) - {$vendorPayment->payment_number}",
                 'created_by' => auth()->id(),
-                'metadata' => [
-                    'payment_method' => $vendorPayment->paymentMethod->name ?? 'Unknown',
-                    'vendor_name' => $vendorPayment->vendor->name ?? null,
-                    'refund_reason' => 'Vendor payment refund',
-                ],
+                'metadata' => $metadata,
+                'status' => 'completed',
+            ]);
+
+            // 2. Credit Inventory (stock returned to vendor — asset decreases)
+            AccountingTransaction::create([
+                'transaction_date' => now(),
+                'amount' => $vendorPayment->amount,
+                'type' => 'credit',
+                'account_id' => AccountingTransaction::getInventoryAccountId(),
+                'reference_type' => VendorPayment::class,
+                'reference_id' => $vendorPayment->id,
+                'description' => "Vendor Refund (Inventory Returned) - {$vendorPayment->payment_number}",
+                'created_by' => auth()->id(),
+                'metadata' => $metadata,
                 'status' => 'completed',
             ]);
         }

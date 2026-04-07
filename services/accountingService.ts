@@ -514,6 +514,7 @@ class ChartOfAccountsService {
     sort_by?: string;
     sort_order?: 'asc' | 'desc';
     per_page?: number;
+    leaf_only?: boolean;
   }) {
     const response = await axiosInstance.get('/accounts', { params });
     const result = response.data;

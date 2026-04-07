@@ -75,6 +75,14 @@ class ProductBarcode extends Model
         return $this->belongsTo(Store::class, 'current_store_id');
     }
 
+    /**
+     * Alias for currentStore to prevent RelationNotFoundException if 'store' is used.
+     */
+    public function store(): BelongsTo
+    {
+        return $this->currentStore();
+    }
+
     // ============================================
     // LOCATION & STATUS TRACKING SCOPES
     // ============================================

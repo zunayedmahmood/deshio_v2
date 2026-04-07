@@ -134,14 +134,16 @@ make sure the reserved_product system is aware of the changes.
 
 
 ### notepad:
-page-3aa198c9d7300168.js:1 Uncaught TypeError: i.filter is not a function
-    at _ (page-3aa198c9d7300168.js:1:17806)
-    at l9 (4bd1b696-100b9d70ed4e49c1.js:1:51130)
-    at o_ (4bd1b696-100b9d70ed4e49c1.js:1:70990)
-    at oq (4bd1b696-100b9d70ed4e49c1.js:1:82020)
-    at ik (4bd1b696-100b9d70ed4e49c1.js:1:114682)
-    at 4bd1b696-100b9d70ed4e49c1.js:1:114527
-    at ib (4bd1b696-100b9d70ed4e49c1.js:1:114535)
-    at iu (4bd1b696-100b9d70ed4e49c1.js:1:111618)
-    at iX (4bd1b696-100b9d70ed4e49c1.js:1:132934)
-    at MessagePort.w (1255-642c76f13c20a3ec.js:1:64169)
+cli message: 
+see all the backend and frontend code to understand all transactions.
+ I want to describe to you our finance and accounting procedures or ideas that we are going to follow. Let's begin with us buying eight products for our business. So we will count it as eight product items debit and our cash is credit. Then we will sell two from them, then two inventory credit, and then our cash will be debit and our sales revenue will be credit. And our cost of goods supplied, COGS, will be debit because that was returned to us. And the sales revenue will be automatically calculated from the data and updated.  Now, for the second part.I'm gonna describe to you the return procedure. Let's say of the two sold products, when the returned one, then that one product item would be debited and the COGS will be credit, alongside the cash, and the sales revenue will be debit. This is the reversal or the reverse process for sale. For the last part, we have exchange, and exchange can take three scenarios.  So the first scenario would be the items exchanged have same price. In that case, cash has no change, and the net change would be the old product item will be debited back to inventory and the COGS will be credited. As for the new item that's been given, its inventory will be credited and the COGS would be debited. In a scenario where we are exchanging with a more expensive product, in that case for the old item, we're still going to debit the inventory, credit the COGS and cash, and the sales revenue will be debit. Now in this case, we do have cash change and revenue change because we are exchanging with a more pricier alternative and for the new product, which is being exchanged for, we'll have its inventory credited and COGS debited and the calculate net difference in that transaction, the net difference will be in cash, will be debit and the sales revenue will be credit. As for a scenario where we are exchanging with the old product, with a less expensive item, in this scenario, we are going to follow the same process for the old product as the logic for more pricier option. As for the new product item, the net difference in cash and sales revenue will be calculated and the cash will be credited and the revenue will be debited. 
+then read Documentation/7_Apr_2026 example_accounting chart.md to understand example credit-debit scenarios.
+we want individual topic wise ledgers like in (b) in those charts.
+
+see account ledger in /accounting page. there's a dropdown in there for choosing which topic we want. From them, only "Cash And Cash Equivalents" is properly working (view it to understand how it tracks everything)
+What i want you to do:
+Read through everything and understand what needs to be done to track all transactions and sort them accordingly to the options in the account ledger dropdown.
+Make a very detailed lengthy (300+ lines) md file for gemini in antigravity under Documentation/, titled "7_Apr_26_accounting_plan.md" explaining the entire workplan in full details, what needs to be done and which files will be affected. make it as detailed as possible.
+DO NOT change any code. I want the detailed md file only.
+
+1000	Current Assets,     1001	Cash and Cash Equivalents, 1002	Accounts Receivable, 1003	Inventory, 1100	Fixed Assets, 1101	Property, Plant and Equipment, 1102	Accumulated Depreciation, 2000	Current Liabilities, 2001	Accounts Payable, 2002	Tax Payable, 3000	Owner Equity, 3001	Retained Earnings, 4000	Revenue, 4001	Sales Revenue, 4002	Service Revenue, 5000	Expenses, 5001	Operating Expenses, 5002	Cost of Goods Sold

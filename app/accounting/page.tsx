@@ -30,7 +30,9 @@ export default function AccountingSystem() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [trialBalance, setTrialBalance] = useState<TrialBalanceData | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [leafAccounts, setLeafAccounts] = useState<Account[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<number | null>(null);
+  const [accountSearch, setAccountSearch] = useState<string>('');
   const [ledgerData, setLedgerData] = useState<LedgerData | null>(null);
 
   useEffect(() => {
@@ -57,7 +59,7 @@ export default function AccountingSystem() {
     try {
       setLoading(true);
       
-      // Fetch accounts using service (support both {success,data} and direct arrays)
+      // Fetch ALL accounts for reference (used by journal/trial balance account name lookups)
       const accountsRes: any = await accountingService.accounts.getAccounts();
       const accountsData = accountsRes?.success
         ? (Array.isArray(accountsRes.data) ? accountsRes.data : accountsRes.data?.data || [])
@@ -66,6 +68,18 @@ export default function AccountingSystem() {
       if (accountsData && accountsData.length >= 0) {
         setAccounts(accountsData);
         console.log('✅ Loaded accounts:', accountsData.length);
+      }
+
+      // Fetch LEAF accounts separately for the ledger dropdown
+      // Leaf accounts are the only ones that can hold direct transactions
+      const leafRes: any = await accountingService.accounts.getAccounts({ leaf_only: true, active: true });
+      const leafData = leafRes?.success
+        ? (Array.isArray(leafRes.data) ? leafRes.data : leafRes.data?.data || [])
+        : (Array.isArray(leafRes) ? leafRes : Array.isArray(leafRes?.data) ? leafRes.data : []);
+
+      if (leafData && leafData.length >= 0) {
+        setLeafAccounts(leafData);
+        console.log('✅ Loaded leaf accounts:', leafData.length);
       }
       
       // Fetch journal entries by default
@@ -378,17 +392,47 @@ const fetchJournalEntries = async () => {
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Select Account
                       </label>
+                      {/* Search filter */}
+                      <input
+                        type="text"
+                        value={accountSearch}
+                        onChange={(e) => setAccountSearch(e.target.value)}
+                        placeholder="Filter accounts..."
+                        className="w-full mb-2 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
                       <select
                         value={selectedAccount || ''}
                         onChange={(e) => setSelectedAccount(Number(e.target.value))}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        size={5}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                       >
-                        <option value="">Choose an account</option>
-                        {accounts.map((account) => (
-                          <option key={account.id} value={account.id}>
-                            {account.account_code} - {account.name}
-                          </option>
-                        ))}
+                        <option value="">— Choose an account —</option>
+                        {(['asset', 'liability', 'equity', 'income', 'expense'] as const).map((type) => {
+                          const filtered = leafAccounts.filter(
+                            (a) =>
+                              a.type === type &&
+                              (accountSearch === '' ||
+                                a.name.toLowerCase().includes(accountSearch.toLowerCase()) ||
+                                a.account_code.toLowerCase().includes(accountSearch.toLowerCase()))
+                          );
+                          if (filtered.length === 0) return null;
+                          const labels: Record<string, string> = {
+                            asset: '🏦 Assets',
+                            liability: '💳 Liabilities',
+                            equity: '🏛️ Equity',
+                            income: '📈 Income',
+                            expense: '📉 Expenses',
+                          };
+                          return (
+                            <optgroup key={type} label={labels[type]}>
+                              {filtered.map((account) => (
+                                <option key={account.id} value={account.id}>
+                                  {account.account_code} — {account.name}
+                                </option>
+                              ))}
+                            </optgroup>
+                          );
+                        })}
                       </select>
                     </div>
                   )}

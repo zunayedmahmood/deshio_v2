@@ -35,6 +35,11 @@ class AccountController extends Controller
             $query->byLevel($request->level);
         }
 
+        // Filter to leaf accounts only (accounts with no children — the only ones that can receive transactions)
+        if (filter_var($request->get('leaf_only', false), FILTER_VALIDATE_BOOLEAN)) {
+            $query->whereDoesntHave('children');
+        }
+
         // Search by name or code
         if ($request->has('search')) {
             $search = $request->search;
