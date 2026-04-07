@@ -101,12 +101,16 @@ export default function BranchHRMPage() {
     if (!confirm) return;
 
     try {
-      const payload = filteredEmployees.map(emp => ({
-        employee_id: Number(emp.id),
-        status: type === 'present' ? 'present' : 'absent',
+      const nowTime = format(new Date(), 'HH:mm');
+      const payload = {
         store_id: selectedStoreId,
-        attendance_date: format(new Date(), 'yyyy-MM-dd')
-      }));
+        attendance_date: format(new Date(), 'yyyy-MM-dd'),
+        entries: filteredEmployees.map(emp => ({
+          employee_id: Number(emp.id),
+          status: type === 'present' ? 'present' : 'absent',
+          in_time: type === 'present' ? nowTime : undefined,
+        }))
+      };
       await hrmService.markAttendance(payload as any);
       toast.success('Bulk attendance updated!');
       loadBranchData();
@@ -182,7 +186,7 @@ export default function BranchHRMPage() {
             <div>
               <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider">Present Today</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {(Array.isArray(todayAttendance) ? todayAttendance : []).filter(a => a.status === 'Present' || a.status === 'Late').length}
+                {(Array.isArray(todayAttendance) ? todayAttendance : []).filter(a => a.status === 'present' || a.status === 'late').length}
               </p>
             </div>
           </div>
@@ -281,11 +285,21 @@ export default function BranchHRMPage() {
                         </td>
                         <td className="px-6 py-4">
                           {record ? (
-                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${record.status === 'Present' || record.status === 'Late'
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-                                : 'bg-red-100 text-red-700'
-                              }`}>
-                              {record.status}
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                               record.status?.toLowerCase() === 'absent' ? 'bg-red-50 text-red-600 border border-red-100' :
+                               record.status?.toLowerCase() === 'leave' ? 'bg-orange-50 text-orange-600 border border-orange-100' :
+                               record.status?.toLowerCase() === 'half_day' ? 'bg-yellow-50 text-yellow-600 border border-yellow-100' :
+                               record.status?.toLowerCase() === 'late' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
+                               record.status?.toLowerCase() === 'holiday_auto' || record.status?.toLowerCase() === 'off_day_auto' ? 'bg-purple-50 text-purple-600 border border-purple-100' :
+                               'bg-green-50 text-green-600 border border-green-100'}`}>
+                              {record.status?.toLowerCase() === 'present' ? 'present' : 
+                               record.status?.toLowerCase() === 'late' ? 'late' : 
+                               record.status?.toLowerCase() === 'absent' ? 'absent' : 
+                               record.status?.toLowerCase() === 'leave' ? 'leave' :
+                               record.status?.toLowerCase() === 'half_day' ? 'half day' :
+                               record.status?.toLowerCase() === 'holiday_auto' ? 'holiday' :
+                               record.status?.toLowerCase() === 'off_day_auto' ? 'off day' :
+                               record.status}
                             </span>
                           ) : (
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-500 uppercase tracking-wider">
@@ -307,34 +321,47 @@ export default function BranchHRMPage() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-3">
-                            {!record?.clock_in ? (
-                              <AccessControl roles={['super-admin', 'admin', 'branch-manager']}>
-                                <button
-                                  onClick={() => handleQuickMark(emp, 'present')}
-                                  className="bg-black hover:bg-gray-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white text-xs font-black px-5 py-2 rounded-xl transition-all shadow-md active:scale-95 flex items-center gap-2 whitespace-nowrap"
-                                >
-                                  <Play className="w-3.5 h-3.5" />
-                                  Present
-                                </button>
-                              </AccessControl>
-                            ) : !record?.clock_out ? (
-                              <AccessControl roles={['super-admin', 'admin', 'branch-manager']}>
-                                <button
-                                  onClick={() => handleQuickMark(emp, 'leaving')}
-                                  className="bg-red-600 hover:bg-red-700 text-white text-xs font-black px-5 py-2 rounded-xl transition-all shadow-md active:scale-95 flex items-center gap-2 whitespace-nowrap"
-                                >
-                                  <LogOut className="w-3.5 h-3.5" />
-                                  Leaving
-                                </button>
-                              </AccessControl>
-                            ) : (
-                              <div className="flex flex-col items-end px-3">
-                                <div className="flex items-center gap-1.5 text-green-600 font-black text-[10px] uppercase tracking-wider">
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
-                                  Left
+                            {(() => {
+                              const isClockedIn = record && (record.clock_in || record.status?.toLowerCase() === 'present' || record.status?.toLowerCase() === 'late');
+                              const isClockedOut = record && record.clock_out;
+
+                              if (!isClockedIn) {
+                                return (
+                                  <AccessControl roles={['super-admin', 'admin', 'branch-manager']}>
+                                    <button
+                                      onClick={() => handleQuickMark(emp, 'present')}
+                                      className="bg-black hover:bg-gray-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white text-xs font-black px-5 py-2 rounded-xl transition-all shadow-md active:scale-95 flex items-center gap-2 whitespace-nowrap"
+                                    >
+                                      <Play className="w-3.5 h-3.5" />
+                                      Present
+                                    </button>
+                                  </AccessControl>
+                                );
+                              }
+
+                              if (!isClockedOut) {
+                                return (
+                                  <AccessControl roles={['super-admin', 'admin', 'branch-manager']}>
+                                    <button
+                                      onClick={() => handleQuickMark(emp, 'leaving')}
+                                      className="bg-red-600 hover:bg-red-700 text-white text-xs font-black px-5 py-2 rounded-xl transition-all shadow-md active:scale-95 flex items-center gap-2 whitespace-nowrap"
+                                    >
+                                      <LogOut className="w-3.5 h-3.5" />
+                                      Leaving
+                                    </button>
+                                  </AccessControl>
+                                );
+                              }
+
+                              return (
+                                <div className="flex flex-col items-end px-3">
+                                  <div className="flex items-center gap-1.5 text-green-600 font-black text-[10px] uppercase tracking-wider">
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    Left
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              );
+                            })()}
 
                             <div className="relative">
                               <AccessControl roles={['super-admin', 'admin', 'branch-manager']}>

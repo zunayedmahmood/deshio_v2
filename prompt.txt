@@ -149,3 +149,5 @@ DO NOT change any code. I want the detailed md file only.
 
 
 Dispatch is not working properly. whenever we're dispatching, it's creating two of them. also, notun add korar jonno "scan to send" a click korle scan/barcode boshano jayna
+
+then and only after that, I want you to log into the website and test all the hrm and transaction routes (if need, you can upload this image: public/e-commerce-hero.jpg to test image upload in manual entry).. i want you to run extensive testing and identify any and all bugs and integrity issues. then, solve them. you can 

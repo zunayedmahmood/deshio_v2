@@ -242,24 +242,67 @@ export default function DispatchBarcodeScanModal({
     }
   };
 
+  const playBeep = (type: 'success' | 'error') => {
+    try {
+      const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      const ctx = new AudioContextClass();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      if (type === 'success') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.1);
+      } else {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, ctx.currentTime); // A3
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.3);
+      }
+    } catch (e) {
+      console.error('Audio feedback error:', e);
+    }
+  };
+
   const scanOneBarcode = async (value: string) => {
-    if (!dispatch || !selectedItemId) return;
+    if (!dispatch) return;
     const code = value.trim();
     if (!code) return;
 
     try {
       if (mode === 'send') {
-        await dispatchService.scanBarcode(dispatch.id, selectedItemId, code);
+        if (selectedItemId) {
+          await dispatchService.scanBarcode(dispatch.id, selectedItemId, code);
+        } else {
+          // "Scan to Add" flow
+          await dispatchService.scanToAddItem(dispatch.id, code);
+          // We need to signal that the dispatch items might have changed
+          if (onComplete) onComplete(); 
+        }
       } else {
+        if (!selectedItemId) {
+          throw new Error('Please select an item to receive');
+        }
         await dispatchService.receiveBarcode(dispatch.id, selectedItemId, code);
       }
+      playBeep('success');
     } catch (e: any) {
-      throw new Error(e?.response?.data?.message || 'Scan failed');
+      playBeep('error');
+      throw new Error(e?.response?.data?.message || e.message || 'Scan failed');
     }
   };
 
   const processScanQueue = async () => {
-    if (!dispatch || !selectedItemId) return;
+    if (!dispatch || (mode === 'receive' && !selectedItemId)) return;
     if (scanQueueProcessingRef.current) return;
     if (scanQueueRef.current.length === 0) return;
     scanQueueProcessingRef.current = true;
@@ -277,7 +320,9 @@ export default function DispatchBarcodeScanModal({
       }
 
       setBarcode('');
-      await fetchProgress(selectedItemId);
+      if (selectedItemId) {
+        await fetchProgress(selectedItemId);
+      }
       onComplete?.();
 
       // In receive mode, auto-refresh overall status after processing a burst
@@ -436,17 +481,19 @@ export default function DispatchBarcodeScanModal({
 
           {/* Right: Scanner + List */}
           <div className="lg:col-span-2 p-6">
-            {!selectedItem ? (
+            {!selectedItem && mode === 'receive' ? (
               <div className="text-sm text-gray-500 dark:text-gray-400">Select an item to start scanning.</div>
             ) : (
               <>
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {selectedItem.product.name}
+                      {selectedItem ? selectedItem.product.name : 'Scan to Add New Item'}
                     </div>
                     <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      SKU: {selectedItem.product.sku} • Batch: {selectedItem.batch.batch_number}
+                      {selectedItem 
+                        ? `SKU: ${selectedItem.product.sku} • Batch: ${selectedItem.batch.batch_number}`
+                        : 'Any scanned barcode will be added to this dispatch if it belongs to the source store.'}
                     </div>
                   </div>
 
@@ -532,7 +579,7 @@ export default function DispatchBarcodeScanModal({
                 <div className="mt-6">
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
-                      {mode === 'send' ? 'Scanned Barcodes' : 'Received Barcodes'}
+                      {mode === 'send' ? 'Successfully Scanned' : 'Received Barcodes'}
                     </h4>
                     <button
                       onClick={() => selectedItemId && fetchProgress(selectedItemId)}

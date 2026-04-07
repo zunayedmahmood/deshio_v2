@@ -9,6 +9,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Str;
 use App\Traits\AutoLogsActivity;
+use App\Models\OrderPayment;
+use App\Models\Refund;
+use App\Models\ProductReturn;
+use App\Models\Order;
+use App\Models\Store;
+use App\Models\Employee;
+use App\Models\Account;
 
 class Transaction extends Model
 {

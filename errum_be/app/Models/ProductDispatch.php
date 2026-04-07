@@ -209,12 +209,14 @@ class ProductDispatch extends Model
             throw new \Exception('Dispatch cannot be approved in its current state.');
         }
 
-        $this->update([
-            'approved_by' => $employee->id,
-            'approved_at' => now(),
-        ]);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($employee) {
+            $this->update([
+                'approved_by' => $employee->id,
+                'approved_at' => now(),
+            ]);
 
-        return $this;
+            return $this;
+        });
     }
 
     public function dispatch()
@@ -223,37 +225,39 @@ class ProductDispatch extends Model
             throw new \Exception('Dispatch cannot be sent in its current state.');
         }
 
-        $this->update(['status' => 'in_transit']);
+        return \Illuminate\Support\Facades\DB::transaction(function () {
+            $this->update(['status' => 'in_transit']);
 
-        // Update item statuses and barcode statuses
-        foreach ($this->items as $item) {
-            $item->update(['status' => 'dispatched']);
-            
-            // Load scanned barcodes
-            $item->load('scannedBarcodes');
-            
-            if ($item->scannedBarcodes->count() > 0) {
-                // Barcodes were scanned - update their status from 'reserved' to 'in_transit'
-                foreach ($item->scannedBarcodes as $barcode) {
-                    $barcode->update([
-                        'current_status' => 'in_transit',
-                        'location_updated_at' => now(),
-                        'location_metadata' => array_merge($barcode->location_metadata ?? [], [
-                            'dispatched_at' => now()->toISOString(),
-                            'status_changed_to_in_transit' => now()->toISOString(),
-                        ])
-                    ]);
+            // Update item statuses and barcode statuses
+            foreach ($this->items as $item) {
+                $item->update(['status' => 'dispatched']);
+                
+                // Load scanned barcodes
+                $item->load('scannedBarcodes');
+                
+                if ($item->scannedBarcodes->count() > 0) {
+                    // Barcodes were scanned - update their status from 'reserved' to 'in_transit'
+                    foreach ($item->scannedBarcodes as $barcode) {
+                        $barcode->update([
+                            'current_status' => 'in_transit',
+                            'location_updated_at' => now(),
+                            'location_metadata' => array_merge($barcode->location_metadata ?? [], [
+                                'dispatched_at' => now()->toISOString(),
+                                'status_changed_to_in_transit' => now()->toISOString(),
+                            ])
+                        ]);
+                    }
+                } else {
+                    // ERROR: Cannot dispatch without scanning barcodes!
+                    throw new \Exception(
+                        "Cannot dispatch item without scanning barcodes. " .
+                        "Please scan {$item->quantity} barcode(s) for this item before sending."
+                    );
                 }
-            } else {
-                // ERROR: Cannot dispatch without scanning barcodes!
-                throw new \Exception(
-                    "Cannot dispatch item without scanning barcodes. " .
-                    "Please scan {$item->quantity} barcode(s) for this item before sending."
-                );
             }
-        }
 
-        return $this;
+            return $this;
+        });
     }
 
     public function deliver()
@@ -262,17 +266,19 @@ class ProductDispatch extends Model
             throw new \Exception('Dispatch cannot be delivered in its current state.');
         }
 
-        $this->update([
-            'status' => 'delivered',
-            'actual_delivery_date' => now(),
-        ]);
+        return \Illuminate\Support\Facades\DB::transaction(function () {
+            $this->update([
+                'status' => 'delivered',
+                'actual_delivery_date' => now(),
+            ]);
 
-        // Process inventory movement for each item
-        foreach ($this->items as $item) {
-            $this->processInventoryMovement($item);
-        }
+            // Process inventory movement for each item
+            foreach ($this->items as $item) {
+                $this->processInventoryMovement($item);
+            }
 
-        return $this;
+            return $this;
+        });
     }
 
     public function cancel()
@@ -296,14 +302,16 @@ class ProductDispatch extends Model
             throw new \Exception('Insufficient quantity in batch.');
         }
 
-        $item = $this->items()->create([
-            'product_batch_id' => $batch->id,
-            'quantity' => $quantity,
-        ]);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($batch, $quantity) {
+            $item = $this->items()->create([
+                'product_batch_id' => $batch->id,
+                'quantity' => $quantity,
+            ]);
 
-        $this->updateTotals();
+            $this->updateTotals();
 
-        return $item;
+            return $item;
+        });
     }
 
     public function removeItem(ProductDispatchItem $item)
@@ -312,10 +320,12 @@ class ProductDispatch extends Model
             throw new \Exception('Item does not belong to this dispatch.');
         }
 
-        $item->delete();
-        $this->updateTotals();
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($item) {
+            $item->delete();
+            $this->updateTotals();
 
-        return $this;
+            return $this;
+        });
     }
 
     public function updateTotals()

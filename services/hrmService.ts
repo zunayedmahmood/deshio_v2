@@ -16,7 +16,7 @@ export interface AttendanceRecord {
   attendance_date: string;
   clock_in: string | null;
   clock_out: string | null;
-  status: 'Present' | 'Late' | 'Absent' | 'Holiday' | 'Weekend';
+  status: 'present' | 'late' | 'absent' | 'leave' | 'half_day' | 'holiday_auto' | 'off_day_auto' | string;
   is_late: boolean;
   is_early_exit: boolean;
   overtime_minutes: number;
@@ -65,12 +65,19 @@ const hrmService = {
         entries: [
           {
             employee_id: data.employee_id,
-            status: 'present',
-            in_time: data.type === 'check_in' ? data.time : undefined,
-            out_time: data.type === 'check_out' ? data.time : undefined,
+            status: data.status ? data.status.toLowerCase() : 'present',
+            in_time: data.type === 'check_in' ? data.time : (data.in_time || undefined),
+            out_time: data.type === 'check_out' ? data.time : (data.out_time || undefined),
           }
         ]
       };
+    }
+    // Final check for status casing
+    if (payload.entries && Array.isArray(payload.entries)) {
+      payload.entries = payload.entries.map((e: any) => ({
+        ...e,
+        status: e.status ? e.status.toLowerCase() : 'present'
+      }));
     }
     const response = await axiosInstance.post('/hrm/attendance/mark', payload);
     return response.data;
@@ -87,22 +94,16 @@ const hrmService = {
       // Normalize backend "rows" structure to AttendanceRecord[]
       return response.data.data.rows.map((row: any) => {
         const att = row.attendance || {};
-        // Normalize status to Capital Case for frontend matching
-        let status = att.status || 'Not Marked';
-        if (status === 'present') status = 'Present';
-        if (status === 'late') status = 'Late';
-        if (status === 'absent') status = 'Absent';
-        if (status === 'leave') status = 'Leave';
-        if (status === 'half_day') status = 'Half Day';
-        if (status === 'holiday_auto') status = 'Holiday';
-        if (status === 'off_day_auto') status = 'Off Day';
+        // Ensure status is always lowercase for internal logic
+        const status = (att.status || 'not_marked').toLowerCase();
 
         return {
           ...att,
           employee_id: row.employee.id,
           status: status,
-          clock_in: att.in_time,
-          clock_out: att.out_time,
+          // Map backend in_time/out_time to frontend clock_in/clock_out
+          clock_in: att.in_time || null,
+          clock_out: att.out_time || null,
         };
       });
     }

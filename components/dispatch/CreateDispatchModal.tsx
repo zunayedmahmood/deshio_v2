@@ -3,6 +3,7 @@ import { X, Plus, Trash2, RefreshCw, Scan, RotateCcw, AlertTriangle } from 'luci
 import { Store } from '@/services/storeService';
 import batchService from '@/services/batchService';
 import barcodeService from '@/services/barcodeService';
+import { toast } from 'react-hot-toast';
 
 interface DispatchItem {
   batch_id: string;
@@ -61,6 +62,7 @@ const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
   };
 
   const [addMode, setAddMode] = useState<AddMode>('batch');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [scanInput, setScanInput] = useState('');
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -423,6 +425,8 @@ const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
   };
 
   const handleSubmit = () => {
+    if (isSubmitting) return;
+
     if (
       !formData.source_store_id ||
       !formData.destination_store_id ||
@@ -432,6 +436,7 @@ const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
       return;
     }
 
+    setIsSubmitting(true);
     onSubmit({
       ...formData,
       items,
@@ -614,27 +619,30 @@ const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
               <div className="mb-3">
                 <div className="grid grid-cols-12 gap-2">
                   <div className="col-span-7">
-                    <div className="relative">
-                      <Scan className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <div className="relative group">
+                      <Scan className={`absolute left-3 top-2.5 w-4 h-4 transition-colors ${!formData.source_store_id ? 'text-gray-400' : 'text-indigo-500 group-hover:animate-pulse'}`} />
                       <input
                         ref={scanInputRef}
                         type="text"
                         value={scanInput}
                         onChange={(e) => setScanInput(e.target.value)}
                         onKeyDown={(e) => {
-                          // Many hardware scanners are configured to send Enter or Tab as a suffix.
-                          // If Tab is used, the browser would move focus away and subsequent scans go to the wrong field.
                           if (e.key === 'Enter' || e.key === 'Tab') {
                             e.preventDefault();
                             enqueueBarcodeScan();
-                            // keep focus pinned here for rapid scanning
                             setTimeout(() => scanInputRef.current?.focus(), 0);
                           }
                         }}
-                        placeholder={formData.source_store_id ? 'Scan barcode and press Enter…' : 'Select source store first'}
+                        className={`w-full pl-10 pr-3 py-2 rounded-lg border text-sm transition-all focus:ring-2 focus:ring-indigo-500/20 active:scale-[0.99] ${!formData.source_store_id
+                            ? 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 cursor-not-allowed opacity-60'
+                            : 'bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:border-indigo-500'
+                          }`}
+                        placeholder={formData.source_store_id ? 'Scan/Type barcode and press Enter…' : 'Select source store first'}
                         disabled={!formData.source_store_id}
-                        className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm disabled:bg-gray-100 dark:disabled:bg-gray-600"
                       />
+                      {!formData.source_store_id && (
+                        <div className="absolute inset-0 z-10 cursor-not-allowed" onClick={() => toast.error('Please select a Source Store first')} />
+                      )}
                     </div>
                   </div>
                   <div className="col-span-2">
@@ -874,10 +882,10 @@ const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={loading || items.length === 0}
+            disabled={loading || isSubmitting || items.length === 0}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium"
           >
-            {loading ? 'Creating...' : 'Create Dispatch'}
+            {loading || isSubmitting ? 'Creating...' : 'Create Dispatch'}
           </button>
         </div>
       </div>
