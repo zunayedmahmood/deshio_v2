@@ -159,3 +159,25 @@ make me a Implementation plan md file that i can give to gemini in antigravity t
 name the file like this: "7_Apr_26 ..." in Documentation/ folder.
 
 I want you to go through my front-end and back-end and all the codes Regarding inventory pages, the inventory page is currently properly functional, so be very careful before editing it. We want these following changes, that the date filter is not working and it should be working. The date filter should control the data shown immediately beneath it. We are going to add date filters for the sales trends and then the pie chart shown below them, and then the branch performance. Basically, every single model will have its own date filter that should be responsive. The sales trend has its dates overlapping each other. We can remove the dates from the graph itself, but the graph should be highly customizable to set to yearly, monthly, weekly, daily within a time frame. The more necessary part is to show the curve, then the dates. The category are shown by the category ID. We need it to be category name. Also, the best seller products. These are not customized. These are the top products from all sales. We need the response to be customizable, meaning within this price range, within this category, this branch, within these categories, from these dates. And these queries should be nestable. In the branch performance, of course, we need the dates. In the stock watchlist, which shows the stock whose stock has gone below 5, all net stock has gone below 5, we want to show all such products in one fixed screen width and it should be scrollable with other details like how many days it has been in the store, basically the age of the batch and all that. The hourly order pulse is working, yes. We just want the UI to be more engaging instead of a whole hourly list. It could be like a clock or a pie chart or something similar.
+
+see accounts.tsx. i want you to open the browser and login via /login using  super admin account. Check the transaction pages and accounting page. act as a professional tester. test all these pages. if you need to upload any image, upload this: public/e-commerce-hero.jpg . I want yout test and identify all the issue. then make a detailed md file in Documentation titled "8_Apr_26 ..." and log all the issues bugs,, edge cases there. DO NOT change any code now. i only want the md file.
+
+### inventory reports:
+
+check the inventory reports page and all its components. they are not properly working with the dark vs light theme.
+some of the components' contents are now spilling out of their boxes like branch performance and best sellers. a few pixels short and they'd be fine.
+
+the categories dropdown is not showing any categories or subcategories. check if it's not fetching properly or if it's a theme issue. categories and subcategories dropdown should be scrollable.
+
+we want this new feature in inventory reports page:
+->in first section and in sales trend, we need to add an option to see statistics for 1 single sku. add an input field for product sku, when given, we'll show results for that sku (seperate and unconnected btwn the one at upper section and the one in sales trend)
+
+Since the system is in production, we can not afford to break anything. so, please be very careful. 
+Since, testing confirmed that inventory reports was working and we want newer features, avoid doing any drastic changes to the already working process.
+
+
+###  order export:
+
+we want this new feature in orders page.
+->when 1 or more order is selected we see these options: mark as delivered, pathao, print etc. we want a new one: export. use an excel or file icon.
+->when we click on it, the we create a csb file exactly like order_sample.csv 

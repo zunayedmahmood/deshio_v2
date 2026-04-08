@@ -22,8 +22,13 @@ class BusinessAnalyticsController extends Controller
     {
         [$from, $to] = $this->resolveDateRange($request);
         $storeId = $request->query('store_id');
-
-        $orders = $this->baseOrdersQuery($from, $to, $storeId)->with(['items.product.category', 'customer', 'store'])->get();
+        $sku = $request->query('sku');
+        $orders = $this->baseOrdersQuery($from, $to, $storeId, $sku)
+            ->with(['items' => function($q) use ($sku) {
+                if ($sku) $q->where('product_sku', $sku);
+            }, 'items.product.category', 'customer', 'store'])
+            ->get();
+            
         $returns = $this->baseReturnsQuery($from, $to, $storeId)->get();
         $refunds = $this->baseRefundsQuery($from, $to, $storeId)->get();
         $expenses = $this->baseExpensesQuery($from, $to, $storeId)->get();
@@ -31,18 +36,18 @@ class BusinessAnalyticsController extends Controller
 
         $orderItems = $orders->flatMap->items;
         
-        $salesTrend = $this->buildSalesTrend($orders, $from, $to, $request->query('interval', 'day'));
+        $salesTrend = $this->buildSalesTrend($orders, $from, $to, $request->query('interval', 'day'), $sku);
         $topProducts = $this->buildTopProducts($orderItems, $inventoryBatches, $request);
         $stockWatchlist = $this->buildStockWatchlist($inventoryBatches, $orderItems);
-        $branchPerformance = $this->buildBranchPerformance($orders, $expenses);
+        $branchPerformance = $this->buildBranchPerformance($orders, $expenses, $sku);
 
         $kpis = [
             'total_orders' => $orders->count(),
             'total_units' => (int) $orderItems->sum('quantity'),
-            'gross_sales' => round((float) $orders->sum('subtotal'), 2),
-            'net_sales' => round((float) $orders->sum('total_amount'), 2),
-            'total_discount' => round((float) $orders->sum('discount_amount'), 2),
-            'avg_order_value' => round((float) ($orders->count() ? $orders->avg('total_amount') : 0), 2),
+            'gross_sales' => round((float) ($sku ? $orderItems->sum(fn($i) => $i->quantity * $i->unit_price) : $orders->sum('subtotal')), 2),
+            'net_sales' => round((float) ($sku ? $orderItems->sum('total_amount') : $orders->sum('total_amount')), 2),
+            'total_discount' => round((float) ($sku ? $orderItems->sum('discount_amount') : $orders->sum('discount_amount')), 2),
+            'avg_order_value' => round((float) ($orders->count() ? ($sku ? $orderItems->sum('total_amount') : $orders->sum('total_amount')) / $orders->count() : 0), 2),
             'gross_profit' => round((float) ($orderItems->sum('total_amount') - $orderItems->sum('cogs')), 2),
             'margin_pct' => round((float) (($orderItems->sum('total_amount') > 0) ? (($orderItems->sum('total_amount') - $orderItems->sum('cogs')) / $orderItems->sum('total_amount')) * 100 : 0), 2),
             'return_count' => $returns->count(),
@@ -119,12 +124,17 @@ class BusinessAnalyticsController extends Controller
     {
         [$from, $to] = $this->resolveDateRange($request);
         $storeId = $request->query('store_id');
+        $sku = $request->query('sku');
         $interval = $request->query('interval', 'day');
-        
-        $orders = $this->baseOrdersQuery($from, $to, $storeId)->with('items')->get();
+        $orders = $this->baseOrdersQuery($from, $to, $storeId, $sku)
+            ->with(['items' => function($q) use ($sku) {
+                if ($sku) $q->where('product_sku', $sku);
+            }])
+            ->get();
+
         return response()->json([
             'success' => true,
-            'data' => $this->buildSalesTrend($orders, $from, $to, $interval)
+            'data' => $this->buildSalesTrend($orders, $from, $to, $interval, $sku)
         ]);
     }
 
@@ -232,11 +242,16 @@ class BusinessAnalyticsController extends Controller
         return [$from, $to];
     }
 
-    private function baseOrdersQuery(Carbon $from, Carbon $to, $storeId = null)
+    private function baseOrdersQuery(Carbon $from, Carbon $to, $storeId = null, $sku = null)
     {
         $query = Order::query()->whereBetween('order_date', [$from, $to]);
         if ($storeId) {
             $query->where('store_id', $storeId);
+        }
+        if ($sku) {
+            $query->whereHas('items', function($q) use ($sku) {
+                $q->where('product_sku', $sku);
+            });
         }
         return $query;
     }
@@ -277,7 +292,7 @@ class BusinessAnalyticsController extends Controller
         return $query;
     }
 
-    private function buildSalesTrend(Collection $orders, Carbon $from, Carbon $to, $interval = 'day'): Collection
+    private function buildSalesTrend(Collection $orders, Carbon $from, Carbon $to, $interval = 'day', $sku = null): Collection
     {
         $dates = collect();
         $curr = $from->copy()->startOfDay();
@@ -313,7 +328,7 @@ class BusinessAnalyticsController extends Controller
             $dates->push([
                 'date' => $label,
                 'orders' => $periodOrders->count(),
-                'net_sales' => round((float) $periodOrders->sum('total_amount'), 2),
+                'net_sales' => round((float) ($sku ? $items->sum('total_amount') : $periodOrders->sum('total_amount')), 2),
                 'gross_profit' => round((float) ($items->sum('total_amount') - $items->sum('cogs')), 2),
             ]);
 
@@ -398,18 +413,18 @@ class BusinessAnalyticsController extends Controller
             ->values();
     }
 
-    private function buildBranchPerformance(Collection $orders, Collection $expenses): Collection
+    private function buildBranchPerformance(Collection $orders, Collection $expenses, $sku = null): Collection
     {
         $stores = Store::query()->select(['id', 'name'])->get()->keyBy('id');
         $expenseByStore = $expenses->groupBy('store_id')->map(fn ($rows) => (float) $rows->sum('total_amount'));
 
         return $orders
             ->groupBy('store_id')
-            ->map(function (Collection $storeOrders, $storeId) use ($stores, $expenseByStore) {
+            ->map(function (Collection $storeOrders, $storeId) use ($stores, $expenseByStore, $sku) {
                 $items = $storeOrders->flatMap->items;
-                $sales = (float) $storeOrders->sum('total_amount');
+                $sales = (float) ($sku ? $items->sum('total_amount') : $storeOrders->sum('total_amount'));
                 $profitBeforeExpense = (float) ($items->sum('total_amount') - $items->sum('cogs'));
-                $netProfit = $profitBeforeExpense - (float) ($expenseByStore[$storeId] ?? 0);
+                $netProfit = $profitBeforeExpense - (float) ($sku ? 0 : ($expenseByStore[$storeId] ?? 0));
                 return [
                     'store_id' => (int) $storeId,
                     'store_name' => (string) ($stores[$storeId]->name ?? ('Store ' . $storeId)),

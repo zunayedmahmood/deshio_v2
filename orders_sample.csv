@@ -1,0 +1,2 @@
+ItemType,StoreName,MerchantOrderId,RecipientName(*),RecipientPhone(*),RecipientAddress(*),RecipientCity(*),RecipientZone(*),RecipientArea,AmountToCollect(*),ItemQuantity,ItemWeight,ItemDesc,SpecialInstruction
+parcel,,,Mr Xyz,01710000000,"H-1,R-1,S-6, Uttara",Dhaka,Uttara,,1000,1,0.5,,

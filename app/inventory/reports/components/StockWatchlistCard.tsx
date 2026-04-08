@@ -9,12 +9,12 @@ function currency(value: number) {
   return new Intl.NumberFormat('en-BD', { maximumFractionDigits: 0 }).format(Number(value || 0));
 }
 
-export default function StockWatchlistCard({ 
-  initialData, 
-  storeId 
-}: { 
-  initialData: StockWatchRow[], 
-  storeId?: string | number 
+export default function StockWatchlistCard({
+  initialData,
+  storeId
+}: {
+  initialData: StockWatchRow[],
+  storeId?: string | number
 }) {
   const [data, setData] = useState<StockWatchRow[]>(initialData);
   const [loading, setLoading] = useState(false);
@@ -41,8 +41,8 @@ export default function StockWatchlistCard({
     >
       <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-800">
         {data.map((row) => (
-          <div 
-            key={row.product_id} 
+          <div
+            key={row.product_id}
             className="group p-4 bg-white dark:bg-gray-800/40 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-amber-200 dark:hover:border-amber-900/50 transition-all shadow-sm hover:shadow-md"
           >
             <div className="flex items-start justify-between gap-4 mb-3">
@@ -81,10 +81,10 @@ export default function StockWatchlistCard({
                   {row.age_days} days
                 </span>
               </div>
-              {row.revenue_30d > 5000 && (
+              {row.revenue_30d > 10000 && (
                 <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">
                   <TrendingUp className="w-3 h-3" />
-                  High Velocity
+                  High Sales
                 </div>
               )}
             </div>

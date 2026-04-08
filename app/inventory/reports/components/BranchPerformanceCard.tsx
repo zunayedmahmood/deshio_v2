@@ -18,10 +18,10 @@ export default function BranchPerformanceCard({
   initialFilters 
 }: { 
   initialData: StorePerformanceRow[], 
-  initialFilters: { from: string, to: string } 
+  initialFilters: { from: string, to: string, sku?: string } 
 }) {
   const [data, setData] = useState<StorePerformanceRow[]>(initialData);
-  const [filters, setFilters] = useState(initialFilters);
+  const [filters, setFilters] = useState<{ from: string, to: string, sku?: string }>(initialFilters);
   const [loading, setLoading] = useState(false);
 
   const fetchData = async (f = filters) => {
@@ -76,7 +76,7 @@ export default function BranchPerformanceCard({
           })}
         </div>
 
-        <div className="overflow-x-auto -mx-6 border-t border-gray-50 dark:border-gray-800/50 mt-6">
+        <div className="overflow-x-auto -mx-5 px-5 border-t border-gray-50 dark:border-gray-800/50 mt-6 pt-2">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-gray-500 dark:text-gray-400">

@@ -4,6 +4,8 @@ export interface ReportingFilters {
   from?: string;
   to?: string;
   store_id?: number | string;
+  sku?: string;
+  interval?: string;
 }
 
 export interface KPIBlock {

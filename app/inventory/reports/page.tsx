@@ -15,6 +15,7 @@ import {
   Gauge,
   Package,
   RefreshCw,
+  Search,
   ShoppingBag,
   TrendingUp,
   Users,
@@ -111,28 +112,38 @@ export default function InventoryReportsPage() {
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex bg-white dark:bg-gray-900 rounded-xl p-1 shadow-sm border border-gray-200 dark:border-gray-800">
-                <input 
-                  type="date" 
-                  value={filters.from || ''} 
-                  onChange={(e) => setFilters((p) => ({ ...p, from: e.target.value }))} 
-                  className="bg-transparent border-none text-sm focus:ring-0 dark:text-gray-300" 
+                <div className="flex items-center px-3 border-r border-gray-100 dark:border-gray-800">
+                  <Search className="w-3.5 h-3.5 text-gray-400 mr-2" />
+                  <input
+                    type="text"
+                    placeholder="Global SKU Filter"
+                    value={filters.sku || ''}
+                    onChange={(e) => setFilters((p) => ({ ...p, sku: e.target.value }))}
+                    className="bg-transparent border-none text-sm focus:ring-0 w-32 dark:text-gray-300"
+                  />
+                </div>
+                <input
+                  type="date"
+                  value={filters.from || ''}
+                  onChange={(e) => setFilters((p) => ({ ...p, from: e.target.value }))}
+                  className="bg-transparent border-none text-sm focus:ring-0 dark:text-gray-300"
                 />
                 <span className="flex items-center px-1 text-gray-300">→</span>
-                <input 
-                  type="date" 
-                  value={filters.to || ''} 
-                  onChange={(e) => setFilters((p) => ({ ...p, to: e.target.value }))} 
+                <input
+                  type="date"
+                  value={filters.to || ''}
+                  onChange={(e) => setFilters((p) => ({ ...p, to: e.target.value }))}
                   className="bg-transparent border-none text-sm focus:ring-0 dark:text-gray-300"
                 />
               </div>
-              <button 
-                onClick={() => loadData()} 
+              <button
+                onClick={() => loadData()}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-bold text-white dark:bg-white dark:text-gray-900 transition-all hover:scale-105 active:scale-95 shadow-md"
               >
                 <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} /> Update Headline
               </button>
-              <button 
-                onClick={exportCsv} 
+              <button
+                onClick={exportCsv}
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 px-5 py-2.5 text-sm font-bold text-gray-700 dark:border-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
               >
                 <Download className="h-4 w-4" /> Export CSV
@@ -207,10 +218,10 @@ export default function InventoryReportsPage() {
               <SalesTrendCard initialData={data.sales_trend} initialFilters={{ from: filters.from as string, to: filters.to as string }} />
 
               {/* Mix Charts Section */}
-              <MixChartsSection 
-                statusMix={data.status_mix} 
-                channelMix={data.order_type_mix} 
-                paymentMix={data.payment_status_mix} 
+              <MixChartsSection
+                statusMix={data.status_mix}
+                channelMix={data.order_type_mix}
+                paymentMix={data.payment_status_mix}
               />
 
               {/* Best Sellers & Watchlist Pair */}
@@ -233,7 +244,7 @@ export default function InventoryReportsPage() {
               <div className="rounded-2xl border border-indigo-100 bg-white p-8 shadow-sm dark:border-indigo-900/30 dark:bg-gray-900">
                 <h3 className="mb-6 text-xl font-black text-gray-900 dark:text-white flex items-center gap-3">
                   <Activity className="w-6 h-6 text-indigo-500" />
-                  AI Intelligence & Strategic Insights
+                  Strategic Insights
                 </h3>
                 <div className="grid gap-4 md:grid-cols-2">
                   {data.insights.map((insight, i) => (

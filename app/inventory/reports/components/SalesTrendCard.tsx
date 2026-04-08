@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import businessAnalyticsService, { TrendPoint } from '@/services/businessAnalyticsService';
 import ReportCard from './ReportCard';
 import LocalDatePicker from './LocalDatePicker';
+import { Search } from 'lucide-react';
 
 function currency(value: number) {
   return new Intl.NumberFormat('en-BD', { maximumFractionDigits: 0 }).format(Number(value || 0));
@@ -17,7 +18,7 @@ export default function SalesTrendCard({
   initialFilters: { from: string, to: string } 
 }) {
   const [data, setData] = useState<TrendPoint[]>(initialData);
-  const [filters, setFilters] = useState(initialFilters);
+  const [filters, setFilters] = useState<{ from: string, to: string, store_id?: string | number, sku?: string }>(initialFilters);
   const [interval, setInterval] = useState('day');
   const [loading, setLoading] = useState(false);
 
@@ -79,15 +80,26 @@ export default function SalesTrendCard({
               <button
                 key={i}
                 onClick={() => handleIntervalChange(i)}
-                className={`px-3 py-1 text-xs font-semibold rounded-md capitalize transition-all ${
+                className={`px-3 py-1 text-[10px] font-bold rounded-md capitalize transition-all ${
                   interval === i 
                     ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' 
-                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 uppercase'
                 }`}
               >
                 {i}
               </button>
             ))}
+          </div>
+          <div className="flex items-center bg-white dark:bg-gray-900 rounded-lg px-3 py-1.5 shadow-sm border border-gray-200 dark:border-gray-700">
+            <Search className="w-3.5 h-3.5 text-gray-400 mr-2" />
+            <input 
+              type="text" 
+              placeholder="Filter by SKU..." 
+              value={filters.sku || ''}
+              onChange={(e) => setFilters(p => ({ ...p, sku: e.target.value }))}
+              onKeyDown={(e) => e.key === 'Enter' && fetchData()}
+              className="bg-transparent border-none p-0 text-xs focus:ring-0 w-24 dark:text-gray-300"
+            />
           </div>
           <LocalDatePicker from={filters.from} to={filters.to} onChange={handleDateChange} />
         </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import businessAnalyticsService, { TopProductRow } from '@/services/businessAnalyticsService';
 import categoryService from '@/services/categoryService'; // Assuming this exists or I'll create/check it
 import ReportCard from './ReportCard';
@@ -16,11 +16,11 @@ export default function BestSellersCard({
   initialFilters 
 }: { 
   initialData: TopProductRow[], 
-  initialFilters: { from: string, to: string, store_id?: string | number } 
+  initialFilters: { from: string, to: string, store_id?: string | number, sku?: string } 
 }) {
   const [data, setData] = useState<TopProductRow[]>(initialData);
   const [filters, setFilters] = useState(initialFilters);
-  const [categories, setCategories] = useState<{id: number, name: string}[]>([]);
+  const [categories, setCategories] = useState<{id: number, title: string, name?: string}[]>([]);
   const [categoryId, setCategoryId] = useState<string | number>('');
   const [minPrice, setMinPrice] = useState<string>('');
   const [maxPrice, setMaxPrice] = useState<string>('');
@@ -45,8 +45,29 @@ export default function BestSellersCard({
   };
 
   useEffect(() => {
-    categoryService.getAll().then(res => setCategories(res.data)).catch(() => {});
+    // Fetch categories with tree=true to get hierarchy
+    categoryService.getAll({ tree: true, per_page: 500 }).then(res => {
+      const cats = (Array.isArray(res) ? res : (res.data || [])) as any[];
+      setCategories(cats);
+    }).catch((err) => {
+      console.error('Failed to load categories:', err);
+    });
   }, []);
+
+  // Helper to flatten categories with indentation
+  const flattenedCategories = useMemo(() => {
+    const flat: { id: number, title: string }[] = [];
+    const traverse = (list: any[], level = 0) => {
+      list.forEach(c => {
+        flat.push({ id: c.id, title: `${'\u00A0'.repeat(level * 4)}${c.title}` });
+        if (c.children && c.children.length > 0) {
+          traverse(c.children, level + 1);
+        }
+      });
+    };
+    traverse(categories);
+    return flat;
+  }, [categories]);
 
   const handleDateChange = (from: string, to: string) => {
     const newFilters = { ...filters, from, to };
@@ -61,10 +82,10 @@ export default function BestSellersCard({
       isLoading={loading}
       onRefresh={() => fetchData()}
       headerAction={
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button 
             onClick={() => setShowFilters(!showFilters)}
-            className={`p-2 rounded-lg border transition-all ${showFilters ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-gray-200 text-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'}`}
+            className={`p-2 rounded-lg border transition-all ${showFilters ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-gray-200 text-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
           >
             <Filter className="w-4 h-4" />
           </button>
@@ -73,44 +94,58 @@ export default function BestSellersCard({
       }
     >
       {showFilters && (
-        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl grid grid-cols-1 md:grid-cols-3 gap-4 border border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2">
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Category</label>
+        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/40 rounded-xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 border border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2">
+          <div className="space-y-1.5 leading-none">
+            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Category</label>
             <select 
               value={categoryId} 
               onChange={(e) => { setCategoryId(e.target.value); fetchData(filters, e.target.value, minPrice, maxPrice); }}
-              className="w-full text-sm rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900"
+              className="w-full text-xs rounded-lg border-gray-200 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
             >
               <option value="">All Categories</option>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {flattenedCategories.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
             </select>
           </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Min Price</label>
+          <div className="space-y-1.5 leading-none">
+            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Min Price</label>
             <input 
               type="number" 
               value={minPrice} 
               onChange={(e) => setMinPrice(e.target.value)}
               onBlur={() => fetchData(filters, categoryId, minPrice, maxPrice)}
-              placeholder="e.g. 100"
-              className="w-full text-sm rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900" 
+              placeholder="Min"
+              className="w-full text-xs rounded-lg border-gray-200 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" 
             />
           </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Max Price</label>
+          <div className="space-y-1.5 leading-none">
+            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Max Price</label>
             <input 
               type="number" 
               value={maxPrice} 
               onChange={(e) => setMaxPrice(e.target.value)}
               onBlur={() => fetchData(filters, categoryId, minPrice, maxPrice)}
-              placeholder="e.g. 5000"
-              className="w-full text-sm rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900" 
+              placeholder="Max"
+              className="w-full text-xs rounded-lg border-gray-200 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" 
             />
+          </div>
+          <div className="space-y-1.5 leading-none">
+            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Product SKU</label>
+            <div className="relative">
+              <input 
+                type="text" 
+                value={filters.sku || ''}
+                onChange={(e) => setFilters(p => ({ ...p, sku: e.target.value }))}
+                onKeyDown={(e) => e.key === 'Enter' && fetchData()}
+                placeholder="SKU"
+                className="w-full text-xs pl-8 rounded-lg border-gray-200 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200" 
+              />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+            </div>
           </div>
         </div>
       )}
 
-      <div className="overflow-x-auto -mx-6">
+      <div className="overflow-x-auto -mx-5 px-5">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50/50 dark:bg-gray-800/30 text-gray-500 dark:text-gray-400">
