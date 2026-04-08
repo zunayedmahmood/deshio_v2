@@ -48,7 +48,21 @@ export default function TransactionsPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Invalid Date';
+    
+    // If it's a midnight UTC date, it's likely a date-only field from backend
+    // Format it without time to avoid the "6:00 AM" timezone shift
+    if (dateString.endsWith('T00:00:00.000000Z') || dateString.endsWith(' 00:00:00')) {
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -146,7 +160,10 @@ export default function TransactionsPage() {
   
   const netBalance = totalIncome - totalExpense;
 
-  const uniqueSources = ['all', ...new Set(transactions.map(t => t.source))];
+  const uniqueSources = ['all', ...new Set(transactions.map(t => {
+    const s = t.source?.toLowerCase() || 'manual';
+    return (s === 'null' || s === 'undefined' || s === '') ? 'manual' : s;
+  }))];
 
   return (
     <div className={darkMode ? 'dark' : ''}>
@@ -423,7 +440,7 @@ export default function TransactionsPage() {
                                   <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
                                     <div className="flex items-center gap-1">
                                       <Calendar className="w-3.5 h-3.5" />
-                                      <span>{formatDate(transaction.createdAt)}</span>
+                                      <span>{formatDate(transaction.transactionDate || transaction.createdAt)}</span>
                                     </div>
                                     <div className="flex items-center gap-1">
                                       <Tag className="w-3.5 h-3.5" />

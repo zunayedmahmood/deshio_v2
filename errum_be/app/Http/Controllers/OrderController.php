@@ -2232,8 +2232,19 @@ class OrderController extends Controller
                 if (!$shipping) $shipping = [];
 
                 $customer = $order->customer;
-                $address = $order->customer_address ?? ($customer ? $customer->address : '');
                 
+                // Robust address extraction
+                $recipientAddress = '';
+                if (!empty($shipping['address_line_1'])) {
+                    $recipientAddress = $shipping['address_line_1'];
+                } elseif (!empty($shipping['street'])) {
+                    $recipientAddress = $shipping['street'];
+                } elseif (!empty($shipping['address'])) {
+                    $recipientAddress = $shipping['address'];
+                } elseif ($customer) {
+                    $recipientAddress = $customer->address ?? '';
+                }
+
                 // Item descriptions: join product names
                 $itemDesc = $order->items->pluck('product_name')->implode(', ');
                 $totalItems = $order->items->sum('quantity');
@@ -2244,7 +2255,7 @@ class OrderController extends Controller
                     $order->order_number, // MerchantOrderId
                     $order->customer_name ?? ($customer ? $customer->name : ''), // RecipientName
                     $order->customer_phone ?? ($customer ? $customer->phone : ''), // RecipientPhone
-                    $address, // RecipientAddress
+                    $recipientAddress, // RecipientAddress
                     $shipping['city'] ?? '', // RecipientCity
                     $shipping['zone'] ?? '', // RecipientZone
                     $shipping['area'] ?? '', // RecipientArea

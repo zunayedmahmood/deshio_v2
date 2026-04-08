@@ -16,7 +16,8 @@ import {
   Store,
   Clock,
   ExternalLink,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
@@ -30,6 +31,7 @@ export default function TransactionDetailPage() {
   const router = useRouter();
   
   const [transaction, setTransaction] = useState<Transaction | null>(null);
+  const [relatedTransactions, setRelatedTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,6 +47,7 @@ export default function TransactionDetailPage() {
       const res = await transactionService.getTransactionById(Number(id));
       if (res.success) {
         setTransaction(res.data);
+        setRelatedTransactions(res.related_transactions || []);
       } else {
         setError('Transaction not found');
       }
@@ -60,8 +63,21 @@ export default function TransactionDetailPage() {
     return new Intl.NumberFormat('en-BD', { style: 'currency', currency: 'BDT' }).format(amount);
   };
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Invalid Date';
+    
+    // Handle midnight UTC dates (likely date-only from backend)
+    if (dateString.endsWith('T00:00:00.000000Z') || dateString.endsWith(' 00:00:00')) {
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    }
+
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -127,7 +143,7 @@ export default function TransactionDetailPage() {
                         <div className="flex items-start justify-between gap-4 mb-4">
                           <div>
                             <div className="flex items-center gap-2 text-xs font-mono text-blue-600 dark:text-blue-400 uppercase tracking-widest font-bold mb-1">
-                              {(transaction as any).display_id || `TXN-${transaction.id}`}
+                              {(transaction as any).display_id || (transaction as any).referenceId || `TXN-${transaction.id}`}
                               <ChevronRight className="w-3 h-3" />
                               {transaction.referenceLabel || 'Manual Entry'}
                             </div>
@@ -136,9 +152,9 @@ export default function TransactionDetailPage() {
                             </h1>
                           </div>
                           <div className={`px-4 py-1.5 rounded-full text-sm font-bold capitalize ${
-                            transaction.type === 'debit' 
-                              ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300' 
-                              : 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+                            transaction.type === 'expense' 
+                              ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300' 
+                              : 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300'
                           }`}>
                             {transaction.type}
                           </div>
@@ -158,7 +174,7 @@ export default function TransactionDetailPage() {
                             <div>
                               <p className="text-xs text-gray-500 uppercase font-semibold">Date & Time</p>
                               <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                {formatDate(transaction.transaction_date)}
+                                {formatDate(transaction.transactionDate || transaction.createdAt)}
                               </p>
                             </div>
                           </div>
@@ -178,10 +194,9 @@ export default function TransactionDetailPage() {
                               <DollarSign className="w-5 h-5 text-gray-500" />
                             </div>
                             <div>
-                              <p className="text-xs text-gray-500 uppercase font-semibold">Account</p>
+                              <p className="text-xs text-gray-500 uppercase font-semibold">Source Identifier</p>
                               <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                                {transaction.referenceId && <span className="font-mono text-[10px] mr-2 opacity-60">#{transaction.referenceId}</span>}
-                                {transaction.name}
+                                {transaction.referenceId && <span className="font-mono text-xs mr-2 opacity-60">#{transaction.referenceId}</span>}
                               </p>
                             </div>
                           </div>
@@ -195,7 +210,7 @@ export default function TransactionDetailPage() {
                             <div>
                               <p className="text-xs text-gray-500 uppercase font-semibold">Store Context</p>
                               <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                {transaction.store_id === null ? 'Errum (Global HQ)' : (`Store #${transaction.store_id}`)}
+                                {transaction.store_name || (transaction.store_id === null ? 'Errum (Global HQ)' : `Store #${transaction.store_id}`)}
                               </p>
                             </div>
                           </div>
@@ -206,7 +221,7 @@ export default function TransactionDetailPage() {
                             </div>
                             <div>
                               <p className="text-xs text-gray-500 uppercase font-semibold">Created By</p>
-                              <p className="text-sm font-medium text-gray-900 dark:text-white">System Admin</p>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">{transaction.createdBy || 'System'}</p>
                             </div>
                           </div>
 
@@ -225,6 +240,60 @@ export default function TransactionDetailPage() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Related Transactions */}
+                    {relatedTransactions.length > 0 && (
+                      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-8">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                          <RefreshCw className="w-5 h-5 text-gray-400" />
+                          Related Transactions (Double-Entry Part)
+                        </h3>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className="text-xs text-gray-500 uppercase tracking-wider border-b border-gray-100 dark:border-gray-700">
+                                <th className="pb-4 pr-4 font-bold">Transaction ID</th>
+                                <th className="pb-4 pr-4 font-bold">Account</th>
+                                <th className="pb-4 pr-4 font-bold">Type</th>
+                                <th className="pb-4 font-bold text-right">Amount</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50 dark:divide-gray-750">
+                              {relatedTransactions.map((related: any) => (
+                                <tr 
+                                  key={related.id}
+                                  onClick={() => router.push(`/transaction/${related.id}`)}
+                                  className={`group cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750/50 transition-colors ${related.id === Number(id) ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}
+                                >
+                                  <td className="py-4 pr-4 text-xs font-mono font-bold text-blue-600 dark:text-blue-400">
+                                    {related.display_id || related.transaction_number || `TXN-${related.id}`}
+                                    {related.id === Number(id) && <span className="ml-2 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/50 rounded-md text-[8px] uppercase tracking-tighter">Current</span>}
+                                  </td>
+                                  <td className="py-4 pr-4 text-sm">
+                                    <div className="font-semibold text-gray-900 dark:text-white">
+                                      {related.account?.name || 'Manual Entry'}
+                                    </div>
+                                    <div className="text-[10px] text-gray-500">Code: {related.account?.account_code || 'N/A'}</div>
+                                  </td>
+                                  <td className="py-4 pr-4">
+                                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                                      related.type === 'credit'
+                                        ? 'bg-orange-50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 border border-orange-100 dark:border-orange-900/50'
+                                        : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50'
+                                    }`}>
+                                      {related.type}
+                                    </span>
+                                  </td>
+                                  <td className={`py-4 text-sm font-black text-right ${related.type === 'debit' ? 'text-emerald-600' : 'text-orange-600'}`}>
+                                    {related.type === 'debit' ? '+' : '-'}৳{parseFloat(related.amount).toLocaleString()}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Metadata & Description */}
                     <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-8">
@@ -258,7 +327,11 @@ export default function TransactionDetailPage() {
                                 <ExternalLink className="w-3 h-3" />
                                 Referenced Document ID: <span className="font-mono bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-900 dark:text-white">{transaction.referenceId}</span>
                               </div>
-                              <button className="text-xs text-blue-600 font-bold hover:underline">
+                              <button 
+                                onClick={() => loadTransaction()}
+                                className="text-xs text-blue-600 font-bold hover:underline flex items-center gap-1"
+                              >
+                                <RefreshCw className="w-3 h-3" />
                                 Sync Data
                               </button>
                             </div>
@@ -323,15 +396,15 @@ export default function TransactionDetailPage() {
                           <div className="min-w-[8px] h-2 bg-green-500 rounded-full mt-1.5"></div>
                           <div>
                             <p className="text-xs font-bold text-gray-900 dark:text-white leading-tight">Transaction Completed</p>
-                            <p className="text-[10px] text-gray-500 mt-0.5">{formatDate(transaction.transaction_date)}</p>
+                            <p className="text-[10px] text-gray-500 mt-0.5">{formatDate(transaction.transactionDate || transaction.createdAt)}</p>
                           </div>
                         </div>
-                        <div className="flex gap-3 relative pb-4">
-                          <div className="absolute left-[3px] top-4 bottom-0 w-[2px] bg-gray-100 dark:bg-gray-700"></div>
+                        <div className="flex gap-3 relative">
+                          <div className="absolute left-[3.5px] top-4 bottom-[-16px] w-[1px] bg-gray-200 dark:bg-gray-700"></div>
                           <div className="min-w-[8px] h-2 bg-blue-500 rounded-full mt-1.5 z-10"></div>
                           <div>
                             <p className="text-xs font-bold text-gray-900 dark:text-white leading-tight">Entry Initialized</p>
-                            <p className="text-[10px] text-gray-500 mt-0.5">{formatDate(transaction.transaction_date)}</p>
+                            <p className="text-[10px] text-gray-500 mt-0.5">{formatDate(transaction.createdAt)}</p>
                           </div>
                         </div>
                       </div>

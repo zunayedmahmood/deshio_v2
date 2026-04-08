@@ -486,12 +486,16 @@ export interface CreateTransactionData {
   amount: number;
   type: 'debit' | 'credit';
   account_id: number;
+  counter_account_id?: number | string;
   description?: string;
   store_id?: number | string;
   reference_type?: string;
   reference_id?: number;
   metadata?: any;
   status?: 'pending' | 'completed' | 'failed' | 'cancelled';
+  note?: string;
+  reference_note?: string;
+  receipt_image?: string;
 }
 
 export interface UpdateTransactionData {

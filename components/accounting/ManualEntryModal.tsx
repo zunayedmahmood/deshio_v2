@@ -4,6 +4,7 @@ import { useState, useEffect, DragEvent, ChangeEvent } from 'react';
 import { X, Upload, Calendar, DollarSign, Tag, FileText, Image as ImageIcon, Loader2, Store } from 'lucide-react';
 import transactionService, { Category } from '@/services/transactionService';
 import storeService, { Store as StoreType } from '@/services/storeService';
+import accountingService, { Account } from '@/services/accountingService';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 
@@ -20,8 +21,9 @@ export default function ManualEntryModal({ isOpen, onClose, onSuccess }: ManualE
   const [formData, setFormData] = useState({
     transaction_date: new Date().toISOString().split('T')[0],
     amount: '',
-    type: 'debit' as 'debit' | 'credit', // Backend expects debit/credit
-    account_id: '1', // Default cash account
+    type: 'debit' as 'debit' | 'credit', // This will be the type for account_id
+    account_id: '', // Primary account (e.g. Cash)
+    counter_account_id: '', // Secondary account (e.g. Expense)
     description: '',
     store_id: isAdmin ? 'errum' : (userStoreId?.toString() || ''),
     note: '',
@@ -29,7 +31,7 @@ export default function ManualEntryModal({ isOpen, onClose, onSuccess }: ManualE
     receipt_image: ''
   });
 
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [stores, setStores] = useState<StoreType[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
@@ -44,7 +46,8 @@ export default function ManualEntryModal({ isOpen, onClose, onSuccess }: ManualE
         transaction_date: new Date().toISOString().split('T')[0],
         amount: '',
         type: 'debit',
-        account_id: '1',
+        account_id: '',
+        counter_account_id: '',
         description: '',
         store_id: isAdmin ? 'errum' : (userStoreId?.toString() || ''),
         note: '',
@@ -58,12 +61,20 @@ export default function ManualEntryModal({ isOpen, onClose, onSuccess }: ManualE
   const loadData = async () => {
     setIsLoadingData(true);
     try {
-      const [cats, storesList] = await Promise.all([
-        transactionService.getCategories(),
+      const [accountsRes, storesList] = await Promise.all([
+        accountingService.accounts.getAccounts({ per_page: 500, active: true }),
         isAdmin ? storeService.getAllStores() : Promise.resolve([])
       ]);
-      setCategories(cats);
+      
+      const allAccounts = accountsRes?.data?.data || accountsRes?.data || [];
+      setAccounts(allAccounts);
       setStores(storesList);
+
+      // Set default primary account (find first cash/asset account)
+      const defaultCash = allAccounts.find((a: any) => a.sub_type === 'cash' || a.type === 'asset');
+      if (defaultCash && !formData.account_id) {
+        setFormData(prev => ({ ...prev, account_id: defaultCash.id.toString() }));
+      }
     } catch (error) {
       console.error('Failed to load modal data:', error);
       toast.error('Failed to load necessary data');
@@ -113,8 +124,8 @@ export default function ManualEntryModal({ isOpen, onClose, onSuccess }: ManualE
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.description || !formData.amount || !formData.transaction_date) {
-      toast.error('Please fill in required fields');
+    if (!formData.description || !formData.amount || !formData.transaction_date || !formData.account_id || !formData.counter_account_id) {
+      toast.error('Please fill in all required fields including accounts');
       return;
     }
 
@@ -123,12 +134,14 @@ export default function ManualEntryModal({ isOpen, onClose, onSuccess }: ManualE
       const payload = {
         ...formData,
         amount: parseFloat(formData.amount),
+        account_id: parseInt(formData.account_id),
+        counter_account_id: parseInt(formData.counter_account_id),
         // If store_id is 'errum', send null to backend for global scoping
         store_id: formData.store_id === 'errum' ? null : formData.store_id
       };
       
       await transactionService.createTransaction(payload as any);
-      toast.success('Transaction created successfully');
+      toast.success('Balanced journal entries created successfully');
       onSuccess();
       onClose();
     } catch (error: any) {
@@ -207,31 +220,95 @@ export default function ManualEntryModal({ isOpen, onClose, onSuccess }: ManualE
                 {/* Type Selection */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    Flow Type
+                    Transaction Nature
                   </label>
                   <div className="flex p-1 bg-gray-100 dark:bg-black border border-gray-200 dark:border-gray-800 rounded-xl">
-                    <button
-                      type="button"
-                      onClick={() => handleInputChange('type', 'credit')}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                        formData.type === 'credit'
-                          ? 'bg-white dark:bg-gray-800 text-green-600 shadow-sm'
-                          : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                      }`}
-                    >
-                      Credit (Income)
-                    </button>
                     <button
                       type="button"
                       onClick={() => handleInputChange('type', 'debit')}
                       className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
                         formData.type === 'debit'
-                          ? 'bg-white dark:bg-gray-800 text-red-600 shadow-sm'
+                          ? 'bg-white dark:bg-gray-800 text-blue-600 shadow-sm'
                           : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                       }`}
                     >
-                      Debit (Expense)
+                      Money In (Income)
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => handleInputChange('type', 'credit')}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+                        formData.type === 'credit'
+                          ? 'bg-white dark:bg-gray-800 text-orange-600 shadow-sm'
+                          : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                      }`}
+                    >
+                      Money Out (Expense)
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-1 italic">
+                    {formData.type === 'debit' 
+                      ? "Increases Bank/Cash balance (Debit Asset)" 
+                      : "Decreases Bank/Cash balance (Credit Asset)"}
+                  </p>
+                </div>
+
+                {/* Primary Account selection (Cash/Bank) */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    Operating Account (Cash/Bank) *
+                  </label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <select
+                      value={formData.account_id}
+                      onChange={(e) => handleInputChange('account_id', e.target.value)}
+                      className="w-full pl-10 pr-3 py-2.5 bg-white dark:bg-black border border-gray-200 dark:border-gray-800 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm text-gray-900 dark:text-white appearance-none"
+                      required
+                    >
+                      <option value="">Select Account</option>
+                      {accounts.filter(a => a.type === 'asset').map(acc => (
+                        <option key={acc.id} value={acc.id}>
+                          {acc.name} ({acc.account_code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Counter Account Selection (The "Why") */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    {formData.type === 'debit' ? 'Income Category' : 'Expense Category'} *
+                  </label>
+                  <div className="relative">
+                    <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <select
+                      value={formData.counter_account_id}
+                      onChange={(e) => handleInputChange('counter_account_id', e.target.value)}
+                      className="w-full pl-10 pr-3 py-2.5 bg-white dark:bg-black border border-gray-200 dark:border-gray-800 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm text-gray-900 dark:text-white appearance-none"
+                      required
+                    >
+                      <option value="">Select Category</option>
+                      {accounts
+                        .filter(a => formData.type === 'debit' ? a.type === 'income' : a.type === 'expense')
+                        .map(acc => (
+                          <option key={acc.id} value={acc.id}>
+                            {acc.name} ({acc.account_code})
+                          </option>
+                        ))
+                      }
+                      <optgroup label="Other Accounts">
+                        {accounts
+                          .filter(a => a.type !== 'asset' && (formData.type === 'debit' ? a.type !== 'income' : a.type !== 'expense'))
+                          .map(acc => (
+                            <option key={acc.id} value={acc.id}>
+                              {acc.name} ({acc.account_code})
+                            </option>
+                          ))
+                        }
+                      </optgroup>
+                    </select>
                   </div>
                 </div>
 

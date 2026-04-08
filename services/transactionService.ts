@@ -59,12 +59,16 @@ export interface Transaction {
   type: 'income' | 'expense';
   amount: number;
   category: string;
+  transactionDate: string;
   source: string;
   createdAt: string;
   comment?: string;
   receiptImage?: string;
   referenceId?: string;
   referenceLabel?: string;
+  store_id?: number;
+  store_name?: string;
+  createdBy?: string;
 }
 
 export interface Category {
@@ -166,6 +170,12 @@ function mapTransactionToUI(transaction: BackendTransaction): Transaction {
     name = `Order Payment - ${orderNum}`;
   }
 
+  // Normalize source to strings, ensuring 'manual' is default for unknowns
+  let normalizedSource = source || 'manual';
+  if (!normalizedSource || normalizedSource === '' || normalizedSource === 'null' || normalizedSource === 'undefined') {
+    normalizedSource = 'manual';
+  }
+
   return {
     id: transaction.id,
     name: name,
@@ -173,12 +183,16 @@ function mapTransactionToUI(transaction: BackendTransaction): Transaction {
     type: actualType,
     amount: parseFloat(String(transaction.amount)) || 0, // Ensure it's a number
     category: category,
-    source: source,
-    createdAt: transaction.transaction_date || transaction.createdAt || transaction.created_at || new Date().toISOString(),
+    source: normalizedSource,
+    transactionDate: transaction.transaction_date || transaction.createdAt || transaction.created_at || new Date().toISOString(),
+    createdAt: transaction.created_at || transaction.createdAt || transaction.transaction_date || new Date().toISOString(),
     comment: metadata.comment || metadata.note || undefined,
     receiptImage: metadata.receiptImage || (metadata.attachments && metadata.attachments[0]?.url) || undefined,
     referenceId: transaction.display_id || (transaction.reference_id ? `${transaction.reference_type}-${transaction.reference_id}` : transaction.transaction_number),
-    referenceLabel: transaction.reference_label || source,
+    referenceLabel: transaction.reference_label || normalizedSource,
+    store_id: transaction.store_id,
+    store_name: transaction.store?.name,
+    createdBy: (transaction as any).created_by?.name || 'System',
   };
 }
 
@@ -269,7 +283,9 @@ const transactionService = {
       const res = await this.getTransaction(id);
       return {
         success: true,
-        data: res.transaction
+        data: res.transaction,
+        related_transactions: res.related_transactions || [],
+        attachments: res.attachments || []
       };
     } catch (error) {
       return { success: false, data: null };

@@ -79,6 +79,7 @@ class TransactionController extends Controller
             'receipt_image' => 'nullable|string', // Base64
             'note' => 'nullable|string',
             'reference_note' => 'nullable|string',
+            'counter_account_id' => 'nullable|exists:accounts,id',
         ]);
 
         if ($validator->fails()) {
@@ -154,18 +155,51 @@ class TransactionController extends Controller
             $data['reference_type'] = 'manual';
         }
 
+        // --- DOUBLE-ENTRY ENFORCEMENT ---
+        // If counter_account_id is provided, create two transactions (Double Entry)
+        if (!empty($request->counter_account_id)) {
+            $groupId = (string) \Illuminate\Support\Str::uuid();
+            $data['metadata'] = array_merge($data['metadata'] ?? [], ['group_id' => $groupId]);
+            $counterAccountId = $request->counter_account_id;
+            
+            return DB::transaction(function () use ($data, $counterAccountId, $groupId, $user) {
+                // 1. Primary Transaction
+                $transaction = Transaction::create($data);
+                
+                // 2. Counter-entry Transaction
+                $counterData = $data;
+                $counterData['account_id'] = $counterAccountId;
+                $counterData['type'] = ($data['type'] === 'debit') ? 'credit' : 'debit';
+                $counterData['transaction_number'] = null; // Let model generate new one
+                
+                Transaction::create($counterData);
+                
+                return response()->json([
+                    'success' => true,
+                    'data' => $transaction->load(['account', 'store', 'createdBy']),
+                    'message' => 'Balanced journal entry created successfully'
+                ], 201);
+            });
+        }
+
+        // Single-entry (Legacy/Wait-listed)
         $transaction = Transaction::create($data);
 
         return response()->json([
             'success' => true,
             'data' => $transaction->load(['account', 'store', 'createdBy']),
-            'message' => 'Transaction created successfully'
+            'message' => 'Transaction created successfully (Unbalanced)'
         ], 201);
     }
 
     public function show($id)
     {
-        $transaction = Transaction::with(['account', 'store', 'createdBy', 'reference'])->findOrFail($id);
+        $transaction = Transaction::with(['account', 'store', 'createdBy'])->findOrFail($id);
+        
+        // Only load reference if it's not a manual entry to avoid "Class 'manual' not found" errors
+        if ($transaction->reference_type && $transaction->reference_type !== 'manual') {
+            $transaction->load('reference');
+        }
         $related = $transaction->getRelatedTransactions();
 
         return response()->json([
