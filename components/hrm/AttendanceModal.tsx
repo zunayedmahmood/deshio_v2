@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Clock, CheckCircle2, AlertCircle, Edit3 } from 'lucide-react';
+import { X, Clock, Edit3, AlertCircle } from 'lucide-react';
 import hrmService from '@/services/hrmService';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
@@ -18,10 +18,8 @@ interface AttendanceModalProps {
 
 export default function AttendanceModal({ isOpen, onClose, employee, type, record, storeId, onSuccess }: AttendanceModalProps) {
   const now = new Date();
-  // Ensure H:i format (no seconds) — backend validates date_format:H:i
-  const [time, setTime] = useState(format(now, 'HH:mm'));
-  // Strip seconds if backend returns H:i:s format
   const stripSecs = (t?: string | null) => t ? t.slice(0, 5) : '';
+  const [time, setTime] = useState(format(now, 'HH:mm'));
   const [inTime, setInTime] = useState(stripSecs(record?.clock_in || record?.in_time));
   const [outTime, setOutTime] = useState(stripSecs(record?.clock_out || record?.out_time));
   const [status, setStatus] = useState(record?.status?.toLowerCase() || 'present');
@@ -31,188 +29,159 @@ export default function AttendanceModal({ isOpen, onClose, employee, type, recor
 
   if (!isOpen) return null;
 
-  const todayDate = format(now, 'yyyy-MM-dd');
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
       let res;
       if (type === 'edit') {
-        if (!reason.trim()) {
-          toast.error('Reason is required for manual edits.');
-          setIsLoading(false);
-          return;
-        }
-        if (!record?.id) {
-          toast.error('No attendance record found to edit.');
-          setIsLoading(false);
-          return;
-        }
+        if (!reason.trim()) { toast.error('Reason is required for manual edits.'); setIsLoading(false); return; }
+        if (!record?.id) { toast.error('No record found to edit.'); setIsLoading(false); return; }
         res = await hrmService.updateAttendance(record.id, {
-          status,
-          in_time: inTime ? inTime.slice(0, 5) : null,
-          out_time: outTime ? outTime.slice(0, 5) : null,
-          reason,
-          notes
+          status, in_time: inTime ? inTime.slice(0, 5) : null, out_time: outTime ? outTime.slice(0, 5) : null, reason, notes
         });
       } else {
-        // check_in or check_out — build the bulk-mark payload the backend expects
-        // Helper to ensure H:i format (strip seconds if present)
-        const toHHmm = (t?: string | null) => t ? t.slice(0, 5) : undefined;
-
         res = await hrmService.markAttendance({
           store_id: storeId,
-          attendance_date: todayDate,
-          entries: [
-            {
-              employee_id: Number(employee.id),
-              status: type === 'check_in' ? 'present' : 'present',
-              in_time: type === 'check_in' ? toHHmm(time) : toHHmm(record?.clock_in || record?.in_time),
-              out_time: type === 'check_out' ? toHHmm(time) : undefined,
-            }
-          ]
+          attendance_date: format(now, 'yyyy-MM-dd'),
+          entries: [{
+            employee_id: Number(employee.id),
+            status: 'present',
+            in_time: type === 'check_in' ? time.slice(0, 5) : stripSecs(record?.clock_in || record?.in_time) || undefined,
+            out_time: type === 'check_out' ? time.slice(0, 5) : undefined,
+          }]
         });
       }
-
-      if (res?.success) {
-        toast.success(`${employee.name}'s attendance updated!`);
-        onSuccess();
-        onClose();
-      } else {
-        toast.error(res?.message || 'Failed to update attendance');
-      }
+      if (res?.success) { toast.success(`${employee.name}'s attendance updated!`); onSuccess(); onClose(); }
+      else toast.error(res?.message || 'Failed to update attendance');
     } catch (error: any) {
       toast.error(error?.response?.data?.message || error?.message || 'An error occurred');
-    } finally {
-      setIsLoading(false);
-    }
+    } finally { setIsLoading(false); }
   };
 
-  const typeLabel = type === 'check_in' ? 'Clock In' : type === 'check_out' ? 'Clock Out' : 'Edit Attendance';
-  const buttonColor = type === 'check_in' ? 'bg-black dark:bg-blue-600' : type === 'edit' ? 'bg-blue-600' : 'bg-red-600';
+  const isCheckIn = type === 'check_in';
+  const isCheckOut = type === 'check_out';
+  const isEdit = type === 'edit';
+
+  const accentColor = isCheckIn ? '#34d399' : isCheckOut ? '#f87171' : '#818cf8';
+  const accentBg = isCheckIn ? 'rgba(52,211,153,0.1)' : isCheckOut ? 'rgba(239,68,68,0.1)' : 'rgba(99,102,241,0.1)';
+  const accentBorder = isCheckIn ? 'rgba(52,211,153,0.2)' : isCheckOut ? 'rgba(239,68,68,0.2)' : 'rgba(99,102,241,0.2)';
+  const btnBg = isCheckIn ? 'linear-gradient(135deg, #059669, #34d399)' : isCheckOut ? 'linear-gradient(135deg, #dc2626, #f87171)' : 'linear-gradient(135deg, #4f46e5, #818cf8)';
+  const typeLabel = isCheckIn ? 'Clock In' : isCheckOut ? 'Clock Out' : 'Edit Attendance';
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-gray-100 dark:border-gray-700">
-        <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            {type === 'edit' ? <Edit3 className="w-6 h-6 text-blue-500" /> : <Clock className="w-6 h-6 text-blue-500" />}
-            {typeLabel}
-          </h3>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
-            <X className="w-5 h-5 text-gray-500" />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}>
+      <div className="w-full max-w-sm overflow-hidden rounded-3xl shadow-2xl"
+        style={{ background: '#0e0e18', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 40px 100px rgba(0,0,0,0.6)' }}>
+
+        {/* Top accent bar */}
+        <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${accentColor}00, ${accentColor}, ${accentColor}00)` }} />
+
+        {/* Header */}
+        <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: accentBg, border: `1px solid ${accentBorder}` }}>
+              {isEdit ? <Edit3 className="w-4 h-4" style={{ color: accentColor }} /> : <Clock className="w-4 h-4" style={{ color: accentColor }} />}
+            </div>
+            <h3 className="text-white font-700 text-base" style={{ fontFamily: 'Syne, sans-serif' }}>{typeLabel}</h3>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+            style={{ background: 'rgba(255,255,255,0.04)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}>
+            <X className="w-3.5 h-3.5 text-muted" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[75vh] overflow-y-auto">
-          <div className="text-center">
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-widest font-semibold">Employee</p>
-            <p className="text-2xl font-black text-gray-900 dark:text-white underline decoration-blue-500 decoration-4 underline-offset-4">
-              {employee.name}
-            </p>
-            <p className="text-xs text-gray-400 mt-2">{format(now, 'EEEE, MMMM d, yyyy')}</p>
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {/* Employee chip */}
+          <div className="flex items-center gap-3 p-3.5 rounded-2xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="avatar-ring w-9 h-9 shrink-0">
+              <div className="w-full h-full rounded-full flex items-center justify-center text-sm font-700"
+                style={{ background: '#0a0a0f', color: '#f0d080', fontFamily: 'Syne, sans-serif' }}>
+                {employee.name.charAt(0).toUpperCase()}
+              </div>
+            </div>
+            <div>
+              <p className="text-white text-sm font-700">{employee.name}</p>
+              <p className="text-muted text-[10px]">{format(now, 'EEEE, MMM d, yyyy')}</p>
+            </div>
           </div>
 
-          {type !== 'edit' && (
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                {type === 'check_in' ? 'Clock In Time' : 'Clock Out Time'}
+          {/* Time input for check_in / check_out */}
+          {!isEdit && (
+            <div>
+              <label className="block text-muted text-[10px] uppercase tracking-widest font-600 mb-2">
+                {isCheckIn ? 'Clock In Time' : 'Clock Out Time'}
               </label>
-              <input
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="w-full text-4xl font-bold text-center py-4 bg-gray-50 dark:bg-gray-700 rounded-2xl border-2 border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-white outline-none"
-                required
-              />
-              <p className="text-xs text-gray-400 text-center">
-                Current time: {format(now, 'hh:mm a')}
-              </p>
+              <input type="time" value={time} onChange={(e) => setTime(e.target.value)} required
+                className="w-full text-center text-4xl font-800 py-4 rounded-2xl border-none outline-none focus:ring-2"
+                style={{ background: 'rgba(255,255,255,0.04)', color: accentColor, fontFamily: 'Syne, sans-serif', focusRingColor: accentColor }}
+                onFocus={e => (e.currentTarget.style.boxShadow = `0 0 0 2px ${accentBorder}`)}
+                onBlur={e => (e.currentTarget.style.boxShadow = 'none')} />
+              <p className="text-muted text-[10px] text-center mt-1.5">Now: {format(now, 'hh:mm a')}</p>
             </div>
           )}
 
-          {type === 'edit' && (
-            <div className="space-y-4 text-left">
+          {/* Edit fields */}
+          {isEdit && (
+            <div className="space-y-3.5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 outline-none focus:border-blue-500"
-                >
-                  <option value="present">Present</option>
-                  <option value="late">Late</option>
-                  <option value="absent">Absent</option>
-                  <option value="leave">Leave</option>
-                  <option value="half_day">Half Day</option>
+                <label className="block text-muted text-[10px] uppercase tracking-widest font-600 mb-1.5">Status</label>
+                <select value={status} onChange={(e) => setStatus(e.target.value)}
+                  className="select-dark w-full px-4 py-2.5 rounded-xl text-sm">
+                  {['present', 'late', 'absent', 'leave', 'half_day'].map(s => (
+                    <option key={s} value={s}>{s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
+                  ))}
                 </select>
               </div>
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">In Time</label>
-                  <input
-                    type="time"
-                    value={inTime}
-                    onChange={(e) => setInTime(e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 outline-none"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Out Time</label>
-                  <input
-                    type="time"
-                    value={outTime}
-                    onChange={(e) => setOutTime(e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 outline-none"
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: 'In Time', value: inTime, setter: setInTime },
+                  { label: 'Out Time', value: outTime, setter: setOutTime },
+                ].map(f => (
+                  <div key={f.label}>
+                    <label className="block text-muted text-[10px] uppercase tracking-widest font-600 mb-1.5">{f.label}</label>
+                    <input type="time" value={f.value} onChange={(e) => f.setter(e.target.value)}
+                      className="input-dark w-full px-3 py-2 rounded-xl text-sm" />
+                  </div>
+                ))}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Reason for Edit <span className="text-red-500">*</span>
+                <label className="block text-muted text-[10px] uppercase tracking-widest font-600 mb-1.5">
+                  Reason <span style={{ color: '#f87171' }}>*</span>
                 </label>
-                <input
-                  type="text"
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="e.g. Forgot to clock in"
-                  required
-                  className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 outline-none"
-                />
+                <input type="text" value={reason} onChange={(e) => setReason(e.target.value)}
+                  placeholder="e.g. Forgot to clock in" required
+                  className="input-dark w-full px-3 py-2.5 rounded-xl text-sm" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</label>
-                <input
-                  type="text"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Optional details..."
-                  className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 outline-none"
-                />
+                <label className="block text-muted text-[10px] uppercase tracking-widest font-600 mb-1.5">Notes</label>
+                <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Optional details..." className="input-dark w-full px-3 py-2.5 rounded-xl text-sm" />
               </div>
             </div>
           )}
 
-          {type !== 'edit' && (
-            <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20 flex gap-3 text-sm text-blue-800 dark:text-blue-300">
-              <AlertCircle className="w-5 h-5 shrink-0" />
-              <p>
-                {type === 'check_in'
-                  ? 'Late entries after grace period will be automatically flagged.'
-                  : 'Early exits before shift end will be flagged by the policy.'}
+          {/* Info hint */}
+          {!isEdit && (
+            <div className="flex items-start gap-2.5 p-3 rounded-xl" style={{ background: accentBg, border: `1px solid ${accentBorder}` }}>
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: accentColor }} />
+              <p className="text-[11px]" style={{ color: accentColor }}>
+                {isCheckIn ? 'Late arrivals after shift start will be auto-flagged.' : 'Early exits before shift end will be noted.'}
               </p>
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className={`w-full py-4 px-6 rounded-2xl text-white font-bold text-lg shadow-lg transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${buttonColor}`}
-          >
+          {/* Submit */}
+          <button type="submit" disabled={isLoading}
+            className="w-full py-3.5 rounded-2xl text-sm font-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ background: btnBg, color: 'white', boxShadow: `0 8px 24px ${accentColor}30` }}
+            onMouseEnter={e => !isLoading && ((e.currentTarget as HTMLElement).style.opacity = '0.9')}
+            onMouseLeave={e => !isLoading && ((e.currentTarget as HTMLElement).style.opacity = '1')}>
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">
-                <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 Processing...
               </span>
             ) : `Confirm ${typeLabel}`}

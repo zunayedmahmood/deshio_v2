@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Award, AlertTriangle, Save, Loader2 } from 'lucide-react';
+import { X, Zap, AlertCircle } from 'lucide-react';
 import hrmService from '@/services/hrmService';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
@@ -15,194 +15,132 @@ interface RewardFineDialogProps {
   editData?: any;
 }
 
-export default function RewardFineDialog({ 
-  isOpen, 
-  onClose, 
-  storeId,
-  employee, 
-  onSuccess,
-  editData
-}: RewardFineDialogProps) {
+export default function RewardFineDialog({ isOpen, onClose, storeId, employee, onSuccess, editData }: RewardFineDialogProps) {
   const [type, setType] = useState<'reward' | 'fine'>('reward');
-  const [amount, setAmount] = useState<string>('');
-  const [title, setTitle] = useState<string>('');
-  const [notes, setNotes] = useState<string>('');
-  const [date, setDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const [amount, setAmount] = useState('');
+  const [title, setTitle] = useState('');
+  const [notes, setNotes] = useState('');
+  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (editData) {
-      setType(editData.entry_type);
-      setAmount(editData.amount.toString());
-      setTitle(editData.title);
-      setNotes(editData.notes || '');
-      setDate(editData.entry_date);
-    } else {
-      // Reset for new
-      setType('reward');
-      setAmount('');
-      setTitle('');
-      setNotes('');
-      setDate(format(new Date(), 'yyyy-MM-dd'));
-    }
+    if (editData) { setType(editData.entry_type); setAmount(editData.amount.toString()); setTitle(editData.title); setNotes(editData.notes || ''); setDate(editData.entry_date); }
+    else { setType('reward'); setAmount(''); setTitle(''); setNotes(''); setDate(format(new Date(), 'yyyy-MM-dd')); }
   }, [editData, isOpen]);
 
   if (!isOpen || !employee) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-      toast.error('Please enter a valid amount');
-      return;
-    }
-
+    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) { toast.error('Please enter a valid amount'); return; }
     setIsLoading(true);
     try {
       let res;
       if (editData) {
-        res = await hrmService.updateRewardFine(editData.id, {
-          entry_date: date,
-          entry_type: type,
-          amount: Number(amount),
-          title: title,
-          notes: notes,
-          reason: 'Manual update from UI'
-        });
+        res = await hrmService.updateRewardFine(editData.id, { entry_date: date, entry_type: type, amount: Number(amount), title, notes, reason: 'Manual update from UI' });
       } else {
-        res = await hrmService.createRewardFine({
-          store_id: storeId,
-          employee_id: employee.id,
-          entry_date: date,
-          entry_type: type,
-          amount: Number(amount),
-          title: title,
-          notes: notes
-        });
+        res = await hrmService.createRewardFine({ store_id: storeId, employee_id: employee.id, entry_date: date, entry_type: type, amount: Number(amount), title, notes });
       }
-
-      if (res.success) {
-        toast.success(`${type === 'reward' ? 'Reward' : 'Fine'} ${editData ? 'updated' : 'created'} for ${employee.name}`);
-        onSuccess();
-        onClose();
-      } else {
-        toast.error(res.message || 'Operation failed');
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'An error occurred');
-    } finally {
-      setIsLoading(false);
-    }
+      if (res.success) { toast.success(editData ? 'Entry updated!' : 'Entry created!'); onSuccess(); onClose(); }
+      else toast.error(res.message || 'Failed');
+    } catch (error: any) { toast.error(error.message || 'Error'); }
+    finally { setIsLoading(false); }
   };
 
+  const isReward = type === 'reward';
+  const accentColor = isReward ? '#34d399' : '#f87171';
+  const accentBg = isReward ? 'rgba(52,211,153,0.1)' : 'rgba(239,68,68,0.1)';
+  const accentBorder = isReward ? 'rgba(52,211,153,0.2)' : 'rgba(239,68,68,0.2)';
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-gray-100 dark:border-gray-700">
-        <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            {type === 'reward' ? (
-              <Award className="w-6 h-6 text-yellow-500" />
-            ) : (
-              <AlertTriangle className="w-6 h-6 text-red-500" />
-            )}
-            {editData ? 'Edit Entry' : 'New Reward/Fine'}
-          </h3>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
-            <X className="w-5 h-5 text-gray-500" />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}>
+      <div className="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl"
+        style={{ background: '#0e0e18', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 40px 100px rgba(0,0,0,0.6)' }}>
+        <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${accentColor}00, ${accentColor}, ${accentColor}00)` }} />
+
+        <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: accentBg, border: `1px solid ${accentBorder}` }}>
+              <Zap className="w-4 h-4" style={{ color: accentColor }} />
+            </div>
+            <h3 className="text-white font-700 text-base" style={{ fontFamily: 'Syne, sans-serif' }}>
+              {editData ? 'Edit Entry' : 'Add Reward / Fine'}
+            </h3>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: 'rgba(255,255,255,0.04)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}>
+            <X className="w-3.5 h-3.5 text-muted" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              type="button"
-              onClick={() => setType('reward')}
-              className={`py-3 rounded-2xl font-bold text-sm transition-all ${
-                type === 'reward' 
-                  ? 'bg-yellow-100 text-yellow-700 ring-2 ring-yellow-500' 
-                  : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
-              }`}
-            >
-              Reward
-            </button>
-            <button
-              type="button"
-              onClick={() => setType('fine')}
-              className={`py-3 rounded-2xl font-bold text-sm transition-all ${
-                type === 'fine' 
-                  ? 'bg-red-100 text-red-700 ring-2 ring-red-500' 
-                  : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
-              }`}
-            >
-              Fine
-            </button>
-          </div>
-
-          <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 mt-4">
-            <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold mb-1">Target Employee</p>
-            <p className="text-lg font-bold text-gray-900 dark:text-white">{employee.name}</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-xl border-none focus:ring-2 focus:ring-black text-gray-900 dark:text-white"
-                required
-              />
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Employee */}
+          <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="avatar-ring w-8 h-8 shrink-0">
+              <div className="w-full h-full rounded-full flex items-center justify-center text-xs font-700"
+                style={{ background: '#0a0a0f', color: '#f0d080', fontFamily: 'Syne, sans-serif' }}>
+                {employee.name.charAt(0)}
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount (৳)</label>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-xl border-none focus:ring-2 focus:ring-black text-gray-900 dark:text-white font-bold"
-                required
-                min="0.01"
-                step="0.01"
-              />
+            <p className="text-white text-sm font-600">{employee.name}</p>
+          </div>
+
+          {/* Type Toggle */}
+          <div className="grid grid-cols-2 gap-2">
+            {(['reward', 'fine'] as const).map(t => (
+              <button key={t} type="button" onClick={() => setType(t)}
+                className="py-2.5 rounded-xl text-xs font-700 transition-all"
+                style={{
+                  background: type === t ? (t === 'reward' ? 'rgba(52,211,153,0.15)' : 'rgba(239,68,68,0.15)') : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${type === t ? (t === 'reward' ? 'rgba(52,211,153,0.3)' : 'rgba(239,68,68,0.3)') : 'rgba(255,255,255,0.06)'}`,
+                  color: type === t ? (t === 'reward' ? '#34d399' : '#f87171') : 'rgba(255,255,255,0.4)'
+                }}>
+                {t === 'reward' ? '+ Reward' : '− Fine'}
+              </button>
+            ))}
+          </div>
+
+          {/* Amount */}
+          <div>
+            <label className="block text-muted text-[10px] uppercase tracking-widest font-600 mb-1.5">Amount (৳)</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 font-700 text-sm" style={{ color: accentColor }}>৳</span>
+              <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" required min="1"
+                className="input-dark w-full pl-9 pr-4 py-3 rounded-xl text-2xl font-800" style={{ fontFamily: 'Syne, sans-serif', color: accentColor }} />
             </div>
           </div>
 
+          {/* Title */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reason / Title</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Overtime Bonus, Late Penalty"
-              className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-xl border-none focus:ring-2 focus:ring-black text-gray-900 dark:text-white"
-              required
-            />
+            <label className="block text-muted text-[10px] uppercase tracking-widest font-600 mb-1.5">Title</label>
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Monthly Performance Bonus" required
+              className="input-dark w-full px-4 py-2.5 rounded-xl text-sm" />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Additional Notes</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Explain the context..."
-              rows={3}
-              className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-xl border-none focus:ring-2 focus:ring-black text-gray-900 dark:text-white resize-none text-sm"
-            ></textarea>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-muted text-[10px] uppercase tracking-widest font-600 mb-1.5">Date</label>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required
+                className="input-dark w-full px-3 py-2 rounded-xl text-xs" />
+            </div>
+            <div>
+              <label className="block text-muted text-[10px] uppercase tracking-widest font-600 mb-1.5">Notes</label>
+              <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional"
+                className="input-dark w-full px-3 py-2 rounded-xl text-xs" />
+            </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full py-4 bg-black dark:bg-blue-600 text-white rounded-2xl font-bold text-lg shadow-lg hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-          >
+          <button type="submit" disabled={isLoading}
+            className="w-full py-3.5 rounded-2xl text-sm font-700 transition-all disabled:opacity-50"
+            style={{ background: isReward ? 'linear-gradient(135deg, #059669, #34d399)' : 'linear-gradient(135deg, #dc2626, #f87171)', color: 'white', boxShadow: `0 8px 24px ${accentColor}30` }}>
             {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Save className="w-5 h-5" />
-            )}
-            {editData ? 'Update Record' : 'Save Record'}
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Saving...
+              </span>
+            ) : editData ? 'Update Entry' : `Add ${type.charAt(0).toUpperCase() + type.slice(1)}`}
           </button>
         </form>
       </div>
