@@ -9,6 +9,7 @@ import SSLCommerzPayment from '@/components/ecommerce/SSLCommerzPayment';
 import checkoutService, { Address, OrderItem, PaymentMethod } from '@/services/checkoutService';
 import cartService from '@/services/cartService';
 import guestCheckoutService, { GuestPaymentMethod } from '@/services/guestCheckoutService';
+import campaignService, { CouponValidationResult, CouponErrorCode } from '@/services/campaignService';
 
 export default function CheckoutClient() {
   const router = useRouter();
@@ -52,7 +53,10 @@ export default function CheckoutClient() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>(''); // ✅ CHANGED: stores payment method CODE
   const [orderNotes, setOrderNotes] = useState('');
   const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<{ discount: number; message: string } | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<{ discount: number; message: string; promotion_name?: string } | null>(null);
+  const [couponApplyLoading, setCouponApplyLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
   const [shippingCharge, setShippingCharge] = useState(60);
 
   // Guest checkout state
@@ -399,22 +403,68 @@ export default function CheckoutClient() {
     }
   };
 
-  const handleApplyCoupon = () => {
-    if (!couponCode.trim()) {
-      setError('Please enter a coupon code');
+  const handleApplyCoupon = async () => {
+    const code = couponCode.trim();
+    if (!code) {
+      setCouponError('Please enter a coupon code.');
       return;
     }
 
-    const result = checkoutService.validateCoupon(couponCode, summary.subtotal);
+    setCouponApplyLoading(true);
+    setCouponError(null);
+    setCouponSuccess(null);
 
-    if (result.valid) {
-      setAppliedCoupon({ discount: result.discount, message: result.message });
-      setError(null);
+    // Build cart context
+    const customerIdRaw = localStorage.getItem('customer_id') || localStorage.getItem('customerId');
+    const customer_id = customerIdRaw ? parseInt(customerIdRaw, 10) : null;
+
+    const cart_items = selectedItems.map((item: any) => ({
+      product_id: item.product_id ?? item.id,
+      category_id: item.category_id ?? undefined,
+      quantity: item.quantity ?? 1,
+      unit_price: Number(item.selling_price ?? item.price ?? 0),
+    }));
+
+    const result: CouponValidationResult = await campaignService.validateCouponCode({
+      code,
+      customer_id,
+      cart_subtotal: summary.subtotal,
+      cart_items,
+    });
+
+    setCouponApplyLoading(false);
+
+    if (result.success && result.data) {
+      setAppliedCoupon({
+        discount: result.data.applied_amount,
+        message: result.data.message,
+        promotion_name: result.data.promotion.name,
+      });
+      setCouponSuccess(
+        `${result.data.promotion.name} applied! You save ৳${result.data.applied_amount.toFixed(2)}` +
+          (result.data.capped ? ` (max discount: ৳${result.data.max_discount})` : '')
+      );
     } else {
-      setError(result.message);
       setAppliedCoupon(null);
+      // Human-readable messages for each known error code
+      const errorMessages: Record<CouponErrorCode, string> = {
+        INVALID_CODE: 'Invalid coupon code. Please check and try again.',
+        PROMOTION_EXPIRED: 'This coupon has expired.',
+        PROMOTION_NOT_STARTED: 'This coupon is not active yet.',
+        PROMOTION_LIMIT_REACHED: 'This coupon has reached its usage limit.',
+        PROMOTION_INACTIVE: 'This coupon is currently inactive.',
+        CUSTOMER_LIMIT_REACHED: 'You have already used this coupon the maximum number of times.',
+        CUSTOMER_NOT_ELIGIBLE: 'You are not eligible for this coupon.',
+        MINIMUM_NOT_MET: `This coupon requires a minimum order of ৳${(result.minimum_purchase ?? 0).toFixed(2)}.`,
+        NO_ELIGIBLE_ITEMS: 'No items in your cart are eligible for this coupon.',
+        LOGIN_REQUIRED: 'Please log in to use this coupon.',
+      };
+      setCouponError(
+        result.error_code ? (errorMessages[result.error_code] ?? result.message ?? 'Invalid coupon.') : (result.message ?? 'Invalid coupon.')
+      );
     }
   };
+
 
   const handleGuestPlaceOrder = async () => {
     setError(null);
@@ -1606,32 +1656,52 @@ export default function CheckoutClient() {
                     <input
                       type="text"
                       value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                      placeholder="Coupon code"
-                      className="flex-1 px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:ring-2 focus:ring-neutral-200 focus:border-transparent"
-                      disabled={!!appliedCoupon}
+                      onChange={(e) => {
+                        setCouponCode(e.target.value.toUpperCase());
+                        setCouponError(null);
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !appliedCoupon && !couponApplyLoading) handleApplyCoupon(); }}
+                      placeholder="Enter coupon code"
+                      className="flex-1 px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:ring-2 focus:ring-amber-200 focus:border-amber-400 outline-none"
+                      disabled={!!appliedCoupon || couponApplyLoading}
                     />
                     <button
                       onClick={handleApplyCoupon}
-                      disabled={!!appliedCoupon}
-                      className="px-4 py-2 bg-neutral-900 text-white rounded-xl text-sm font-medium hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={!!appliedCoupon || couponApplyLoading || !couponCode.trim()}
+                      className="px-4 py-2 bg-neutral-900 text-white rounded-xl text-sm font-semibold hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-1.5"
                     >
-                      Apply
+                      {couponApplyLoading ? (
+                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking…</>
+                      ) : 'Apply'}
                     </button>
                   </div>
-                  {appliedCoupon && (
-                    <button
-                      onClick={() => {
-                        setAppliedCoupon(null);
-                        setCouponCode('');
-                      }}
-                      className="text-xs text-neutral-900 mt-2 hover:underline"
-                    >
-                      Remove coupon
-                    </button>
+
+                  {/* Success banner */}
+                  {couponSuccess && appliedCoupon && (
+                    <div className="mt-2.5 flex items-start justify-between gap-2 rounded-xl bg-green-50 border border-green-200 px-3 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-green-700 font-medium">{couponSuccess}</p>
+                      </div>
+                      <button
+                        onClick={() => { setAppliedCoupon(null); setCouponCode(''); setCouponSuccess(null); setCouponError(null); }}
+                        className="text-xs text-green-600 underline underline-offset-2 flex-shrink-0 hover:text-green-800 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Error banner */}
+                  {couponError && (
+                    <div className="mt-2.5 flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600">
+                      <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                      {couponError}
+                    </div>
                   )}
                 </div>
               )}
+
             </div>
           </div>
         </div>

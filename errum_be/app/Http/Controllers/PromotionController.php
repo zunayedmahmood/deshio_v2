@@ -200,6 +200,233 @@ class PromotionController extends Controller
         return response()->json(['success' => true, 'data' => $promotion, 'message' => 'Promotion deactivated successfully']);
     }
 
+    /**
+     * PUBLIC: Get all currently active public promotions for the storefront.
+     * No authentication required.
+     */
+    public function getActivePublic()
+    {
+        $promotions = Promotion::where('is_active', true)
+            ->where('is_public', true)
+            ->where('start_date', '<=', now())
+            ->where(function ($q) {
+                $q->whereNull('end_date')->orWhere('end_date', '>=', now());
+            })
+            ->where(function ($q) {
+                $q->whereNull('usage_limit')
+                  ->orWhereColumn('usage_count', '<', 'usage_limit');
+            })
+            ->get([
+                'id', 'name', 'description', 'type', 'discount_value',
+                'minimum_purchase', 'maximum_discount',
+                'applicable_products', 'applicable_categories',
+                'start_date', 'end_date',
+            ]);
+
+        return response()->json(['success' => true, 'data' => $promotions]);
+    }
+
+    /**
+     * PUBLIC: Validate a private coupon code with full cart context.
+     * Supports guest customers (customer_id = null).
+     * Returns structured error codes for all 25 documented scenarios.
+     */
+    public function validateCoupon(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'code'               => 'required|string',
+            'customer_id'        => 'nullable|integer',
+            'cart_subtotal'      => 'required|numeric|min:0',
+            'cart_items'         => 'nullable|array',
+            'cart_items.*.product_id'   => 'required_with:cart_items|integer',
+            'cart_items.*.category_id'  => 'nullable|integer',
+            'cart_items.*.quantity'     => 'required_with:cart_items|integer|min:1',
+            'cart_items.*.unit_price'   => 'required_with:cart_items|numeric|min:0',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $promotion = Promotion::where('code', $request->code)->first();
+
+        // Scenario 14, 15: Invalid code
+        if (!$promotion) {
+            return response()->json([
+                'success'    => false,
+                'error_code' => 'INVALID_CODE',
+                'message'    => 'Invalid coupon code. Please check and try again.',
+            ], 404);
+        }
+
+        // Scenario 15: Not yet started
+        if ($promotion->start_date > now()) {
+            return response()->json([
+                'success'    => false,
+                'error_code' => 'PROMOTION_NOT_STARTED',
+                'message'    => "This coupon isn't valid yet. Check back soon!",
+            ], 422);
+        }
+
+        // Scenario 14: Expired
+        if ($promotion->end_date && $promotion->end_date < now()) {
+            return response()->json([
+                'success'    => false,
+                'error_code' => 'PROMOTION_EXPIRED',
+                'message'    => 'This coupon has expired.',
+            ], 422);
+        }
+
+        // Scenario 22: Inactive
+        if (!$promotion->is_active) {
+            return response()->json([
+                'success'    => false,
+                'error_code' => 'PROMOTION_INACTIVE',
+                'message'    => 'This coupon is no longer active.',
+            ], 422);
+        }
+
+        // Scenario 12: Global usage limit
+        if ($promotion->usage_limit && $promotion->usage_count >= $promotion->usage_limit) {
+            return response()->json([
+                'success'    => false,
+                'error_code' => 'PROMOTION_LIMIT_REACHED',
+                'message'    => 'Sorry, this coupon has reached its usage limit.',
+            ], 422);
+        }
+
+        $customerId = $request->customer_id;
+        $cartSubtotal = $request->cart_subtotal;
+        $cartItems = $request->cart_items ?? [];
+
+        // Scenario 17: Guest + customer-scoped coupon
+        if (!$customerId) {
+            if (!empty($promotion->applicable_customers) || $promotion->usage_per_customer) {
+                return response()->json([
+                    'success'    => false,
+                    'error_code' => 'LOGIN_REQUIRED',
+                    'message'    => 'Please log in to use this coupon.',
+                ], 422);
+            }
+        }
+
+        if ($customerId) {
+            $customer = Customer::find($customerId);
+            if (!$customer) {
+                return response()->json([
+                    'success'    => false,
+                    'error_code' => 'INVALID_CODE',
+                    'message'    => 'Invalid coupon code. Please check and try again.',
+                ], 422);
+            }
+
+            // Scenario 18: Customer not in applicable_customers
+            if (!empty($promotion->applicable_customers) && !in_array($customerId, $promotion->applicable_customers)) {
+                return response()->json([
+                    'success'    => false,
+                    'error_code' => 'CUSTOMER_NOT_ELIGIBLE',
+                    'message'    => "This coupon isn't available for your account.",
+                ], 422);
+            }
+
+            // Scenario 13: Per-customer usage limit
+            if ($promotion->usage_per_customer) {
+                $used = $promotion->usages()->where('customer_id', $customerId)->count();
+                if ($used >= $promotion->usage_per_customer) {
+                    return response()->json([
+                        'success'    => false,
+                        'error_code' => 'CUSTOMER_LIMIT_REACHED',
+                        'message'    => "You've already used this coupon.",
+                    ], 422);
+                }
+            }
+        }
+
+        // Scenario 5, 8, 19: Minimum purchase not met
+        if ($promotion->minimum_purchase && $cartSubtotal < $promotion->minimum_purchase) {
+            return response()->json([
+                'success'    => false,
+                'error_code' => 'MINIMUM_NOT_MET',
+                'message'    => "This coupon requires a minimum order of ৳{$promotion->minimum_purchase}.",
+                'minimum_purchase' => $promotion->minimum_purchase,
+            ], 422);
+        }
+
+        // Scope check: determine which cart items are eligible
+        $eligibleItems = $cartItems;
+        $hasScope = !empty($promotion->applicable_products) || !empty($promotion->applicable_categories);
+
+        if ($hasScope && !empty($cartItems)) {
+            $eligibleItems = array_filter($cartItems, function ($item) use ($promotion) {
+                if (!empty($promotion->applicable_products) && in_array($item['product_id'], $promotion->applicable_products)) {
+                    return true;
+                }
+                if (!empty($promotion->applicable_categories) && isset($item['category_id'])
+                    && in_array($item['category_id'], $promotion->applicable_categories)) {
+                    return true;
+                }
+                return false;
+            });
+        }
+
+        // Scenario 11: Valid code but no eligible items
+        if ($hasScope && empty($eligibleItems)) {
+            return response()->json([
+                'success'    => false,
+                'error_code' => 'NO_ELIGIBLE_ITEMS',
+                'message'    => "This coupon doesn't apply to any items in your cart.",
+            ], 422);
+        }
+
+        // Calculate discount on eligible subtotal
+        if ($hasScope && !empty($eligibleItems)) {
+            $eligibleSubtotal = array_sum(array_map(
+                fn($item) => $item['unit_price'] * $item['quantity'],
+                $eligibleItems
+            ));
+            $base = $eligibleSubtotal;
+        } else {
+            $base = $cartSubtotal;
+        }
+
+        $calculatedAmount = 0;
+        if ($promotion->type === 'percentage') {
+            $calculatedAmount = ($base * $promotion->discount_value) / 100;
+        } elseif ($promotion->type === 'fixed') {
+            $calculatedAmount = $promotion->discount_value;
+        }
+
+        // Scenario 20: Cannot exceed total
+        $calculatedAmount = min($calculatedAmount, $cartSubtotal);
+
+        // Scenario 16: Cap
+        $capped = false;
+        $appliedAmount = $calculatedAmount;
+        if ($promotion->maximum_discount && $calculatedAmount > $promotion->maximum_discount) {
+            $appliedAmount = $promotion->maximum_discount;
+            $capped = true;
+        }
+
+        $categoryName = null;
+        if (!empty($promotion->applicable_categories)) {
+            $categoryName = implode(', ', $promotion->applicable_categories);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'promotion'         => $promotion,
+                'calculated_amount' => round($calculatedAmount, 2),
+                'applied_amount'    => round($appliedAmount, 2),
+                'capped'            => $capped,
+                'max_discount'      => $promotion->maximum_discount,
+                'eligible_product_ids' => array_column(array_values($eligibleItems), 'product_id'),
+                'category_scope_name'  => $categoryName,
+                'message'           => 'Coupon applied successfully.',
+            ]
+        ]);
+    }
+
     public function validateCode(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -217,7 +444,7 @@ class PromotionController extends Controller
         if (!$promotion) {
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid promotion code'
+                'message' => 'Invalid promotion code',
             ], 404);
         }
 

@@ -214,3 +214,12 @@ See inventory price adjustment page. we want to add a new feature there.
 make the process efficient and without any integrity issues.
 Since the system is in production, we can not afford to break anything. so, please be very careful. 
 Since, testing confirmed that barcode printing and price-adjustment was totally working, avoid doing any drastic changes to the already working process.
+
+### coupon features we want:
+This is a description or a documentation of how campaigns and coupon generation is handled. Here you can see that campaigns can be generated in many forms like percentage of discount, fixed amount discount, buy one get one free, and then free shipping. Currently, we are ignoring buy one get one and free shipping. These are none of our concerns for now. In the percentage or an amount of,f campaign they can be both public and private, and more than likely, private campaigns do not have coupons. It's only reserved for private campaigns. Now, we want to make this whole campaigning system functional from our front end, which has yet not been fully functional, and also our new changes in the backend. Now, we are thinking of different scenarios of what can happen, and we need you to map it out for us.Now we are thinking of multiple scenarios of what can happen or what could happen. For example, a campaign can be run for only a few products and a percentage off from them. So then the productcard component should behave like that. Then there can be other scenarios where we are having an amount off, so that will only be shown in cart and checkout pages. Also, if it's a public, then that should be automatically added. If it's a private, then at the checkout page, we maybe have a coupon input field if we don't, then add one, and then we will deduct the amount for a private campaign. There can be other scenarios where we have a sale going on for some products and then they were added to a cart, and then we are adding a private campaign coupon and that should be functional. And all of this should be well noted. And I want you to map out all such possibilities of how this should behave like under certain circumstances, maybe 20-25 edge cases or different complex ideas, and I will use an AI model to implement out all those scenarios and make them functional.
+
+
+### ui copy
+Links:
+https://splayd.com.bd/
+https://splayd.com.bd/collections/shop-all-products/products/boutique-p-grey-t-shirt-ts-4445?variant=46111054135435

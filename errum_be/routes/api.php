@@ -136,6 +136,18 @@ Route::middleware('auth:customer')->prefix('wishlist')->group(function () {
 });
 
 // ============================================
+// E-COMMERCE PROMOTION ROUTES (PUBLIC)
+// Active promotions for storefront + coupon validation
+// ============================================
+
+Route::prefix('promotions')->group(function () {
+    // GET: All active public promotions (used by storefront to show SALE badges)
+    Route::get('/active-public', [PromotionController::class, 'getActivePublic']);
+    // POST: Validate a private coupon code against cart context (supports guest)
+    Route::post('/validate-coupon', [PromotionController::class, 'validateCoupon']);
+});
+
+// ============================================
 // E-COMMERCE CATALOG ROUTES (PUBLIC)
 // Product browsing, search, categories - no auth required
 // ============================================

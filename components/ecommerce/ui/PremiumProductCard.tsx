@@ -6,6 +6,7 @@ import { Heart, ArrowRight } from 'lucide-react';
 import { SimpleProduct } from '@/services/catalogService';
 import { getAdditionalVariantCount, getCardPriceText, getCardStockLabel } from '@/lib/ecommerceCardUtils';
 import { wishlistUtils } from '@/lib/wishlistUtils';
+import { usePromotion } from '@/contexts/PromotionContext';
 
 interface PremiumProductCardProps {
   product: SimpleProduct;
@@ -19,6 +20,7 @@ interface PremiumProductCardProps {
 const PremiumProductCard: React.FC<PremiumProductCardProps> = ({
   product, imageErrored = false, onImageError, onOpen, onAddToCart, compact = false,
 }) => {
+  const { getApplicablePromotion } = usePromotion();
   const [isInWishlist, setIsInWishlist] = React.useState(false);
 
   React.useEffect(() => {
@@ -53,6 +55,13 @@ const PremiumProductCard: React.FC<PremiumProductCardProps> = ({
   const hasStock       = stockLabel !== 'Out of Stock';
   const categoryName   = typeof product.category === 'object' && product.category ? product.category.name : '';
 
+  // Promotion / SALE badge
+  const categoryId   = typeof product.category === 'object' && product.category ? (product.category as { id?: number }).id ?? null : null;
+  const salePromo    = getApplicablePromotion(product.id, categoryId);
+  const salePercent  = salePromo?.discount_value ?? 0;
+  const originalPrice = Number(product.selling_price ?? 0);
+  const salePrice     = salePromo ? Math.max(0, originalPrice - (originalPrice * salePercent) / 100) : null;
+
   return (
     <article
       onClick={() => onOpen(product)}
@@ -82,6 +91,30 @@ const PremiumProductCard: React.FC<PremiumProductCardProps> = ({
             <Heart className={`h-3.5 w-3.5 ${isInWishlist ? 'fill-current' : ''}`} />
           </button>
         </div>
+
+        {/* SALE badge */}
+        {salePromo && (
+          <div className="absolute top-2.5 left-2.5 z-10">
+            <span
+              style={{
+                background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+                borderRadius: '6px',
+                padding: '3px 8px',
+                fontSize: '9px',
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                color: '#fff',
+                fontFamily: "'DM Mono', monospace",
+                textTransform: 'uppercase',
+                boxShadow: '0 2px 8px rgba(220,38,38,0.45)',
+                display: 'inline-block',
+                animation: 'salePulse 2.4s ease-in-out infinite',
+              }}
+            >
+              {salePercent}% OFF
+            </span>
+          </div>
+        )}
 
         {/* Variant count */}
         {extraVariants > 0 && (
@@ -137,9 +170,20 @@ const PremiumProductCard: React.FC<PremiumProductCardProps> = ({
         </h3>
         
         <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-white/5 pt-2.5">
-          <span className="text-[15px] font-bold text-[var(--gold)]" style={{ fontFamily: "'Jost', sans-serif" }}>
-            {getCardPriceText(product)}
-          </span>
+          {salePromo && salePrice !== null ? (
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[10px] line-through text-white/35" style={{ fontFamily: "'Jost', sans-serif" }}>
+                ৳{originalPrice.toFixed(0)}
+              </span>
+              <span className="text-[15px] font-bold text-red-400" style={{ fontFamily: "'Jost', sans-serif" }}>
+                ৳{salePrice.toFixed(0)}
+              </span>
+            </div>
+          ) : (
+            <span className="text-[15px] font-bold text-[var(--gold)]" style={{ fontFamily: "'Jost', sans-serif" }}>
+              {getCardPriceText(product)}
+            </span>
+          )}
           <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/5 text-white/20 group-hover:bg-[var(--gold)] group-hover:text-white transition-all duration-300">
             <ArrowRight size={14} />
           </div>

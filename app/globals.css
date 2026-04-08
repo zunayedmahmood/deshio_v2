@@ -317,6 +317,13 @@ body {
 .ec-anim-backdrop { animation: ec-backdrop-fade 0.4s ease both; }
 .ec-anim-backdrop-out { animation: ec-backdrop-fade-out 0.4s ease both; }
 
+/* SALE badge pulse */
+@keyframes salePulse {
+  0%, 100% { opacity: 1; box-shadow: 0 2px 8px rgba(220,38,38,0.45); }
+  50%       { opacity: 0.78; box-shadow: 0 2px 16px rgba(220,38,38,0.7); }
+}
+
+
 .ec-delay-1 { animation-delay: 0.1s; }
 .ec-delay-2 { animation-delay: 0.2s; }
 .ec-delay-3 { animation-delay: 0.35s; }

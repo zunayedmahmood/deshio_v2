@@ -3,13 +3,17 @@
 import { Suspense } from 'react';
 import { CustomerAuthProvider } from '@/contexts/CustomerAuthContext';
 import { CartProvider } from '@/app/e-commerce/CartContext';
+import { PromotionProvider } from '@/contexts/PromotionContext';
 import Footer from '@/components/ecommerce/Footer';
 import ScrollToTopOnRouteChange from '@/components/ecommerce/ScrollToTopOnRouteChange';
+
 
 export default function EcommerceLayout({ children }: { children: React.ReactNode }) {
   return (
     <CustomerAuthProvider>
-      <CartProvider>
+      <PromotionProvider>
+        <CartProvider>
+
         <Suspense fallback={null}>
           <ScrollToTopOnRouteChange />
         </Suspense>
@@ -109,7 +113,9 @@ export default function EcommerceLayout({ children }: { children: React.ReactNod
             <Footer />
           </div>
         </div>
-      </CartProvider>
+        </CartProvider>
+      </PromotionProvider>
     </CustomerAuthProvider>
   );
 }
+
