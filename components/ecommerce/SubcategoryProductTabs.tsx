@@ -134,6 +134,7 @@ const SubcategoryProductTabs: React.FC<SubcategoryProductTabsProps> = ({
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
   const [parentLabel, setParentLabel] = useState<string>('');
   const [parentNode,  setParentNode]  = useState<CatalogCategory | null>(null);
+  const [heroImgByCat, setHeroImgByCat] = useState<Record<number, string>>({});
   const [underlineStyle, setUnderlineStyle] = useState({ left: 0, width: 0 });
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<Record<string | number, HTMLButtonElement | null>>({});
@@ -261,18 +262,17 @@ const findParentNode = (flat: CatalogCategory[], queries: string[]): CatalogCate
         try {
           const response = await catalogService.getProducts({
             page: 1,
-            per_page: 6,
+            per_page: 4,
             category_id: cat.id,
             sort_by: 'newest',
-            sort_order: 'desc',
-          } as any);
+          });
           const cards = buildCardProductsFromResponse(response);
           const img = (cards?.[0]?.images?.[0] as any)?.url || '';
           if (alive && img) {
             setHeroImgByCat(prev => ({ ...prev, [cat.id]: img }));
           }
         } catch {
-          // ignore
+          /* ignore fetch errors for images */
         }
       }
     })();
@@ -307,24 +307,18 @@ const findParentNode = (flat: CatalogCategory[], queries: string[]): CatalogCate
       if (activeId === null && parentNode) {
         // "All Products" mode for parent
         fetchAttempts.push(
-          { category_id: parentNode.id, sort_by: 'newest', sort_order: 'desc' },
-          { category_slug: parentNode.slug, sort_by: 'newest', sort_order: 'desc' },
-          { sort_by: 'newest', sort_order: 'desc', per_page: 120 }
+          { category_id: parentNode.id, sort_by: 'newest' },
+          { sort_by: 'newest', per_page: 40 }
         );
       } else if (cat) {
         // Specific subcategory mode
         fetchAttempts.push(
-          { category_id: cat.id,                                    sort_by: 'newest', sort_order: 'desc' },
-          { category_id: cat.id, category: cat.name,                sort_by: 'newest', sort_order: 'desc' },
-          { category: cat.name,  category_slug: cat.slug,           sort_by: 'newest', sort_order: 'desc' },
-          ...(parent ? [
-            { category_id: parent.id,                               sort_by: 'newest', sort_order: 'desc' },
-            { category_id: parent.id, category: parent.name,        sort_by: 'newest', sort_order: 'desc' },
-          ] : [])
+          { category_id: cat.id, sort_by: 'newest' },
+          { category: cat.name, sort_by: 'newest' }
         );
       } else {
         // Fallback catch-all if we have no parent either
-        fetchAttempts.push({ sort_by: 'newest', sort_order: 'desc', per_page: 120 });
+        fetchAttempts.push({ sort_by: 'newest', per_page: 40 });
       }
 
       let products: SimpleProduct[] = [];
@@ -333,7 +327,7 @@ const findParentNode = (flat: CatalogCategory[], queries: string[]): CatalogCate
         try {
           const response = await catalogService.getProducts({
             page: 1,
-            per_page: Math.max(productsPerTab * 8, 80),
+            per_page: Math.max(productsPerTab * 4, 32),
             ...(params as any),
           });
 

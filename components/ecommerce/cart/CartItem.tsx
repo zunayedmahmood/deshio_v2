@@ -175,13 +175,20 @@ export default function CartItem({ item, onQuantityChange, onRemove, isUpdating:
               <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.42)' }}>SKU: {item.sku}</p>
             )}
 
-            {/* Stock Warning */}
-            {typeof item.maxQuantity === 'number' && item.quantity > item.maxQuantity && (
-              <p className="text-[10px] mt-1 font-bold text-rose-500 uppercase tracking-tighter">Insufficient stock ({item.maxQuantity} avail.)</p>
-            )}
-            {typeof item.maxQuantity === 'number' && item.maxQuantity > 0 && item.maxQuantity < 5 && (
-               <p className="text-[10px] mt-1 font-medium text-orange-400 opacity-80">Only {item.maxQuantity} left</p>
-            )}
+            {/* Stock Warning (5.5) */}
+            {typeof item.maxQuantity === 'number' && item.quantity > item.maxQuantity ? (
+              <div className="mt-2 py-1 px-2 bg-red-500/10 border border-red-500/20 rounded-md">
+                <p className="text-[10px] font-bold text-red-400 uppercase tracking-tight">
+                  ⚠️ Only {item.maxQuantity} available
+                </p>
+              </div>
+            ) : typeof item.maxQuantity === 'number' && item.maxQuantity > 0 && item.maxQuantity < 5 ? (
+              <div className="mt-2 py-1 px-2 bg-amber-500/10 border border-amber-500/20 rounded-md">
+                <p className="text-[10px] font-medium text-amber-400/90 uppercase tracking-tight">
+                  Only {item.maxQuantity} left in stock
+                </p>
+              </div>
+            ) : null}
           </div>
           <button
             onClick={handleRemove}
@@ -198,15 +205,14 @@ export default function CartItem({ item, onQuantityChange, onRemove, isUpdating:
 
         {/* Quantity and Price */}
         <div className="flex items-center justify-between">
-          {/* Quantity Controls */}
-          <div className="flex items-center rounded" style={{ border: '1px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.04)' }}>
+          {/* Quantity Controls (5.2) */}
+          <div className={`flex items-center rounded-xl overflow-hidden transition-colors ${typeof item.maxQuantity === 'number' && item.quantity > item.maxQuantity ? 'border-red-500/50 bg-red-500/5' : 'border-white/10 bg-white/5'}`} 
+               style={{ border: '1px solid' }}>
             <button
               onClick={() => handleQuantityChange(-1)}
               disabled={isUpdating || item.quantity <= 1}
-              className="p-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-11 h-11 flex items-center justify-center transition-all disabled:opacity-20 tap-bounce"
               style={{ color: 'rgba(255,255,255,0.75)' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
               <Minus size={14} />
             </button>
@@ -220,11 +226,8 @@ export default function CartItem({ item, onQuantityChange, onRemove, isUpdating:
                 }
               }}
               disabled={isUpdating}
-              className="w-12 text-center outline-none text-sm font-semibold disabled:cursor-not-allowed"
+              className="w-10 text-center outline-none text-xs font-bold bg-transparent"
               style={{
-                borderLeft: '1px solid rgba(255,255,255,0.12)',
-                borderRight: '1px solid rgba(255,255,255,0.12)',
-                background: 'transparent',
                 color: 'rgba(255,255,255,0.92)',
               }}
               min="1"
@@ -232,10 +235,8 @@ export default function CartItem({ item, onQuantityChange, onRemove, isUpdating:
             <button
               onClick={() => handleQuantityChange(1)}
               disabled={isUpdating || (typeof item.maxQuantity === 'number' && item.quantity >= item.maxQuantity)}
-              className="p-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-11 h-11 flex items-center justify-center transition-all disabled:opacity-20 tap-bounce"
               style={{ color: 'rgba(255,255,255,0.75)' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
               <Plus size={14} />
             </button>

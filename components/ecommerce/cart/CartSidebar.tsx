@@ -87,27 +87,37 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
 
           {/* Empty State */}
           {!isLoading && cart.length === 0 && (
-            <div className="text-center py-20 space-y-6">
-              <div className="h-20 w-20 rounded-full bg-white/5 flex items-center justify-center mx-auto opacity-20">
-                <ShoppingCart className="h-8 w-8 text-white" />
+            <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-cart-slide-in">
+              <div className="relative mb-8">
+                <div className="h-24 w-24 rounded-full bg-white/[0.03] flex items-center justify-center border border-white/5">
+                  <ShoppingCart className="h-10 w-10 text-white/20" />
+                </div>
+                <div className="absolute -right-2 -top-2 h-8 w-8 rounded-full bg-[--gold]/10 flex items-center justify-center border border-[--gold]/20 animate-pulse">
+                  <X className="h-4 w-4 text-[--gold]" />
+                </div>
               </div>
-              <div>
-                <p className="text-white/40 mb-2">Your collection is empty</p>
-                <button
-                  onClick={onClose}
-                  className="text-sm font-semibold text-[var(--gold)] hover:text-[var(--gold-light)] transition-colors"
-                >
-                  DISCOVER NEW ARRIVALS →
-                </button>
-              </div>
+              <h3 className="text-xl font-light text-white mb-2" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Your cart is empty</h3>
+              <p className="text-xs text-white/30 mb-10 max-w-[200px] leading-relaxed uppercase tracking-widest" style={{ fontFamily: "'DM Mono', monospace" }}>
+                Add something to your collection to get started.
+              </p>
+              <button
+                onClick={() => {
+                  onClose();
+                  router.push('/e-commerce/categories');
+                }}
+                className="px-10 py-4 rounded-2xl bg-white text-black text-[11px] font-bold tracking-widest uppercase hover:bg-[--gold] hover:text-white transition-all active:scale-95 shadow-xl"
+                style={{ fontFamily: "'Jost', sans-serif" }}
+              >
+                Start Shopping
+              </button>
             </div>
           )}
 
           {/* Cart Items */}
           {!isLoading && cart.length > 0 && (
             <div className="space-y-6">
-              {cart.map((item, idx) => (
-                <div key={item.id} className="ec-anim-fade-up" style={{ animationDelay: `${idx * 0.05}s` }}>
+              {cart.map((item) => (
+                <div key={`${item.id}-${item.sku}`} className="animate-cart-slide-in">
                   <CartItem item={item} />
                 </div>
               ))}

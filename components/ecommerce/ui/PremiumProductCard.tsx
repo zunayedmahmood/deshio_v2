@@ -4,7 +4,7 @@ import React from 'react';
 import Image from 'next/image';
 import { Heart, ArrowRight } from 'lucide-react';
 import { SimpleProduct } from '@/services/catalogService';
-import { getAdditionalVariantCount, getCardPriceText, getCardStockLabel } from '@/lib/ecommerceCardUtils';
+import { getAdditionalVariantCount, getCardPriceText, getCardStockLabel, getVariantListForCard } from '@/lib/ecommerceCardUtils';
 import { wishlistUtils } from '@/lib/wishlistUtils';
 import { usePromotion } from '@/contexts/PromotionContext';
 
@@ -23,6 +23,8 @@ const PremiumProductCard: React.FC<PremiumProductCardProps> = ({
 }) => {
   const { getApplicablePromotion } = usePromotion();
   const [isInWishlist, setIsInWishlist] = React.useState(false);
+  const [isLoaded, setIsLoaded] = React.useState(false);
+  const [isHeartBeating, setIsHeartBeating] = React.useState(false);
 
   React.useEffect(() => {
     const updateWishlistStatus = () => {
@@ -35,6 +37,9 @@ const PremiumProductCard: React.FC<PremiumProductCardProps> = ({
 
   const handleToggleWishlist = (e: React.MouseEvent) => {
     e.stopPropagation();
+    setIsHeartBeating(true);
+    setTimeout(() => setIsHeartBeating(false), 300);
+
     if (isInWishlist) {
       wishlistUtils.remove(product.id);
     } else {
@@ -80,6 +85,13 @@ const PremiumProductCard: React.FC<PremiumProductCardProps> = ({
   const originalPrice = Number(product.selling_price ?? 0);
   const salePrice = salePromo ? Math.max(0, originalPrice - (originalPrice * salePercent) / 100) : null;
 
+  // 4.4 — Price Range Display
+  const variants = React.useMemo(() => getVariantListForCard(product), [product]);
+  const prices = variants.map(v => Number(v.selling_price || 0)).filter(p => p > 0);
+  const minPrice = prices.length > 0 ? Math.min(...prices) : originalPrice;
+  const maxPrice = prices.length > 0 ? Math.max(...prices) : minPrice;
+  const hasPriceRange = minPrice !== maxPrice;
+
   return (
     <article
       onClick={() => onOpen(product)}
@@ -90,26 +102,32 @@ const PremiumProductCard: React.FC<PremiumProductCardProps> = ({
         animationFillMode: 'both'
       }}
     >
-      {/* Image */}
-      <div className="relative overflow-hidden aspect-[3/4] bg-[#f9f9f9]">
+      {/* Image Container */}
+      <div className="relative overflow-hidden aspect-[3/4] bg-[#f2f2f2]">
+        {/* 4.2 — Loading Shimmer */}
+        {!isLoaded && !imageErrored && (
+          <div className="absolute inset-0 z-[1] animate-shimmer" />
+        )}
+
         <Image
           src={imageUrl}
           alt={product.display_name || product.base_name || product.name}
           fill
-          className="object-cover transition-transform duration-700 group-hover:scale-[1.06]"
+          className={`object-cover transition-all duration-700 group-hover:scale-[1.06] ${isLoaded ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'}`}
+          onLoad={() => setIsLoaded(true)}
           onError={shouldFallback || !onImageError ? undefined : () => onImageError(product.id)}
         />
 
-        {/* Wishlist toggle - always visible on mobile for quick access */}
-        <div className="absolute right-3 top-3 z-10 sm:opacity-0 sm:scale-90 sm:group-hover:opacity-100 sm:group-hover:scale-100 transition-all duration-300">
+        {/* Wishlist toggle */}
+        <div className="absolute right-3 top-3 z-10 transition-all duration-300 sm:opacity-0 sm:scale-90 sm:group-hover:opacity-100 sm:group-hover:scale-100">
           <button
             onClick={handleToggleWishlist}
-            className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-all border ${isInWishlist
+            className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-all border shadow-sm ${isInWishlist
                 ? 'bg-black border-black text-white'
                 : 'bg-white/80 border-gray-100 text-black/40 hover:text-black hover:bg-white'
-              }`}
+              } ${isHeartBeating ? 'scale-125' : 'scale-100'}`}
           >
-            <Heart className={`h-4 w-4 ${isInWishlist ? 'fill-current' : ''}`} />
+            <Heart className={`h-4 w-4 ${isInWishlist ? 'fill-[var(--gold)] text-[var(--gold)]' : ''}`} />
           </button>
         </div>
 
@@ -159,7 +177,7 @@ const PremiumProductCard: React.FC<PremiumProductCardProps> = ({
 
         {/* Variant count */}
         {extraVariants > 0 && (
-          <div className="absolute left-3 bottom-3 z-10 transition-transform sm:group-hover:-translate-y-14">
+          <div className="absolute left-3 bottom-3 z-10 transition-transform sm:group-hover:-translate-y-16">
             <span className="rounded-full px-3 py-1 text-[9px] font-bold text-black border border-black/5 bg-white/90 backdrop-blur-sm tracking-wider"
               style={{ fontFamily: "'DM Mono', monospace" }}>
               +{extraVariants} variants
@@ -167,8 +185,16 @@ const PremiumProductCard: React.FC<PremiumProductCardProps> = ({
           </div>
         )}
 
-        {/* Slide-up action bar */}
-        <div className="absolute inset-x-0 bottom-0 translate-y-full transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-y-0 hidden sm:block">
+        {/* 4.1 — Mobile Action Pill (Tap Reveal equivalent) */}
+        <div className="absolute inset-x-0 bottom-3 px-3 sm:hidden z-10">
+          <div className="bg-white/90 backdrop-blur-md rounded-xl py-2 px-3 flex items-center justify-between border border-black/5 shadow-sm">
+            <span className="text-[10px] font-bold tracking-widest text-black/40 uppercase" style={{ fontFamily: "'DM Mono', monospace" }}>View Details</span>
+            <ArrowRight size={14} className="text-black" />
+          </div>
+        </div>
+
+        {/* 4.1 — Desktop Action Bar */}
+        <div className="absolute inset-x-0 bottom-0 translate-y-full transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] sm:group-hover:translate-y-0 hidden sm:block">
           <div className="p-3">
             <button
               onClick={e => {
@@ -214,7 +240,7 @@ const PremiumProductCard: React.FC<PremiumProductCardProps> = ({
         <div className="mt-4 flex items-center justify-between gap-2 border-t border-gray-100 pt-4">
           {salePromo && salePrice !== null ? (
             <div className="flex items-baseline gap-2">
-              <span className="text-lg font-bold text-black" style={{ fontFamily: "'Jost', sans-serif" }}>
+              <span className="text-lg font-bold text-[var(--gold)]" style={{ fontFamily: "'Jost', sans-serif" }}>
                 ৳{salePrice.toFixed(0)}
               </span>
               <span className="text-xs line-through text-gray-300" style={{ fontFamily: "'Jost', sans-serif" }}>
@@ -222,11 +248,18 @@ const PremiumProductCard: React.FC<PremiumProductCardProps> = ({
               </span>
             </div>
           ) : (
-            <span className="text-lg font-bold text-black" style={{ fontFamily: "'Jost', sans-serif" }}>
-              {getCardPriceText(product)}
-            </span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-lg font-bold text-black" style={{ fontFamily: "'Jost', sans-serif" }}>
+                ৳{minPrice.toLocaleString()}
+              </span>
+              {hasPriceRange && (
+                <span className="text-[13px] text-gray-400 font-medium" style={{ fontFamily: "'Jost', sans-serif" }}>
+                  – ৳{maxPrice.toLocaleString()}
+                </span>
+              )}
+            </div>
           )}
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 text-gray-400 group-hover:bg-black group-hover:text-white transition-all duration-300">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 text-gray-400 sm:group-hover:bg-black sm:group-hover:text-white transition-all duration-300">
             <ArrowRight size={14} />
           </div>
         </div>

@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Package, MapPin, CreditCard, ShoppingBag, AlertCircle, Loader2, ChevronRight, Plus, Edit2, Trash2, CheckCircle } from 'lucide-react';
+import { Package, MapPin, CreditCard, ShoppingBag, AlertCircle, Loader2, ChevronRight, Plus, Edit2, Trash2, CheckCircle, Lock } from 'lucide-react';
 import Navigation from '@/components/ecommerce/Navigation';
 import SSLCommerzPayment from '@/components/ecommerce/SSLCommerzPayment';
 import checkoutService, { Address, OrderItem, PaymentMethod } from '@/services/checkoutService';
@@ -77,6 +77,9 @@ export default function CheckoutClient() {
 
   // ✅ NEW: SSLCommerz payment screen state
   const [showSSLCommerzPayment, setShowSSLCommerzPayment] = useState(false);
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false); // Mobile summary collapse
+  const formRef = useRef<HTMLDivElement>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const isAuthenticated = () => {
     const token = localStorage.getItem('auth_token');
@@ -371,6 +374,15 @@ export default function CheckoutClient() {
     } catch (error: any) {
       console.error('❌ Failed to save address:', error);
       setError(error.message || 'Failed to save address. Please try again.');
+      
+      // 6.3 — Auto-scroll to error
+      setTimeout(() => {
+        const firstErr = formRef.current?.querySelector('[aria-invalid="true"]');
+        if (firstErr) {
+          firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          (firstErr as HTMLElement).focus();
+        }
+      }, 100);
     } finally {
       setIsProcessing(false);
     }
@@ -625,6 +637,15 @@ export default function CheckoutClient() {
     } catch (err: any) {
       console.error('❌ Guest checkout failed:', err);
       setError(err?.response?.data?.message || err?.message || 'Failed to place order. Please try again.');
+      
+      // 6.3 — Auto-scroll to error
+      setTimeout(() => {
+        const firstErr = formRef.current?.querySelector('[aria-invalid="true"]');
+        if (firstErr) {
+          firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          (firstErr as HTMLElement).focus();
+        }
+      }, 100);
     } finally {
       setIsProcessing(false);
     }
@@ -723,6 +744,15 @@ export default function CheckoutClient() {
     } catch (error: any) {
       console.error('❌ Order placement failed:', error);
       setError(error?.response?.data?.message || error.message || 'Failed to place order. Please try again.');
+      
+      // 6.3 — Auto-scroll to error
+      setTimeout(() => {
+        const firstErr = formRef.current?.querySelector('[aria-invalid="true"]');
+        if (firstErr) {
+          firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          (firstErr as HTMLElement).focus();
+        }
+      }, 100);
     } finally {
       setIsProcessing(false);
     }
@@ -733,7 +763,7 @@ export default function CheckoutClient() {
     return (
       <div className="ec-root ec-darkify min-h-screen">
         <Navigation />
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20">
           <div className="text-center">
             <Loader2 className="animate-spin h-12 w-12 text-[var(--gold)] mx-auto mb-4" />
             <p className="text-white/60">Loading checkout...</p>
@@ -748,7 +778,7 @@ export default function CheckoutClient() {
     return (
       <div className="ec-root ec-darkify min-h-screen">
         <Navigation />
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
           <button
             onClick={() => setShowSSLCommerzPayment(false)}
             className="mb-4 text-neutral-900 hover:text-neutral-900 flex items-center gap-2 font-medium"
@@ -785,7 +815,7 @@ export default function CheckoutClient() {
       <div className="ec-root ec-darkify min-h-screen">
         <Navigation />
 
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
           <div className="flex items-start justify-between gap-4 mb-6">
             <div>
               <h1 className="text-3xl font-bold text-neutral-900">Quick Checkout</h1>
@@ -814,37 +844,45 @@ export default function CheckoutClient() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">Phone Number *</label>
+                    <label className="block text-sm font-medium text-neutral-400 mb-1">Phone Number *</label>
                     <input
                       type="tel"
-                      inputMode="numeric"
+                      inputMode="tel"
+                      autoComplete="tel"
                       placeholder="017XXXXXXXX"
                       value={guestPhone}
                       onChange={(e) => setGuestPhone(e.target.value)}
-                      className="w-full border border-neutral-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-neutral-200 focus:border-neutral-900"
+                      className="ec-input"
+                      aria-invalid={!isValidBDPhone(guestPhone) && guestPhone !== ''}
                     />
-                    <p className="text-xs text-neutral-500 mt-1">We’ll use this to confirm and track your order.</p>
+                    {!isValidBDPhone(guestPhone) && guestPhone !== '' && (
+                      <p className="text-xs text-rose-500 mt-1">Please enter a valid 11-digit phone</p>
+                    )}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">Your Name (optional)</label>
+                    <label className="block text-sm font-medium text-neutral-400 mb-1">Your Name (optional)</label>
                     <input
                       type="text"
+                      autoComplete="name"
+                      autoCapitalize="words"
                       placeholder="Your name"
                       value={guestName}
                       onChange={(e) => setGuestName(e.target.value)}
-                      className="w-full border border-neutral-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-neutral-200 focus:border-neutral-900"
+                      className="ec-input"
                     />
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">Email (optional)</label>
+                    <label className="block text-sm font-medium text-neutral-400 mb-1">Email (optional)</label>
                     <input
                       type="email"
+                      inputMode="email"
+                      autoComplete="email"
                       placeholder="you@example.com"
                       value={guestEmail}
                       onChange={(e) => setGuestEmail(e.target.value)}
-                      className="w-full border border-neutral-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-neutral-200 focus:border-neutral-900"
+                      className="ec-input"
                     />
                   </div>
                 </div>
@@ -855,58 +893,67 @@ export default function CheckoutClient() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">Full Name *</label>
+                    <label className="block text-sm font-medium text-neutral-400 mb-1">Full Name *</label>
                     <input
                       type="text"
+                      autoComplete="name"
+                      autoCapitalize="words"
                       placeholder="Recipient name"
                       value={guestAddress.full_name}
                       onChange={(e) => setGuestAddress({ ...guestAddress, full_name: e.target.value })}
-                      className="w-full border border-neutral-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-neutral-200 focus:border-neutral-900"
+                      className="ec-input"
+                      aria-invalid={!guestAddress.full_name && isProcessing}
                     />
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">Address Line 1 *</label>
+                    <label className="block text-sm font-medium text-neutral-400 mb-1">Address Line 1 *</label>
                     <input
                       type="text"
+                      autoComplete="address-line1"
                       placeholder="House, road, area"
                       value={guestAddress.address_line_1}
                       onChange={(e) => setGuestAddress({ ...guestAddress, address_line_1: e.target.value })}
-                      className="w-full border border-neutral-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-neutral-200 focus:border-neutral-900"
+                      className="ec-input"
+                      aria-invalid={!guestAddress.address_line_1 && isProcessing}
                     />
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">Address Line 2 (optional)</label>
+                    <label className="block text-sm font-medium text-neutral-400 mb-1">Address Line 2 (optional)</label>
                     <input
                       type="text"
+                      autoComplete="address-line2"
                       placeholder="Apartment, floor, landmark"
                       value={guestAddress.address_line_2}
                       onChange={(e) => setGuestAddress({ ...guestAddress, address_line_2: e.target.value })}
-                      className="w-full border border-neutral-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-neutral-200 focus:border-neutral-900"
+                      className="ec-input"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">City *</label>
+                    <label className="block text-sm font-medium text-neutral-400 mb-1">City *</label>
                     <input
                       type="text"
+                      autoComplete="address-level2"
                       placeholder="Dhaka"
                       value={guestAddress.city}
                       onChange={(e) => setGuestAddress({ ...guestAddress, city: e.target.value })}
-                      className="w-full border border-neutral-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-neutral-200 focus:border-neutral-900"
+                      className="ec-input"
+                      aria-invalid={!guestAddress.city && isProcessing}
                     />
-                    <p className="text-xs text-neutral-500 mt-1">Delivery charge updates automatically.</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">Postal Code (optional)</label>
+                    <label className="block text-sm font-medium text-neutral-400 mb-1">Postal Code (optional)</label>
                     <input
                       type="text"
+                      inputMode="numeric"
+                      autoComplete="postal-code"
                       placeholder="1207"
                       value={guestAddress.postal_code}
                       onChange={(e) => setGuestAddress({ ...guestAddress, postal_code: e.target.value })}
-                      className="w-full border border-neutral-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-neutral-200 focus:border-neutral-900"
+                      className="ec-input"
                     />
                   </div>
 
@@ -1023,37 +1070,68 @@ export default function CheckoutClient() {
     <div className="ec-root ec-darkify min-h-screen pb-20">
       <Navigation />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
-        {/* Step Progress Indicator - Polished for Mobile */}
-        <div className="flex items-center justify-between mb-10 overflow-x-auto pb-4 scrollbar-hide sm:justify-start sm:gap-12">
-          {[
-            { id: 'shipping', label: 'Shipping', icon: MapPin },
-            { id: 'payment', label: 'Payment', icon: CreditCard },
-            { id: 'review', label: 'Review', icon: Package }
-          ].map((step, idx) => {
-            const isActive = currentStep === step.id;
-            const isCompleted = ['shipping', 'payment', 'review'].indexOf(currentStep) > idx;
-            const Icon = step.icon;
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12">
+        {/* 6.1 — Step Progress Bar (Premium Design) */}
+        <div className="mb-12">
+          {/* Desktop Progress Bar */}
+          <div className="hidden sm:block">
+            <div className="flex items-center justify-between mb-4">
+              {['shipping', 'payment', 'review'].map((stepId, idx) => {
+                const isActive = currentStep === stepId;
+                const isCompleted = ['shipping', 'payment', 'review'].indexOf(currentStep) > idx;
+                const Icon = [MapPin, CreditCard, Package][idx];
+                const labels = ['Shipping', 'Payment', 'Review'];
 
-            return (
-              <div key={step.id} className="flex items-center gap-3 flex-shrink-0">
-                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500 ${isActive ? 'bg-neutral-900 text-white shadow-lg shadow-neutral-200 scale-110' :
-                  isCompleted ? 'bg-green-500 text-white' : 'bg-neutral-100 text-neutral-400'
-                  }`}>
-                  {isCompleted ? <CheckCircle size={18} /> : <Icon size={18} />}
-                </div>
-                <div className="flex flex-col">
-                  <span className={`text-[10px] font-bold uppercase tracking-[0.15em] ${isActive ? 'text-neutral-900' : 'text-neutral-400'}`} style={{ fontFamily: "'DM Mono', monospace" }}>
-                    Step {idx + 1}
-                  </span>
-                  <span className={`text-sm font-bold ${isActive ? 'text-neutral-900' : 'text-neutral-400'}`} style={{ fontFamily: "'Jost', sans-serif" }}>
-                    {step.label}
-                  </span>
-                </div>
-                {idx < 2 && <ChevronRight className="hidden sm:block text-neutral-200 ml-4" size={16} />}
+                return (
+                  <div key={stepId} className="flex flex-col items-center flex-1 relative">
+                    {/* Line connector */}
+                    {idx > 0 && (
+                      <div className={`absolute right-[50%] top-5 w-full h-[2px] -z-10 transition-colors duration-500 ${isCompleted || isActive ? 'bg-[var(--gold)]' : 'bg-neutral-100/10'}`} />
+                    )}
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 border-2 ${isActive ? 'bg-neutral-900 border-neutral-900 text-white shadow-xl scale-110' :
+                      isCompleted ? 'bg-[var(--gold)] border-[var(--gold)] text-white' : 'bg-[#0d0d0d] border-neutral-100/10 text-neutral-500'
+                      }`}>
+                      {isCompleted ? <CheckCircle size={18} /> : <Icon size={18} />}
+                    </div>
+                    <span className={`mt-3 text-xs font-bold uppercase tracking-widest ${isActive ? 'text-white' : 'text-white/30'}`} style={{ fontFamily: "'DM Mono', monospace" }}>
+                      {labels[idx]}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            {/* The actual progress bar track */}
+            <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-[var(--gold)] transition-all duration-700 ease-out" 
+                style={{ width: `${((['shipping', 'payment', 'review'].indexOf(currentStep) + 1) / 3) * 100}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Mobile Progress Indicator */}
+          <div className="sm:hidden flex flex-col gap-3">
+            <div className="flex justify-between items-end">
+              <div>
+                <span className="text-[10px] font-bold text-[var(--gold)] uppercase tracking-[0.2em]" style={{ fontFamily: "'DM Mono', monospace" }}>
+                  Step {['shipping', 'payment', 'review'].indexOf(currentStep) + 1} of 3
+                </span>
+                <h2 className="text-xl font-bold text-white mt-1 capitalize">{currentStep} Details</h2>
               </div>
-            );
-          })}
+              <div className="text-right">
+                <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em]" style={{ fontFamily: "'DM Mono', monospace" }}>Next Up</span>
+                <p className="text-sm font-medium text-white/40 capitalize">
+                  {currentStep === 'shipping' ? 'Payment' : currentStep === 'payment' ? 'Review' : 'Order Done'}
+                </p>
+              </div>
+            </div>
+            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-[var(--gold)] transition-all duration-700 ease-out" 
+                style={{ width: `${((['shipping', 'payment', 'review'].indexOf(currentStep) + 1) / 3) * 100}%` }}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Error Display */}
@@ -1068,7 +1146,7 @@ export default function CheckoutClient() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start" ref={formRef}>
           <div className="lg:col-span-2 space-y-8">
             {/* Shipping Info */}
             {currentStep === 'shipping' && (
@@ -1116,7 +1194,7 @@ export default function CheckoutClient() {
                     {showAddressForm && (
                       <div className="mb-8 p-6 border border-white/10 rounded-2xl space-y-6 ec-dark-card shadow-2xl">
                         <div className="flex items-center justify-between">
-                          <h3 className="font-bold text-neutral-900">
+                          <h3 className="font-bold text-white">
                             {editingAddressId ? 'Edit Address' : 'New Address'}
                           </h3>
                           <button
@@ -1135,24 +1213,30 @@ export default function CheckoutClient() {
 
                         <div className="grid md:grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-medium text-neutral-700 mb-1">
+                            <label className="block text-sm font-medium text-neutral-400 mb-1">
                               Full Name <span className="text-rose-600">*</span>
                             </label>
                             <input
                               type="text"
+                              autoComplete="name"
+                              autoCapitalize="words"
                               value={addressForm.name}
                               onChange={(e) => setAddressForm({ ...addressForm, name: e.target.value })}
-                              className="w-full px-3 py-2 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-neutral-200 focus:border-transparent"
+                              className="ec-input"
                               placeholder="John Doe"
+                              aria-invalid={!addressForm.name && isProcessing}
                             />
+                            {!addressForm.name && isProcessing && <p className="text-xs text-rose-500 mt-1">Name is required</p>}
                           </div>
 
                           <div>
-                            <label className="block text-sm font-medium text-neutral-700 mb-1">
+                            <label className="block text-sm font-medium text-neutral-400 mb-1">
                               Phone Number <span className="text-rose-600">*</span>
                             </label>
                             <input
                               type="tel"
+                              inputMode="tel"
+                              autoComplete="tel"
                               value={addressForm.phone}
                               onChange={(e) => {
                                 const value = e.target.value.replace(/\D/g, '');
@@ -1160,60 +1244,67 @@ export default function CheckoutClient() {
                               }}
                               placeholder="01712345678"
                               maxLength={11}
-                              className="w-full px-3 py-2 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-neutral-200 focus:border-transparent"
+                              className="ec-input"
+                              aria-invalid={(!addressForm.phone || addressForm.phone.length !== 11) && isProcessing}
                             />
-                            <p className="text-xs text-neutral-500 mt-1">11 digits, e.g., 01712345678</p>
+                            {(!addressForm.phone || addressForm.phone.length !== 11) && isProcessing && <p className="text-xs text-rose-500 mt-1">11-digit phone required</p>}
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-neutral-700 mb-1">
+                          <label className="block text-sm font-medium text-neutral-400 mb-1">
                             Email (Optional)
                           </label>
                           <input
                             type="email"
+                            inputMode="email"
+                            autoComplete="email"
                             value={addressForm.email || ''}
                             onChange={(e) => setAddressForm({ ...addressForm, email: e.target.value })}
                             placeholder="john@example.com"
-                            className="w-full px-3 py-2 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-neutral-200 focus:border-transparent"
+                            className="ec-input"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-neutral-700 mb-1">
+                          <label className="block text-sm font-medium text-neutral-400 mb-1">
                             Address Line 1 <span className="text-rose-600">*</span>
                           </label>
                           <input
                             type="text"
+                            autoComplete="address-line1"
                             value={addressForm.address_line_1}
                             onChange={(e) => setAddressForm({ ...addressForm, address_line_1: e.target.value })}
                             placeholder="House/Flat number, Street name"
-                            className="w-full px-3 py-2 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-neutral-200 focus:border-transparent"
+                            className="ec-input"
+                            aria-invalid={!addressForm.address_line_1 && isProcessing}
                           />
+                          {!addressForm.address_line_1 && isProcessing && <p className="text-xs text-rose-500 mt-1">Address is required</p>}
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-neutral-700 mb-1">
+                          <label className="block text-sm font-medium text-neutral-400 mb-1">
                             Address Line 2 (Optional)
                           </label>
                           <input
                             type="text"
+                            autoComplete="address-line2"
                             value={addressForm.address_line_2 || ''}
                             onChange={(e) => setAddressForm({ ...addressForm, address_line_2: e.target.value })}
                             placeholder="Area, Sector"
-                            className="w-full px-3 py-2 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-neutral-200 focus:border-transparent"
+                            className="ec-input"
                           />
                         </div>
 
                         <div className="grid md:grid-cols-3 gap-4">
                           <div>
-                            <label className="block text-sm font-medium text-neutral-700 mb-1">
+                            <label className="block text-sm font-medium text-neutral-400 mb-1">
                               City <span className="text-rose-600">*</span>
                             </label>
                             <select
                               value={addressForm.city}
                               onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
-                              className="w-full px-3 py-2 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-neutral-200 focus:border-transparent"
+                              className="ec-input w-full appearance-none bg-[#1a1a1a] text-white border-white/10"
                             >
                               <option value="Dhaka">Dhaka</option>
                               <option value="Chittagong">Chittagong</option>
@@ -1230,13 +1321,13 @@ export default function CheckoutClient() {
                           </div>
 
                           <div>
-                            <label className="block text-sm font-medium text-neutral-700 mb-1">
+                            <label className="block text-sm font-medium text-neutral-400 mb-1">
                               State <span className="text-rose-600">*</span>
                             </label>
                             <select
                               value={addressForm.state}
                               onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
-                              className="w-full px-3 py-2 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-neutral-200 focus:border-transparent"
+                              className="ec-input w-full appearance-none bg-[#1a1a1a] text-white border-white/10"
                             >
                               <option value="Dhaka Division">Dhaka Division</option>
                               <option value="Chittagong Division">Chittagong Division</option>
@@ -1250,11 +1341,13 @@ export default function CheckoutClient() {
                           </div>
 
                           <div>
-                            <label className="block text-sm font-medium text-neutral-700 mb-1">
+                            <label className="block text-sm font-medium text-neutral-400 mb-1">
                               Postal Code (Optional)
                             </label>
                             <input
                               type="text"
+                              inputMode="numeric"
+                              autoComplete="postal-code"
                               value={addressForm.postal_code || ''}
                               onChange={(e) => {
                                 const value = e.target.value.replace(/\D/g, '');
@@ -1262,14 +1355,13 @@ export default function CheckoutClient() {
                               }}
                               placeholder="1234"
                               maxLength={4}
-                              className="w-full px-3 py-2 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-neutral-200 focus:border-transparent"
+                              className="ec-input"
                             />
-                            <p className="text-xs text-neutral-500 mt-1">4 digits</p>
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-neutral-700 mb-1">
+                          <label className="block text-sm font-medium text-neutral-400 mb-1">
                             Landmark (Optional)
                           </label>
                           <input
@@ -1277,12 +1369,12 @@ export default function CheckoutClient() {
                             value={addressForm.landmark || ''}
                             onChange={(e) => setAddressForm({ ...addressForm, landmark: e.target.value })}
                             placeholder="Near XYZ School"
-                            className="w-full px-3 py-2 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-neutral-200 focus:border-transparent"
+                            className="ec-input"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-neutral-700 mb-1">
+                          <label className="block text-sm font-medium text-neutral-400 mb-1">
                             Delivery Instructions (Optional)
                           </label>
                           <textarea
@@ -1290,7 +1382,7 @@ export default function CheckoutClient() {
                             onChange={(e) => setAddressForm({ ...addressForm, delivery_instructions: e.target.value })}
                             placeholder="e.g., Call before delivery"
                             rows={2}
-                            className="w-full px-3 py-2 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-neutral-200 focus:border-transparent"
+                            className="ec-input h-auto min-h-[80px] py-4"
                           />
                         </div>
 
@@ -1573,135 +1665,92 @@ export default function CheckoutClient() {
 
           {/* 🔒 ORIGINAL ORDER SUMMARY - UNCHANGED */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-md p-6 sticky top-4">
-              <h2 className="text-xl font-bold text-neutral-900 mb-6 flex items-center gap-2">
-                <ShoppingBag className="text-neutral-900" />
-                Order Summary
-              </h2>
+            <div className="sticky top-24 space-y-4">
+              {/* Order Summary: Collapsible on Mobile */}
+              <div className="ec-dark-card overflow-hidden shadow-2xl">
+                {/* Header / Toggle */}
+                <button
+                  onClick={() => setIsSummaryOpen(!isSummaryOpen)}
+                  className="w-full flex items-center justify-between p-6 bg-white/5 sm:cursor-default"
+                >
+                  <div className="flex items-center gap-2">
+                    <ShoppingBag className="text-[var(--gold)]" size={20} />
+                    <h2 className="text-lg font-bold text-white" style={{ fontFamily: "'Jost', sans-serif" }}>Order Summary</h2>
+                  </div>
+                  <div className="flex items-center gap-3 sm:hidden">
+                    <span className="text-lg font-bold text-[var(--gold)]">৳{summary.total_amount.toLocaleString('en-BD')}</span>
+                    <ChevronRight className={`transition-transform duration-300 ${isSummaryOpen ? 'rotate-90' : ''}`} size={20} />
+                  </div>
+                </button>
 
-              {/* Items */}
-              <div className="space-y-4 mb-6 max-h-64 overflow-y-auto">
-                {selectedItems.map((item: any) => {
-                  const unitPrice = typeof item.unit_price === 'string' ? parseFloat(item.unit_price) : item.unit_price;
-                  const totalPrice = typeof item.total_price === 'string' ? parseFloat(item.total_price) : item.total_price;
-
-                  return (
-                    <div key={item.id} className="flex gap-3">
-                      <img
-                        src={item.images?.find((i: any) => i?.is_primary)?.image_url || (item.images?.[0] as any)?.image_url || (item.images?.[0] as any)?.url || '/placeholder-product.png'}
-                        alt={item.name}
-                        className="w-16 h-16 object-cover rounded"
-                        onError={(e) => {
-                          if (!e.currentTarget.src.includes('/placeholder-product.png')) {
-                            e.currentTarget.src = '/placeholder-product.png';
-                          }
-                        }}
-                      />
-                      <div className="flex-1">
-                        <h4 className="text-sm font-medium text-neutral-900 line-clamp-2">
-                          {item.name}
-                        </h4>
-                        {item.variant_options && (
-                          <div className="flex gap-1 mt-1">
-                            {item.variant_options.color && (
-                              <span className="text-xs bg-neutral-100 text-neutral-600 px-1.5 py-0.5 rounded">
-                                {item.variant_options.color}
-                              </span>
-                            )}
-                            {item.variant_options.size && (
-                              <span className="text-xs bg-neutral-100 text-neutral-600 px-1.5 py-0.5 rounded">
-                                {item.variant_options.size}
-                              </span>
-                            )}
+                {/* Content */}
+                <div className={`transition-all duration-500 ease-in-out ${isSummaryOpen ? 'max-h-[1000px] opacity-100' : 'max-h-0 sm:max-h-none opacity-0 sm:opacity-100'} overflow-hidden`}>
+                  <div className="p-6 pt-0 space-y-6">
+                    {/* Items List */}
+                    <div className="space-y-4 max-h-64 overflow-y-auto pr-2 ec-scrollbar group">
+                      {selectedItems.map((item: any) => {
+                        const unitPrice = typeof item.unit_price === 'string' ? parseFloat(item.unit_price) : item.unit_price;
+                        return (
+                          <div key={item.id} className="flex gap-4 items-center group/item">
+                            <div className="w-16 h-16 rounded-xl overflow-hidden bg-white/5 flex-shrink-0 border border-white/5">
+                              <img
+                                src={item.images?.find((i: any) => i?.is_primary)?.image_url || (item.images?.[0] as any)?.image_url || '/placeholder-product.png'}
+                                alt={item.name}
+                                className="w-full h-full object-cover grayscale-[0.3] group-hover/item:grayscale-0 transition-all duration-500"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-bold text-white/90 leading-tight truncate">{item.name}</h4>
+                              <p className="text-xs text-white/40 mt-1 uppercase tracking-widest" style={{ fontFamily: "'DM Mono', monospace" }}>
+                                Qty: {item.quantity} × ৳{unitPrice.toLocaleString('en-BD')}
+                              </p>
+                            </div>
                           </div>
-                        )}
-                        <p className="text-sm text-neutral-600">Qty: {item.quantity}</p>
-                        <p className="text-sm font-semibold text-amber-600">
-                          ৳{totalPrice.toLocaleString('en-BD', { minimumFractionDigits: 2 })}
-                        </p>
+                        );
+                      })}
+                    </div>
+
+                    {/* Fees & Discounts */}
+                    <div className="space-y-3 pt-6 border-t border-white/5">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-white/40">Subtotal</span>
+                        <span className="text-white/90 font-medium">৳{summary.subtotal.toLocaleString('en-BD', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-white/40">Delivery</span>
+                        <span className="text-white/90 font-medium">+ ৳{shippingCharge.toLocaleString('en-BD', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      {summary.discount_amount > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-green-400 font-medium">Discount</span>
+                          <span className="text-green-400 font-bold">- ৳{summary.discount_amount.toLocaleString('en-BD', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                      )}
+                      
+                      {/* Total */}
+                      <div className="flex justify-between pt-4 border-t border-white/10 items-end">
+                        <div>
+                          <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]" style={{ fontFamily: "'DM Mono', monospace" }}>Total payable</p>
+                          <h3 className="text-2xl font-black text-[var(--gold)] mt-0.5" style={{ fontFamily: "'Jost', sans-serif" }}>
+                            ৳{summary.total_amount.toLocaleString('en-BD', { minimumFractionDigits: 2 })}
+                          </h3>
+                        </div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-
-              {/* Pricing */}
-              <div className="border-t pt-4 space-y-3">
-                <div className="flex justify-between text-neutral-700">
-                  <span>Subtotal ({selectedItems.length} items)</span>
-                  <span>৳{summary.subtotal.toLocaleString('en-BD', { minimumFractionDigits: 2 })}</span>
-                </div>
-
-                <div className="flex justify-between text-neutral-700">
-                  <span>Shipping</span>
-                  <span>৳{summary.shipping_charge.toLocaleString('en-BD', { minimumFractionDigits: 2 })}</span>
-                </div>
-                {summary.discount_amount > 0 && (
-                  <div className="flex justify-between text-green-600">
-                    <span>Discount</span>
-                    <span>-৳{summary.discount_amount.toLocaleString('en-BD', { minimumFractionDigits: 2 })}</span>
                   </div>
-                )}
-
-                <div className="border-t pt-3 flex justify-between text-xl font-bold text-neutral-900">
-                  <span>Total</span>
-                  <span className="text-amber-600">৳{summary.total_amount.toLocaleString('en-BD', { minimumFractionDigits: 2 })}</span>
                 </div>
               </div>
 
-              {/* Coupon Code */}
-              {currentStep === 'review' && (
-                <div className="mt-6">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={couponCode}
-                      onChange={(e) => {
-                        setCouponCode(e.target.value.toUpperCase());
-                        setCouponError(null);
-                      }}
-                      onKeyDown={(e) => { if (e.key === 'Enter' && !appliedCoupon && !couponApplyLoading) handleApplyCoupon(); }}
-                      placeholder="Enter coupon code"
-                      className="flex-1 px-3 py-2 border border-neutral-300 rounded-xl text-sm focus:ring-2 focus:ring-amber-200 focus:border-amber-400 outline-none"
-                      disabled={!!appliedCoupon || couponApplyLoading}
-                    />
-                    <button
-                      onClick={handleApplyCoupon}
-                      disabled={!!appliedCoupon || couponApplyLoading || !couponCode.trim()}
-                      className="px-4 py-2 bg-neutral-900 text-white rounded-xl text-sm font-semibold hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-1.5"
-                    >
-                      {couponApplyLoading ? (
-                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Checking…</>
-                      ) : 'Apply'}
-                    </button>
-                  </div>
-
-                  {/* Success banner */}
-                  {couponSuccess && appliedCoupon && (
-                    <div className="mt-2.5 flex items-start justify-between gap-2 rounded-xl bg-green-50 border border-green-200 px-3 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-                        <p className="text-xs text-green-700 font-medium">{couponSuccess}</p>
-                      </div>
-                      <button
-                        onClick={() => { setAppliedCoupon(null); setCouponCode(''); setCouponSuccess(null); setCouponError(null); }}
-                        className="text-xs text-green-600 underline underline-offset-2 flex-shrink-0 hover:text-green-800 transition-colors"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Error banner */}
-                  {couponError && (
-                    <div className="mt-2.5 flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600">
-                      <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
-                      {couponError}
-                    </div>
-                  )}
+              {/* Secure Payment Badge */}
+              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center text-green-500">
+                  <Lock size={18} />
                 </div>
-              )}
-
+                <div>
+                  <h4 className="text-xs font-bold text-white/90">Secure Checkout</h4>
+                  <p className="text-[10px] text-white/40">SSL Encrypted Transaction</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

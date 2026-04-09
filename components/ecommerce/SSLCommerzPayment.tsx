@@ -32,6 +32,7 @@ export default function SSLCommerzPayment({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentStage, setPaymentStage] = useState<'ready' | 'initializing' | 'redirecting'>('ready');
+  const [showRedirectOverlay, setShowRedirectOverlay] = useState(false);
 
   const handlePayment = async () => {
     setError(null);
@@ -100,14 +101,28 @@ export default function SSLCommerzPayment({
       // Step 3: Clear checkout data before redirect
       localStorage.removeItem('checkout-selected-items');
 
-      // Step 4: Show redirecting message
+      // Step 4: Show redirecting overlay
+      setShowRedirectOverlay(true);
       setPaymentStage('redirecting');
 
-      // Step 5: Redirect to SSLCommerz payment gateway
+      // Step 5: Redirect fallback (8 seconds)
+      const timeoutId = setTimeout(() => {
+        setShowRedirectOverlay((current) => {
+          if (current) {
+            setIsProcessing(false);
+            setError('Payment gateway redirect took too long. Please try again.');
+            setPaymentStage('ready');
+            return false;
+          }
+          return current;
+        });
+      }, 8000);
+
+      // Step 6: Redirect to SSLCommerz payment gateway
       setTimeout(() => {
         console.log('🔄 Redirecting to SSLCommerz...');
         sslcommerzService.redirectToPaymentGateway(response.data.payment_url);
-      }, 1500);
+      }, 1000);
 
     } catch (err: any) {
       console.error('❌ Payment initialization failed:', err);
@@ -166,6 +181,47 @@ export default function SSLCommerzPayment({
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
+      {/* 6.5 — SSLCommerz Redirect Overlay */}
+      {showRedirectOverlay && (
+        <div className="fixed inset-0 z-[9999] bg-[#0d0d0d] flex items-center justify-center p-6 text-center animate-in fade-in duration-500">
+          <div className="max-w-md w-full space-y-8 ec-anim-fade-up">
+            <div className="relative inline-block">
+              <div className="w-24 h-24 rounded-full border-t-2 border-[var(--gold)] animate-spin" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <ShieldCheck className="text-[var(--gold)]" size={40} />
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <h2 className="text-3xl font-black text-white" style={{ fontFamily: "'Jost', sans-serif" }}>Secure Encryption</h2>
+              <p className="text-white/40 text-sm tracking-wide uppercase" style={{ fontFamily: "'DM Mono', monospace" }}>
+                Connecting to payment gateway...
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center gap-6">
+              <div className="flex flex-col items-center gap-1">
+                <div className="h-6 w-12 bg-white/20 rounded-md animate-pulse" />
+                <span className="text-[8px] text-white/20 uppercase font-bold">VISA</span>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <div className="h-6 w-12 bg-white/20 rounded-md animate-pulse" />
+                <span className="text-[8px] text-white/20 uppercase font-bold">BKASH</span>
+              </div>
+              <div className="w-[1px] h-8 bg-white/10" />
+              <div className="text-left">
+                <p className="text-xs font-bold text-white/80">SSLCommerz</p>
+                <p className="text-[10px] text-white/40">Official Partner</p>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-white/20 italic">
+              Please do not refresh or close this window
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-3 mb-6 pb-6 border-b">
         <div className="w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center">

@@ -430,6 +430,16 @@ export default function ProductDetailPage() {
     }
 
     const fetchProductAndVariations = async () => {
+      // Prevent redundant loading if the ID is already handled
+      if (selectedVariant && selectedVariant.id === productId) return;
+
+      // If the ID exists in our variants list, just switch selection and end early
+      const existingMatch = productVariants.find(v => v.id === productId);
+      if (existingMatch) {
+        setSelectedVariant(existingMatch);
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);
@@ -654,6 +664,10 @@ export default function ProductDetailPage() {
 
   // Handlers
   const handleVariantChange = (variant: ProductVariant) => {
+    // 3.8 — Prevent scroll-to-top on variant change
+    if (typeof window !== 'undefined') {
+      (window as any).__ERRUM_SKIP_SCROLL__ = true;
+    }
     setSelectedVariant(variant);
     setSelectedImageIndex(0);
     setQuantity(1);
