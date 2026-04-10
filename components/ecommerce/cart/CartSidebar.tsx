@@ -19,7 +19,7 @@ interface CartSidebarProps {
 export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
   const { cart, getTotalPrice, isLoading } = useCart();
   const router = useRouter();
-  
+
   const subtotal = getTotalPrice();
   const deliveryCharge = checkoutService.calculateDeliveryCharge('Dhaka');
   const total = subtotal + deliveryCharge;
@@ -41,12 +41,12 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
     <>
       {/* Backdrop */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md ec-anim-backdrop"
           onClick={onClose}
         />
       )}
-      
+
       {/* Side Drawer */}
       <div
         className={`

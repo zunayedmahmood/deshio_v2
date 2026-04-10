@@ -66,14 +66,14 @@ const SubcategoryProductTabs: React.FC<SubcategoryProductTabsProps> = ({
   const router = useRouter();
   const { addToCart } = useCart();
 
-  const [allCats,     setAllCats]     = useState<CatalogCategory[]>([]);
-  const [tabs,        setTabs]        = useState<CatalogCategory[]>([]);
-  const [activeId,    setActiveId]    = useState<number | null>(null); // null means "All Products"
-  const [tabData,     setTabData]     = useState<Record<string, TabData>>({}); // use string key to handle 'all'
+  const [allCats, setAllCats] = useState<CatalogCategory[]>([]);
+  const [tabs, setTabs] = useState<CatalogCategory[]>([]);
+  const [activeId, setActiveId] = useState<number | null>(null); // null means "All Products"
+  const [tabData, setTabData] = useState<Record<string, TabData>>({}); // use string key to handle 'all'
   const [loadingCats, setLoadingCats] = useState(true);
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
   const [parentLabel, setParentLabel] = useState<string>('');
-  const [parentNode,  setParentNode]  = useState<CatalogCategory | null>(null);
+  const [parentNode, setParentNode] = useState<CatalogCategory | null>(null);
   const [heroImgByCat, setHeroImgByCat] = useState<Record<number, string>>({});
   const [underlineStyle, setUnderlineStyle] = useState({ left: 0, width: 0 });
   const tabsContainerRef = useRef<HTMLDivElement>(null);
@@ -88,28 +88,28 @@ const SubcategoryProductTabs: React.FC<SubcategoryProductTabsProps> = ({
       });
     }
   }, [activeId, tabs]);
-const findParentNode = (flat: CatalogCategory[], queries: string[]): CatalogCategory | null => {
-  const q = (queries || []).map(normalizeKey).filter(Boolean);
-  if (!q.length) return null;
+  const findParentNode = (flat: CatalogCategory[], queries: string[]): CatalogCategory | null => {
+    const q = (queries || []).map(normalizeKey).filter(Boolean);
+    if (!q.length) return null;
 
-  // Exact match by slug or name
-  for (const needle of q) {
-    const exact =
-      flat.find(c => normalizeKey(c?.slug) === needle || normalizeKey(c?.name) === needle) || null;
-    if (exact) return exact;
-  }
+    // Exact match by slug or name
+    for (const needle of q) {
+      const exact =
+        flat.find(c => normalizeKey(c?.slug) === needle || normalizeKey(c?.name) === needle) || null;
+      if (exact) return exact;
+    }
 
-  // Contains match (e.g. "Sneakers Collection", "Fashion Accessories")
-  for (const needle of q) {
-    const relaxed =
-      flat.find(
-        c => normalizeKey(c?.slug).includes(needle) || normalizeKey(c?.name).includes(needle)
-      ) || null;
-    if (relaxed) return relaxed;
-  }
+    // Contains match (e.g. "Sneakers Collection", "Fashion Accessories")
+    for (const needle of q) {
+      const relaxed =
+        flat.find(
+          c => normalizeKey(c?.slug).includes(needle) || normalizeKey(c?.name).includes(needle)
+        ) || null;
+      if (relaxed) return relaxed;
+    }
 
-  return null;
-};
+    return null;
+  };
 
   const uniqById = (list: CatalogCategory[]): CatalogCategory[] => {
     const seen = new Set<number>();
@@ -131,14 +131,14 @@ const findParentNode = (flat: CatalogCategory[], queries: string[]): CatalogCate
         const tree = await catalogService.getCategories();
         const flat = flattenAll(tree);
 
-        
-/**
- * "Shop by Subcategory" section:
- * - Find a parent category by slug/name (parentQueries)
- * - Show ALL subcategories under that parent
- * - Top 3 (by product_count) appear as image banner cards
- * - The rest appear as pill/capsule tabs
- */
+
+        /**
+         * "Shop by Subcategory" section:
+         * - Find a parent category by slug/name (parentQueries)
+         * - Show ALL subcategories under that parent
+         * - Top 3 (by product_count) appear as image banner cards
+         * - The rest appear as pill/capsule tabs
+         */
         const parent = findParentNode(flat, parentQueries);
         if (alive) {
           setParentLabel(parent?.name || '');
@@ -220,14 +220,14 @@ const findParentNode = (flat: CatalogCategory[], queries: string[]): CatalogCate
     })();
 
     return () => { alive = false; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabs.map(t => t.id).join('|')]);
 
   /* ── fetch products for active tab ──────────────────────────────── */
   useEffect(() => {
     // If activeId is null, we are in "All Products" for the parentNode
     // If we have categories but no explicit selection yet, wait for logic above.
-    if (activeId === undefined) return; 
+    if (activeId === undefined) return;
 
     const key = activeId === null ? 'all' : String(activeId);
     if (tabData[key]?.loaded || tabData[key]?.loading) return;
@@ -268,7 +268,7 @@ const findParentNode = (flat: CatalogCategory[], queries: string[]): CatalogCate
     })();
 
     return () => { alive = false; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId, tabs.length, parentNode?.id]);
 
   const activeKey = activeId === null ? 'all' : String(activeId);
@@ -276,7 +276,7 @@ const findParentNode = (flat: CatalogCategory[], queries: string[]): CatalogCate
   const onImgError = (id: number) => setImageErrors(prev => { const s = new Set(prev); s.add(id); return s; });
 
   const onProductClick = (p: SimpleProduct) => router.push(`/e-commerce/product/${p.id}`);
-  const onAddToCart    = async (p: SimpleProduct, e: React.MouseEvent) => {
+  const onAddToCart = async (p: SimpleProduct, e: React.MouseEvent) => {
     e.stopPropagation();
     if (p.has_variants) { router.push(`/e-commerce/product/${p.id}`); return; }
     try {
@@ -297,15 +297,15 @@ const findParentNode = (flat: CatalogCategory[], queries: string[]): CatalogCate
             <div className="h-8 w-56 bg-gray-100 rounded-lg animate-pulse" />
           </div>
           <div className="flex gap-4 mb-8 overflow-hidden">
-            {[1,2,3,4,5].map(i => <div key={i} className="h-10 w-24 bg-gray-50 rounded-full flex-shrink-0 animate-pulse" />)}
+            {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-10 w-24 bg-gray-50 rounded-full flex-shrink-0 animate-pulse" />)}
           </div>
           <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
-             {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="aspect-[4/5] rounded-2xl bg-gray-50 mb-4" />
-                  <div className="h-4 bg-gray-50 rounded-full w-3/4" />
-                </div>
-              ))}
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="animate-pulse">
+                <div className="aspect-[4/5] rounded-2xl bg-gray-50 mb-4" />
+                <div className="h-4 bg-gray-50 rounded-full w-3/4" />
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -318,14 +318,14 @@ const findParentNode = (flat: CatalogCategory[], queries: string[]): CatalogCate
   return (
     <section className="bg-white py-12 sm:py-20 border-t border-gray-50">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Header */}
         <div className="mb-10">
           <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400 mb-2 block">
             {eyebrow ?? 'Collections'}
           </span>
           <h2 className="text-3xl sm:text-4xl font-light text-black tracking-tight"
-              style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+            style={{ fontFamily: "'Cormorant Garamond', serif" }}>
             {title ?? (parentLabel ? `Shop ${parentLabel}` : 'Shop All')}
           </h2>
           {subtitle && (
@@ -337,10 +337,10 @@ const findParentNode = (flat: CatalogCategory[], queries: string[]): CatalogCate
 
         {/* Scrollable text-based sub-category slider */}
         <div className="relative mb-8 -mx-4 px-4 sm:mx-0 sm:px-0">
-          <div 
+          <div
             ref={tabsContainerRef}
             className="flex items-center gap-8 overflow-x-auto pb-4 scrollbar-hide no-scrollbar scroll-smooth"
-            style={{ 
+            style={{
               scrollSnapType: 'x mandatory',
               position: 'relative'
             }}
@@ -351,12 +351,11 @@ const findParentNode = (flat: CatalogCategory[], queries: string[]): CatalogCate
                 key={cat.id}
                 ref={el => { tabRefs.current[cat.id] = el; }}
                 onClick={() => setActiveId(cat.id)}
-                className={`text-sm sm:text-base font-medium whitespace-nowrap pb-3 transition-colors duration-300 ${
-                  activeId === cat.id 
-                    ? 'text-black' 
+                className={`text-sm sm:text-base font-medium whitespace-nowrap pb-3 transition-colors duration-300 ${activeId === cat.id
+                    ? 'text-black'
                     : 'text-gray-400 hover:text-black'
-                }`}
-                style={{ 
+                  }`}
+                style={{
                   fontFamily: "'Jost', sans-serif",
                   scrollSnapAlign: 'start'
                 }}
@@ -366,24 +365,32 @@ const findParentNode = (flat: CatalogCategory[], queries: string[]): CatalogCate
             ))}
 
             {/* Sliding Underline */}
-            <div 
+            <div
               className="absolute bottom-4 h-0.5 bg-[var(--gold)] transition-all duration-300 ease-out"
-              style={{ 
-                left: underlineStyle.left, 
-                width: underlineStyle.width 
+              style={{
+                left: underlineStyle.left,
+                width: underlineStyle.width
               }}
             />
           </div>
         </div>
 
         {/* Product grid */}
-        <div className="min-h-[400px]">
+        <div className="min-h-[600px]">
           {activeTab?.loading ? (
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-6 sm:gap-8 md:grid-cols-3 lg:grid-cols-4 animate-pulse">
               {Array.from({ length: productsPerTab }).map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="aspect-[4/5] rounded-2xl bg-gray-50 mb-4" />
-                  <div className="h-4 bg-gray-50 rounded-full w-3/4" />
+                <div key={i}>
+                  <div className="aspect-[3/4] rounded-[24px] bg-gray-50 mb-5" />
+                  <div className="px-1 space-y-3">
+                    <div className="h-2 bg-gray-50 rounded-full w-1/3" />
+                    <div className="h-4 bg-gray-50 rounded-md w-full" />
+                    <div className="h-4 bg-gray-50 rounded-md w-2/3" />
+                    <div className="pt-2 border-t border-gray-50 flex justify-between">
+                      <div className="h-5 bg-gray-50 rounded-md w-1/3" />
+                      <div className="h-6 w-6 rounded-full bg-gray-50" />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

@@ -35,8 +35,8 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
     }
   }, [images]);
 
-  const safeImages = images.length > 0 
-    ? images 
+  const safeImages = images.length > 0
+    ? images
     : [{ id: 0, url: '/placeholder-product.png', is_primary: true }];
 
   // Sync scroll position for mobile carousel
@@ -53,13 +53,13 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
   const scrollToImage = (index: number) => {
     // Set index immediately for desktop opacity transition
     setActiveIndex(index);
-    
+
     if (!scrollContainerRef.current) return;
     const { offsetWidth } = scrollContainerRef.current;
-    
+
     // Only use smooth behavior for mobile swipe experience
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-    
+
     scrollContainerRef.current.scrollTo({
       left: index * offsetWidth,
       behavior: isMobile ? 'smooth' : 'instant' as any
@@ -86,9 +86,8 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
               key={img.id || index}
               onMouseEnter={() => scrollToImage(index)}
               onClick={() => scrollToImage(index)}
-              className={`relative overflow-hidden rounded-xl bg-gray-50 border-2 transition-all duration-200 flex-shrink-0 w-16 md:w-full ${
-                activeIndex === index ? 'border-black' : 'border-transparent hover:border-gray-200'
-              }`}
+              className={`relative overflow-hidden rounded-xl bg-gray-50 border-2 transition-all duration-200 flex-shrink-0 w-16 md:w-full ${activeIndex === index ? 'border-black' : 'border-transparent hover:border-gray-200'
+                }`}
               style={{ aspectRatio: '1/1' }}
             >
               <img src={img.url} alt={`${productName} view ${index + 1}`} className="w-full h-full object-cover p-1" />
@@ -100,7 +99,7 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
       {/* Main Container */}
       <div className="flex-1 relative group">
         {/* Mobile Swipe Carousel / Desktop Main Image */}
-        <div 
+        <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
           className="relative overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar md:overflow-hidden rounded-2xl border border-gray-100 bg-[#f9f9f9]"
@@ -108,11 +107,10 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
         >
           <div className="flex h-full md:block">
             {safeImages.map((img, index) => (
-              <div 
+              <div
                 key={img.id || index}
-                className={`snap-start flex-shrink-0 w-full h-full md:absolute md:inset-0 transition-opacity duration-300 ${
-                  index === activeIndex ? 'md:opacity-100 z-10' : 'md:opacity-0 z-0'
-                }`}
+                className={`snap-start flex-shrink-0 w-full h-full md:absolute md:inset-0 transition-opacity duration-300 ${index === activeIndex ? 'md:opacity-100 z-10' : 'md:opacity-0 z-0'
+                  }`}
               >
                 <img
                   src={img.url}
@@ -140,13 +138,13 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
           {/* Navigation Arrows (Desktop) */}
           {safeImages.length > 1 && (
             <div className="absolute inset-y-0 left-0 right-0 hidden sm:flex items-center justify-between px-6 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
-              <button 
+              <button
                 onClick={(e) => { e.stopPropagation(); prevImage(); }}
                 className="pointer-events-auto h-12 w-12 flex items-center justify-center rounded-full bg-white shadow-xl text-black hover:bg-black hover:text-white transition-all"
               >
                 <ChevronLeft size={24} />
               </button>
-              <button 
+              <button
                 onClick={(e) => { e.stopPropagation(); nextImage(); }}
                 className="pointer-events-auto h-12 w-12 flex items-center justify-center rounded-full bg-white shadow-xl text-black hover:bg-black hover:text-white transition-all"
               >

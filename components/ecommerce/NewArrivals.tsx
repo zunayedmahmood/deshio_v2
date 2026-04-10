@@ -77,7 +77,7 @@ const NewArrivals: React.FC<NewArrivalsProps> = ({ categoryId, limit = 8 }) => {
       // No fallback — if nothing qualifies, the section hides itself.
       // This prevents old/test products from ever appearing as "new arrivals".
       const CUTOFF_MS = 180 * 24 * 60 * 60 * 1000;
-      const cutoff    = Date.now() - CUTOFF_MS;
+      const cutoff = Date.now() - CUTOFF_MS;
 
       const recent = sorted.filter(p => {
         const created = getCreatedMs(p);
@@ -116,8 +116,9 @@ const NewArrivals: React.FC<NewArrivalsProps> = ({ categoryId, limit = 8 }) => {
     }
     try {
       await addToCart(product.id, 1);
-    
-      fireToast(`Added to cart: ${product?.name || 'Item'}`, 'success');} catch (error: any) {
+
+      fireToast(`Added to cart: ${product?.name || 'Item'}`, 'success');
+    } catch (error: any) {
       console.error('Error adding to cart:', error);
       fireToast(error?.message || 'Failed to add to cart', 'error');
     }
@@ -156,7 +157,7 @@ const NewArrivals: React.FC<NewArrivalsProps> = ({ categoryId, limit = 8 }) => {
       <div className="ec-container">
         <div className="ec-surface p-4 sm:p-6 lg:p-7 relative overflow-hidden">
           <div className="pointer-events-none absolute -top-16 -left-16 h-48 w-48 rounded-full opacity-40"
-               style={{ background: 'radial-gradient(circle, rgba(176,124,58,0.10) 0%, transparent 70%)', filter: 'blur(24px)' }} />
+            style={{ background: 'radial-gradient(circle, rgba(176,124,58,0.10) 0%, transparent 70%)', filter: 'blur(24px)' }} />
           <SectionHeader
             eyebrow="Fresh drop"
             title="New Arrivals"

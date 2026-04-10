@@ -8,7 +8,7 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, onCartOpen }: ProductCardProps) {
-  const router = useRouter();  const [isHovered, setIsHovered] = useState(false);  const navigateToProduct = (productId: string | number) => {
+  const router = useRouter(); const [isHovered, setIsHovered] = useState(false); const navigateToProduct = (productId: string | number) => {
     router.push(`/e-commerce/product/${productId}`);
   };
   const priceText = (() => {
@@ -69,9 +69,8 @@ export default function ProductCard({ product, onCartOpen }: ProductCardProps) {
 
         {/* Bottom add-to-cart bar (premium minimal) */}
         <div
-          className={`absolute inset-x-3 bottom-3 rounded-xl border border-neutral-200 bg-white/95 backdrop-blur px-3 py-2 shadow-sm transition-all duration-300 ${
-            isHovered ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
-          }`}
+          className={`absolute inset-x-3 bottom-3 rounded-xl border border-neutral-200 bg-white/95 backdrop-blur px-3 py-2 shadow-sm transition-all duration-300 ${isHovered ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
+            }`}
         >
           <button
             onClick={() => navigateToProduct(product?.variations?.[0]?.id)}

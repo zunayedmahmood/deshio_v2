@@ -28,30 +28,30 @@ export default function CartItem({ item, onQuantityChange, onRemove, isUpdating:
   const { refreshCart } = useCart();
   const router = useRouter();
   const [internalIsUpdating, setInternalIsUpdating] = useState(false);
-  
+
   // Use external isUpdating if provided, otherwise use internal
   const isUpdating = externalIsUpdating !== undefined ? externalIsUpdating : internalIsUpdating;
-  
+
   // Safely parse price
-  const price = typeof item?.price === 'string' 
-    ? parseFloat(item.price) 
-    : typeof item?.price === 'number' 
-    ? item.price 
-    : 0;
-  
+  const price = typeof item?.price === 'string'
+    ? parseFloat(item.price)
+    : typeof item?.price === 'number'
+      ? item.price
+      : 0;
+
   const itemTotal = price * (item?.quantity || 0);
 
   // ✅ Handle quantity update with backend
   const handleQuantityChange = async (delta: number) => {
     const newQuantity = item.quantity + delta;
     if (newQuantity < 1) return;
-    
+
     // If parent provides handler, use it
     if (onQuantityChange) {
       await onQuantityChange(item.id, newQuantity);
       return;
     }
-    
+
     // Otherwise handle internally
     try {
       setInternalIsUpdating(true);
@@ -69,13 +69,13 @@ export default function CartItem({ item, onQuantityChange, onRemove, isUpdating:
   // ✅ Handle direct input change
   const handleInputChange = async (newQuantity: number) => {
     if (newQuantity < 1 || isNaN(newQuantity)) return;
-    
+
     // If parent provides handler, use it
     if (onQuantityChange) {
       await onQuantityChange(item.id, newQuantity);
       return;
     }
-    
+
     // Otherwise handle internally
     try {
       setInternalIsUpdating(true);
@@ -93,13 +93,13 @@ export default function CartItem({ item, onQuantityChange, onRemove, isUpdating:
   // ✅ Handle remove item with backend
   const handleRemove = async () => {
     if (!confirm('Remove this item from cart?')) return;
-    
+
     // If parent provides handler, use it
     if (onRemove) {
       await onRemove(item.id);
       return;
     }
-    
+
     // Otherwise handle internally
     try {
       setInternalIsUpdating(true);
@@ -137,7 +137,7 @@ export default function CartItem({ item, onQuantityChange, onRemove, isUpdating:
       )}
 
       {/* Product Image */}
-      <div 
+      <div
         className="relative w-20 h-20 flex-shrink-0 cursor-pointer"
         onClick={handleNavigateToProduct}
       >
@@ -152,7 +152,7 @@ export default function CartItem({ item, onQuantityChange, onRemove, isUpdating:
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1 min-w-0 pr-2">
-            <h3 
+            <h3
               className="text-sm font-semibold line-clamp-2 cursor-pointer transition-colors"
               style={{ color: 'rgba(255,255,255,0.92)' }}
               onClick={handleNavigateToProduct}
@@ -161,7 +161,7 @@ export default function CartItem({ item, onQuantityChange, onRemove, isUpdating:
             >
               {item.name}
             </h3>
-            
+
             {/* Variant Info */}
             {(item.color || item.size) && (
               <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.48)' }}>
@@ -170,7 +170,7 @@ export default function CartItem({ item, onQuantityChange, onRemove, isUpdating:
                 {item.size && <span>Size: {item.size}</span>}
               </p>
             )}
-            
+
             {item.sku && (
               <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.42)' }}>SKU: {item.sku}</p>
             )}
@@ -206,8 +206,8 @@ export default function CartItem({ item, onQuantityChange, onRemove, isUpdating:
         {/* Quantity and Price */}
         <div className="flex items-center justify-between">
           {/* Quantity Controls (5.2) */}
-          <div className={`flex items-center rounded-xl overflow-hidden transition-colors ${typeof item.maxQuantity === 'number' && item.quantity > item.maxQuantity ? 'border-red-500/50 bg-red-500/5' : 'border-white/10 bg-white/5'}`} 
-               style={{ border: '1px solid' }}>
+          <div className={`flex items-center rounded-xl overflow-hidden transition-colors ${typeof item.maxQuantity === 'number' && item.quantity > item.maxQuantity ? 'border-red-500/50 bg-red-500/5' : 'border-white/10 bg-white/5'}`}
+            style={{ border: '1px solid' }}>
             <button
               onClick={() => handleQuantityChange(-1)}
               disabled={isUpdating || item.quantity <= 1}

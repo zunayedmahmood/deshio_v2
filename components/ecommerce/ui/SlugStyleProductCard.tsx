@@ -51,13 +51,12 @@ export default function SlugStyleProductCard({
         />
 
         <span
-          className={`absolute top-2 right-2 text-xs px-2 py-1 rounded-full ${
-            stockLabel === 'In Stock'
+          className={`absolute top-2 right-2 text-xs px-2 py-1 rounded-full ${stockLabel === 'In Stock'
               ? 'bg-green-100 text-green-700'
               : hasStock
-              ? 'bg-amber-100 text-amber-700'
-              : 'bg-rose-50 text-neutral-900'
-          }`}
+                ? 'bg-amber-100 text-amber-700'
+                : 'bg-rose-50 text-neutral-900'
+            }`}
         >
           {stockLabel}
         </span>

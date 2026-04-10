@@ -374,7 +374,7 @@ export default function CheckoutClient() {
     } catch (error: any) {
       console.error('❌ Failed to save address:', error);
       setError(error.message || 'Failed to save address. Please try again.');
-      
+
       // 6.3 — Auto-scroll to error
       setTimeout(() => {
         const firstErr = formRef.current?.querySelector('[aria-invalid="true"]');
@@ -636,7 +636,7 @@ export default function CheckoutClient() {
       router.push(`/e-commerce/order-confirmation/${orderNumber}`);
     } catch (err: any) {
       console.error('❌ Guest checkout failed:', err);
-      
+
       const serverError = err?.response?.data;
       if (serverError?.errors) {
         console.error('📋 Server validation errors:', serverError.errors);
@@ -649,7 +649,7 @@ export default function CheckoutClient() {
       } else {
         setError(serverError?.message || err?.message || 'Failed to place order. Please try again.');
       }
-      
+
       // Auto-scroll to error
       setTimeout(() => {
         const firstErr = formRef.current?.querySelector('[aria-invalid="true"]');
@@ -756,7 +756,7 @@ export default function CheckoutClient() {
     } catch (error: any) {
       console.error('❌ Order placement failed:', error);
       setError(error?.response?.data?.message || error.message || 'Failed to place order. Please try again.');
-      
+
       // 6.3 — Auto-scroll to error
       setTimeout(() => {
         const firstErr = formRef.current?.querySelector('[aria-invalid="true"]');
@@ -1114,8 +1114,8 @@ export default function CheckoutClient() {
             </div>
             {/* The actual progress bar track */}
             <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-[var(--gold)] transition-all duration-700 ease-out" 
+              <div
+                className="h-full bg-[var(--gold)] transition-all duration-700 ease-out"
                 style={{ width: `${((['shipping', 'payment', 'review'].indexOf(currentStep) + 1) / 3) * 100}%` }}
               />
             </div>
@@ -1138,8 +1138,8 @@ export default function CheckoutClient() {
               </div>
             </div>
             <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-[var(--gold)] transition-all duration-700 ease-out" 
+              <div
+                className="h-full bg-[var(--gold)] transition-all duration-700 ease-out"
                 style={{ width: `${((['shipping', 'payment', 'review'].indexOf(currentStep) + 1) / 3) * 100}%` }}
               />
             </div>
@@ -1738,7 +1738,7 @@ export default function CheckoutClient() {
                           <span className="text-green-400 font-bold">- ৳{summary.discount_amount.toLocaleString('en-BD', { minimumFractionDigits: 2 })}</span>
                         </div>
                       )}
-                      
+
                       {/* Total */}
                       <div className="flex justify-between pt-4 border-t border-white/10 items-end">
                         <div>

@@ -7,9 +7,9 @@ import { Facebook, Instagram, Youtube, MapPin, Phone, MessageCircle } from "luci
 const BRAND = "Errum";
 
 const stores = [
-  { name: "Mirpur 12",          address: "Level 3, Hazi Kujrat Ali Mollah Market, Mirpur 12", phone: "01942565664" },
-  { name: "Jamuna Future Park", address: "3C-17A, Level 3, Jamuna Future Park",                phone: "01307130535" },
-  { name: "Bashundhara City",   address: "38, 39, 40, Block D, Level 5, Bashundhara City",     phone: "01336041064" },
+  { name: "Mirpur 12", address: "Level 3, Hazi Kujrat Ali Mollah Market, Mirpur 12", phone: "01942565664" },
+  { name: "Jamuna Future Park", address: "3C-17A, Level 3, Jamuna Future Park", phone: "01307130535" },
+  { name: "Bashundhara City", address: "38, 39, 40, Block D, Level 5, Bashundhara City", phone: "01336041064" },
 ];
 
 export default function Footer() {
@@ -43,14 +43,14 @@ export default function Footer() {
 
             <div className="flex flex-wrap gap-x-5 gap-y-2">
               {[
-                { href: '/e-commerce/products',       label: 'Collection' },
-                { href: '/e-commerce/categories',     label: 'Categories' },
-                { href: '/e-commerce/contact',        label: 'Contact' },
+                { href: '/e-commerce/products', label: 'Collection' },
+                { href: '/e-commerce/categories', label: 'Categories' },
+                { href: '/e-commerce/contact', label: 'Contact' },
                 { href: '/e-commerce/order-tracking', label: 'Track Order' },
               ].map(({ href, label }) => (
                 <Link key={href} href={href} className="text-[12px] transition-colors" style={{ color: 'rgba(255,255,255,0.35)' }}
-                      onMouseEnter={e => (e.currentTarget.style.color = 'var(--gold-light)')}
-                      onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.35)')}>
+                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--gold-light)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.35)')}>
                   {label}
                 </Link>
               ))}
@@ -59,10 +59,10 @@ export default function Footer() {
             <div className="flex gap-2.5">
               {[Facebook, Instagram, Youtube].map((Icon, i) => (
                 <a key={i} href="#" className="flex h-9 w-9 items-center justify-center rounded-xl transition-all"
-                   style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }}
-                   onMouseEnter={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background='rgba(176,124,58,0.15)'; el.style.borderColor='rgba(176,124,58,0.3)'; }}
-                   onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background='rgba(255,255,255,0.05)'; el.style.borderColor='rgba(255,255,255,0.09)'; }}
-                   aria-label="social">
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }}
+                  onMouseEnter={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = 'rgba(176,124,58,0.15)'; el.style.borderColor = 'rgba(176,124,58,0.3)'; }}
+                  onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = 'rgba(255,255,255,0.05)'; el.style.borderColor = 'rgba(255,255,255,0.09)'; }}
+                  aria-label="social">
                   <Icon size={16} style={{ color: 'rgba(255,255,255,0.5)' }} />
                 </a>
               ))}
@@ -76,9 +76,9 @@ export default function Footer() {
             </h4>
             <div className="space-y-3">
               {[
-                { title: 'Comfort & Quality Assured',    sub: 'Thoughtfully selected with quality finishing.' },
-                { title: 'In-Store & Online Support',    sub: 'Visit us or order easily — responsive service.' },
-                { title: 'Nationwide Delivery',          sub: 'Smooth and reliable delivery across Bangladesh.' },
+                { title: 'Comfort & Quality Assured', sub: 'Thoughtfully selected with quality finishing.' },
+                { title: 'In-Store & Online Support', sub: 'Visit us or order easily — responsive service.' },
+                { title: 'Nationwide Delivery', sub: 'Smooth and reliable delivery across Bangladesh.' },
               ].map(({ title, sub }) => (
                 <div key={title} className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
                   <p className="text-[13px] font-semibold text-white">{title}</p>
@@ -146,3 +146,4 @@ export default function Footer() {
     </footer>
   );
 }
+

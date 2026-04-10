@@ -44,7 +44,7 @@ export default function NewArrivalsTicker() {
 
   return (
     <div className="ec-ticker-container bg-[#0a0a0a] border-y border-white/5 py-8">
-      <div 
+      <div
         className={`ec-ticker-track ${isPaused ? 'paused' : ''}`}
         onTouchStart={() => setIsPaused(true)}
         onTouchEnd={() => setTimeout(() => setIsPaused(false), 2000)} // Resume after 2s
@@ -62,3 +62,4 @@ export default function NewArrivalsTicker() {
     </div>
   );
 }
+

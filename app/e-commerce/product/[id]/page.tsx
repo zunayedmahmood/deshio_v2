@@ -384,7 +384,7 @@ export default function ProductDetailPage() {
         images: product.images,
         sku: product.sku
       };
-      
+
       const filtered = existing.filter((p: any) => p.id !== product.id);
       const updated = [productSummary, ...filtered].slice(0, 8);
       localStorage.setItem('ec_recently_viewed', JSON.stringify(updated));
@@ -395,7 +395,7 @@ export default function ProductDetailPage() {
   // Sticky Bar Observer
   useEffect(() => {
     if (!mainCtaRef.current) return;
-    
+
     const observer = new IntersectionObserver(([entry]) => {
       setIsStickyVisible(!entry.isIntersecting);
     }, { threshold: 0 });
@@ -905,8 +905,8 @@ export default function ProductDetailPage() {
         <div className="grid lg:grid-cols-[6fr_4fr] gap-10 lg:gap-20 items-start">
 
           {/* 3.1 — Image Gallery */}
-          <ProductImageGallery 
-            images={safeImages} 
+          <ProductImageGallery
+            images={safeImages}
             productName={baseName}
             discountPercent={discountPercent}
             inStock={selectedVariant.in_stock}
@@ -949,25 +949,24 @@ export default function ProductDetailPage() {
                 {/* Stock Progress Bar (3.3) */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest"
-                       style={{ 
-                         fontFamily: "'DM Mono', monospace",
-                         color: availableInventory <= 5 ? '#ef4444' : availableInventory <= 10 ? '#f59e0b' : '#10b981'
-                       }}>
+                    style={{
+                      fontFamily: "'DM Mono', monospace",
+                      color: availableInventory <= 5 ? '#ef4444' : availableInventory <= 10 ? '#f59e0b' : '#10b981'
+                    }}>
                     <span>
-                      {availableInventory <= 0 ? 'Out of stock' : 
-                       availableInventory <= 5 ? `🔥 Almost gone! Only ${availableInventory} left` : 
-                       availableInventory <= 10 ? `Selling fast — only ${availableInventory} left` : 
-                       `In Stock — ${availableInventory} units available`}
+                      {availableInventory <= 0 ? 'Out of stock' :
+                        availableInventory <= 5 ? `🔥 Almost gone! Only ${availableInventory} left` :
+                          availableInventory <= 10 ? `Selling fast — only ${availableInventory} left` :
+                            `In Stock — ${availableInventory} units available`}
                     </span>
                   </div>
                   <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full transition-[width] duration-700 ease-out rounded-full ${
-                        availableInventory <= 5 ? 'bg-red-500 animate-pulse' : 
-                        availableInventory <= 10 ? 'bg-amber-500' : 
-                        'bg-emerald-500'
-                      }`} 
-                      style={{ width: `${Math.min((availableInventory / 25) * 100, 100)}%` }} 
+                    <div
+                      className={`h-full transition-[width] duration-700 ease-out rounded-full ${availableInventory <= 5 ? 'bg-red-500 animate-pulse' :
+                          availableInventory <= 10 ? 'bg-amber-500' :
+                            'bg-emerald-500'
+                        }`}
+                      style={{ width: `${Math.min((availableInventory / 25) * 100, 100)}%` }}
                     />
                   </div>
                 </div>
@@ -975,10 +974,11 @@ export default function ProductDetailPage() {
 
               {/* 3.5 — Variant Selector */}
               {hasMultipleVariants && (
-                <VariantSelector 
+                <VariantSelector
                   variants={productVariants}
                   selectedVariant={selectedVariant}
                   onVariantChange={handleVariantChange}
+                  baseName={baseName}
                 />
               )}
 
@@ -1001,9 +1001,8 @@ export default function ProductDetailPage() {
                     ref={mainCtaRef}
                     onClick={handleAddToCart}
                     disabled={!selectedVariant.in_stock || isAdding || availableInventory <= 0}
-                    className={`flex-1 h-[56px] rounded-2xl font-bold uppercase tracking-widest text-[10px] sm:text-xs flex items-center justify-center gap-3 transition-all active:scale-95 disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none shadow-[0_10px_30px_rgba(0,0,0,0.1)] ${
-                        cartStatus === 'success' ? 'bg-[#9a6b2e] text-white' : 'bg-black text-white hover:bg-gray-800'
-                    }`}
+                    className={`flex-1 h-[56px] rounded-2xl font-bold uppercase tracking-widest text-[10px] sm:text-xs flex items-center justify-center gap-3 transition-all active:scale-95 disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none shadow-[0_10px_30px_rgba(0,0,0,0.1)] ${cartStatus === 'success' ? 'bg-[#9a6b2e] text-white' : 'bg-black text-white hover:bg-gray-800'
+                      }`}
                   >
                     {cartStatus === 'idle' && <ShoppingCart size={18} />}
                     {cartStatus === 'loading' && <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
@@ -1095,32 +1094,32 @@ export default function ProductDetailPage() {
           <div className="mt-16 sm:mt-24 py-16 border-t border-gray-100">
             <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400 mb-2 block">Your History</span>
             <h2 className="text-3xl sm:text-4xl font-light text-black tracking-tight mb-10"
-                style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+              style={{ fontFamily: "'Cormorant Garamond', serif" }}>
               Recently Viewed
             </h2>
             <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
-               {recentlyViewed.map(item => (
-                 <div key={item.id} className="min-w-[180px] sm:min-w-[220px]">
-                    <PremiumProductCard
-                        product={item}
-                        compact
-                        onOpen={(p) => router.push(`/e-commerce/product/${p.id}`)}
-                        onAddToCart={(p, e) => handleQuickAddToCart(p, e)}
-                    />
-                 </div>
-               ))}
+              {recentlyViewed.map(item => (
+                <div key={item.id} className="min-w-[180px] sm:min-w-[220px]">
+                  <PremiumProductCard
+                    product={item}
+                    compact
+                    onOpen={(p) => router.push(`/e-commerce/product/${p.id}`)}
+                    onAddToCart={(p, e) => handleQuickAddToCart(p, e)}
+                  />
+                </div>
+              ))}
             </div>
           </div>
         )}
       </div>
 
-      <StickyAddToCart 
-         isVisible={isStickyVisible}
-         productName={baseName}
-         priceText={formatBDT(sellingPrice)}
-         isAdding={isAdding}
-         disabled={!selectedVariant.in_stock || availableInventory <= 0}
-         onAddToCart={handleAddToCart}
+      <StickyAddToCart
+        isVisible={isStickyVisible}
+        productName={selectedVariant.name}
+        priceText={formatBDT(sellingPrice)}
+        isAdding={isAdding}
+        disabled={!selectedVariant.in_stock || availableInventory <= 0}
+        onAddToCart={handleAddToCart}
       />
     </div>
   );

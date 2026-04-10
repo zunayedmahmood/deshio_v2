@@ -282,3 +282,30 @@ The slide stops and starts on hover perfectly on desktop. but on mobile, it does
 for each categories we are showing, we show all products, then each subcategories.
 Update this.
 For "All Products" under each category, we'll simply show all products of That category including subcategories of That category.
+
+
+### variant selector
+scenario wise issues:
+["name": "Test-black-37", "variation_suffix": "-black-37",], ["name": "Test-white", "variation_suffix": "-white",] this shows: 36, Test-white while it should be: black-36, white 
+["name": "Casual Popcorn Shirt Grey Marbel-na-l", "variation_suffix": "-na-l",] ["name": "Casual Popcorn Shirt Grey Marbel-na-xl", "variation_suffix": "-na-xl",] this perfectly shows: l, xl 
+["name": "Imported Jacket - Ladies Lace Long Coat Brown-na-s", "variation_suffix": "-na-s",], ["name": "Imported Jacket - Ladies Lace Long Coat Brown-na-m", "variation_suffix": "-na-m",] this shows: Ladies Lace Long Coat Brown-s, Ladies Lace Long Coat Brown-m while it should be: s, m
+
+Now, i can't iterate over all such edge cases and make special cases for each one. now naming hasn't been perfect in this site, but we need to make it work.
+Our easiest chances is, use variation_suffix as source of truth (it is) and display accordingly. (the us7-EU41 logic is working fine).
+
+
+### claude css doc gen
+
+this is the frontend analysis ofthe ecommerce side now. i've added a json file that contains tokens of one the sites' design we wanted to copy.
+Also, our client brand uses the colout cyan in their logo.
+
+What i want you to do is:
+
+generate a md file documenting the a colour pallete update for the entire e-commerce. We like off-white/ivory, cyan, gold etc. we are trying to avoid large sections of pitch black or dark grey.
+i also want you to add design upgrades for all individual pages and components.
+especially, premiumProductCard, it's widely used, but there's some design descrepencies accross the e-commerce pages. 
+
+what we do not need to add or change: texts.
+generate the md file such that, each section can be given to an ai model in chunks.
+We want it to be aesthetically pleasing, smooth, and light-weight, but also have that "live" feeling.
+the website already supports some very nice features, especially in homepage, so we don't necessarily want them gone.

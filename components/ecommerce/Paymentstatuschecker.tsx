@@ -54,7 +54,7 @@ export default function PaymentStatusChecker({ onPaymentVerified }: PaymentStatu
 
         // Verify payment status from backend
         console.log('✅ Checking payment status for order:', paymentIntent.order_number);
-        
+
         const result = await sslcommerzService.checkPaymentStatus(paymentIntent.order_number);
 
         console.log('📊 Payment status result:', result);
@@ -68,7 +68,7 @@ export default function PaymentStatusChecker({ onPaymentVerified }: PaymentStatu
             orderNumber: result.order.order_number,
             message: 'Payment successful! Your order has been confirmed.',
           });
-          
+
           if (onPaymentVerified) {
             onPaymentVerified(result.order.id, 'completed');
           }
@@ -78,7 +78,7 @@ export default function PaymentStatusChecker({ onPaymentVerified }: PaymentStatu
             orderNumber: result.order.order_number,
             message: 'Payment failed. Please try again or choose a different payment method.',
           });
-          
+
           if (onPaymentVerified) {
             onPaymentVerified(result.order.id, 'failed');
           }
@@ -88,7 +88,7 @@ export default function PaymentStatusChecker({ onPaymentVerified }: PaymentStatu
             orderNumber: result.order.order_number,
             message: 'Payment was cancelled. You can retry payment from your orders.',
           });
-          
+
           if (onPaymentVerified) {
             onPaymentVerified(result.order.id, 'cancelled');
           }
@@ -101,7 +101,7 @@ export default function PaymentStatusChecker({ onPaymentVerified }: PaymentStatu
 
         // Clear payment intent after verification
         sslcommerzService.clearPaymentIntent();
-        
+
         // Hide notification after 10 seconds
         setTimeout(() => {
           setPaymentResult({ status: null, orderNumber: null, message: null });
@@ -109,7 +109,7 @@ export default function PaymentStatusChecker({ onPaymentVerified }: PaymentStatu
 
       } catch (error: any) {
         console.error('❌ Payment verification error:', error);
-        
+
         // Show error notification
         setPaymentResult({
           status: 'failed',
@@ -155,8 +155,8 @@ export default function PaymentStatusChecker({ onPaymentVerified }: PaymentStatu
           <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6 ec-anim-fade-in">
             <div className="relative mb-8">
               <div className="w-24 h-24 rounded-full border-4 border-green-500/30 ec-success-circle" />
-              <svg 
-                className="absolute inset-0 w-24 h-24 text-green-500" 
+              <svg
+                className="absolute inset-0 w-24 h-24 text-green-500"
                 viewBox="0 0 52 52"
                 fill="none"
                 stroke="currentColor"
@@ -167,12 +167,12 @@ export default function PaymentStatusChecker({ onPaymentVerified }: PaymentStatu
                 <path className="ec-check-draw" d="M14 27l7 7 16-16" />
               </svg>
             </div>
-            
+
             <h2 className="text-4xl md:text-5xl font-serif text-white mb-4 ec-anim-fade-up ec-delay-2">Order Placed!</h2>
             <p className="text-white/60 text-lg mb-8 max-w-md ec-anim-fade-up ec-delay-3">
               Thank you for your purchase. Your payment was verified successfully and we're getting your order ready.
             </p>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 ec-anim-fade-up ec-delay-4">
               <button
                 onClick={() => router.push(`/e-commerce/my-account/orders/${paymentResult.orderNumber}`)}

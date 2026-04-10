@@ -66,7 +66,7 @@ export default function InstagramReelViewer() {
         </div>
       </div>
 
-      <div 
+      <div
         className="relative flex items-center justify-center min-h-[650px] md:min-h-[750px] select-none"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
@@ -77,18 +77,16 @@ export default function InstagramReelViewer() {
           <button
             onClick={prev}
             disabled={activeIndex === 0}
-            className={`w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white transition-all pointer-events-auto ${
-              activeIndex === 0 ? 'opacity-0' : 'hover:bg-white/20 opacity-100'
-            }`}
+            className={`w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white transition-all pointer-events-auto ${activeIndex === 0 ? 'opacity-0' : 'hover:bg-white/20 opacity-100'
+              }`}
           >
             <ChevronLeft size={24} />
           </button>
           <button
             onClick={next}
             disabled={activeIndex === REEL_URLS.length - 1}
-            className={`w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white transition-all pointer-events-auto ${
-              activeIndex === REEL_URLS.length - 1 ? 'opacity-0' : 'hover:bg-white/20 opacity-100'
-            }`}
+            className={`w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white transition-all pointer-events-auto ${activeIndex === REEL_URLS.length - 1 ? 'opacity-0' : 'hover:bg-white/20 opacity-100'
+              }`}
           >
             <ChevronRight size={24} />
           </button>
@@ -140,11 +138,11 @@ export default function InstagramReelViewer() {
                 }}
               >
                 <div className="relative group">
-                   {/* Center Focus Reflection Effect */}
-                   {isActive && (
-                     <div className="absolute -inset-4 bg-white/5 blur-3xl rounded-full -z-10 animate-pulse" />
-                   )}
-                   <InstagramEmbed url={url} />
+                  {/* Center Focus Reflection Effect */}
+                  {isActive && (
+                    <div className="absolute -inset-4 bg-white/5 blur-3xl rounded-full -z-10 animate-pulse" />
+                  )}
+                  <InstagramEmbed url={url} />
                 </div>
               </div>
             );
@@ -158,9 +156,8 @@ export default function InstagramReelViewer() {
           <button
             key={i}
             onClick={() => setActiveIndex(i)}
-            className={`h-1.5 transition-all duration-300 rounded-full ${
-              i === activeIndex ? 'w-8 bg-gold' : 'w-2 bg-white/20'
-            }`}
+            className={`h-1.5 transition-all duration-300 rounded-full ${i === activeIndex ? 'w-8 bg-gold' : 'w-2 bg-white/20'
+              }`}
           />
         ))}
       </div>

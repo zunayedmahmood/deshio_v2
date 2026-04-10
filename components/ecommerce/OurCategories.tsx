@@ -104,7 +104,7 @@ const OurCategories: React.FC<OurCategoriesProps> = ({ categories: categoriesPro
               Featured Categories
             </span>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-light text-black tracking-tight"
-                style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+              style={{ fontFamily: "'Cormorant Garamond', serif" }}>
               Explore Collections
             </h2>
             <p className="mt-2 text-gray-500 max-w-lg text-sm sm:text-base">
@@ -150,18 +150,18 @@ const OurCategories: React.FC<OurCategoriesProps> = ({ categories: categoriesPro
                       style={{ background: `linear-gradient(160deg, ${from} 0%, ${to} 100%)` }}
                     />
                   )}
-                  
+
                   {/* Subtle overlay */}
                   <div className="absolute inset-0 bg-black/[0.02] transition-colors group-hover:bg-transparent" />
-                  
+
                   {/* Category Label at bottom */}
                   <div className="absolute inset-x-0 bottom-0 p-6 flex flex-col items-center text-center">
                     <span className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-black/40 group-hover:text-black transition-colors"
-                          style={{ fontFamily: "'DM Mono', monospace" }}>
+                      style={{ fontFamily: "'DM Mono', monospace" }}>
                       {cat.product_count || 0} items
                     </span>
                     <h3 className="mt-2 text-lg sm:text-xl font-medium text-black"
-                        style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+                      style={{ fontFamily: "'Cormorant Garamond', serif" }}>
                       {cat.name}
                     </h3>
                   </div>

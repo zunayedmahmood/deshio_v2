@@ -48,35 +48,35 @@ export default function CollectionTiles() {
   };
 
   return (
-    <section 
-      className="ec-section overflow-hidden" 
+    <section
+      className="ec-section overflow-hidden"
       onMouseMove={handleMouseMove}
     >
       <div className="ec-container">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {collections.map((item) => (
-            <Link 
-              key={item.id} 
+            <Link
+              key={item.id}
               href={item.href}
               className="group relative overflow-hidden rounded-2xl aspect-[4/5] block bg-neutral-900"
             >
               {/* Background with Parallax */}
-              <div 
+              <div
                 className="absolute inset-0 bg-cover bg-center transition-transform duration-500 ease-out group-hover:scale-110"
                 style={{
                   backgroundImage: `url(${item.image})`,
                   transform: `translate(${mousePos.x * 0.3}px, ${mousePos.y * 0.3}px) scale(1.1)`,
                 }}
               />
-              
+
               {/* Overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity group-hover:opacity-90" />
-              
+
               {/* Content */}
               <div className="absolute inset-0 p-8 flex flex-col justify-end">
                 <p className="text-white/60 text-xs font-mono tracking-widest uppercase mb-2">{item.subtitle}</p>
                 <h3 className="text-white text-3xl font-serif mb-4">{item.title}</h3>
-                
+
                 <div className="overflow-hidden h-10">
                   <div className="transition-transform duration-500 transform translate-y-10 group-hover:translate-y-0 flex items-center gap-2 text-white text-sm font-semibold uppercase tracking-wider">
                     Explore Collection <span className="text-xl">→</span>

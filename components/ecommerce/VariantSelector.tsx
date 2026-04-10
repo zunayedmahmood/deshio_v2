@@ -8,152 +8,111 @@ interface VariantSelectorProps {
   variants: ProductVariant[];
   selectedVariant: ProductVariant;
   onVariantChange: (variant: ProductVariant) => void;
+  baseName?: string;
 }
+
+const formatVariantLabelForCard = (v: ProductVariant) => {
+  // Use variation_suffix as the primary source of truth as it's more stable
+  let source = v.variation_suffix || v.name || '';
+
+  // Basic cleanup: remove brackets and leading/trailing dashes
+  let clean = source.replace(/^\[|\]$/g, '').trim();
+  while (clean.startsWith('-')) clean = clean.substring(1);
+  while (clean.endsWith('-')) clean = clean.substring(0, clean.length - 1);
+
+  const parts = clean.split(/[-/]/).map(p => p.trim()).filter(p => {
+    const lp = p.toLowerCase();
+    return lp !== 'na' && lp !== 'not applicable' && lp !== 'none' && lp !== '';
+  });
+
+  // Specific conversion for "US X / EU Y" patterns
+  // Pattern: detects "us" followed by a number, and another numeric part for EU
+  let usIndex = -1;
+  let usVal = '';
+  let euVal = '';
+
+  for (let i = 0; i < parts.length; i++) {
+    const low = parts[i].toLowerCase();
+    if (low === 'us' && i + 1 < parts.length && !isNaN(Number(parts[i + 1]))) {
+      usIndex = i;
+      usVal = parts[i + 1];
+      break;
+    }
+  }
+
+  if (usIndex !== -1) {
+    // We found a US size value. Look for another numeric part to assume as EU
+    for (let i = 0; i < parts.length; i++) {
+      if (i !== usIndex && i !== (usIndex + 1) && !isNaN(Number(parts[i]))) {
+        euVal = parts[i];
+        break;
+      }
+    }
+
+    if (usVal && euVal) {
+      // Reconstruct the remaining parts (e.g. Color)
+      const others = parts.filter((_, i) => i !== usIndex && i !== (usIndex + 1) && parts[i] !== euVal);
+      const sizeStr = `US ${usVal} / EU ${euVal}`;
+      return others.length > 0 ? `${sizeStr} - ${others.join(' - ')}` : sizeStr;
+    }
+  }
+
+  // Fallback: standard hyphenation for other patterns
+  return parts.join(' - ') || 'Standard';
+};
 
 const VariantSelector: React.FC<VariantSelectorProps> = ({
   variants,
   selectedVariant,
   onVariantChange,
 }) => {
-  // Group by colors
-  const allColors = Array.from(new Set(variants.map(v => v.color).filter(Boolean))) as string[];
-  const allSizes = Array.from(new Set(variants.map(v => v.size).filter(Boolean))) as string[];
-
-  // If we have both color and size, show two sections. 
-  // If we just have one generic label, show one section.
-  
-  const handleSizeClick = (size: string) => {
-    // Find variant with current color and new size
-    const match = variants.find(v => v.color === selectedVariant.color && v.size === size);
-    if (match) onVariantChange(match);
-  };
-
-  const handleColorClick = (color: string) => {
-    // Find variant with new color and current size (if possible)
-    let match = variants.find(v => v.color === color && v.size === selectedVariant.size);
-    if (!match) {
-        // Just find first available in that color
-        match = variants.find(v => v.color === color && v.in_stock) || variants.find(v => v.color === color);
-    }
-    if (match) onVariantChange(match);
-  };
-
   return (
-    <div className="space-y-8">
-      {/* Colors */}
-      {allColors.length > 0 && (
-        <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <div className="flex justify-between items-baseline">
           <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-black"
-             style={{ fontFamily: "'DM Mono', monospace" }}>
-            Color: <span className="text-gray-400 font-medium ml-1">{selectedVariant.color}</span>
+            style={{ fontFamily: "'DM Mono', monospace" }}>
+            Select Option
           </p>
-          <div className="flex flex-wrap gap-4">
-            {allColors.map((color) => {
-              const isActive = selectedVariant.color === color;
-              const hasInStock = variants.some(v => v.color === color && v.in_stock);
-              
-              return (
-                <button
-                  key={color}
-                  onClick={() => handleColorClick(color)}
-                  className={`relative group w-11 h-11 rounded-full transition-all duration-300 ${
-                    isActive 
-                      ? 'ring-2 ring-offset-2 ring-[--gold]' 
-                      : 'ring-1 ring-gray-200'
-                  } ${!hasInStock ? 'opacity-40' : ''}`}
-                  title={color}
-                >
-                  <span 
-                    className="absolute inset-1 rounded-full border border-black/5" 
-                    style={{ backgroundColor: color.toLowerCase() }} 
-                  />
-                  {!hasInStock && (
-                    <div className="absolute inset-0 flex items-center justify-center rotate-45 pointer-events-none">
-                        <div className="w-full h-[1px] bg-red-500/50" />
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+          <span className="text-[10px] font-medium text-gray-400 bg-gray-50 px-2 py-0.5 rounded-md">
+            {variants.length} available
+          </span>
         </div>
-      )}
 
-      {/* Sizes */}
-      {allSizes.length > 0 && (
-        <div className="space-y-4">
-          <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-black"
-             style={{ fontFamily: "'DM Mono', monospace" }}>
-            Size: <span className="text-gray-400 font-medium ml-1">{selectedVariant.size}</span>
-          </p>
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
-            {allSizes.map((size) => {
-              const variant = variants.find(v => v.color === selectedVariant.color && v.size === size);
-              const isSelected = selectedVariant.size === size;
-              const isAvailable = variant?.in_stock ?? false;
+        <div className="flex flex-wrap gap-2.5">
+          {variants.map((v) => {
+            const isSelected = selectedVariant.id === v.id;
+            const isAvailable = v.in_stock && (v.available_inventory ?? 0) > 0;
+            const label = formatVariantLabelForCard(v);
 
-              return (
-                <button
-                  key={size}
-                  onClick={() => isAvailable && handleSizeClick(size)}
-                  className={`h-11 rounded-xl text-xs font-bold transition-all border-2 flex items-center justify-center relative overflow-hidden ${
-                    isSelected
-                      ? 'bg-black border-black text-white shadow-lg z-10'
-                      : isAvailable
-                        ? 'bg-white border-gray-100 text-gray-500 hover:border-black hover:text-black'
-                        : 'bg-gray-50/50 border-gray-50 text-gray-300 cursor-not-allowed'
+            return (
+              <button
+                key={v.id}
+                onClick={() => onVariantChange(v)}
+                className={`min-h-[44px] min-w-[60px] px-5 rounded-xl text-[11px] font-bold transition-all border-2 flex items-center justify-center relative overflow-hidden ${isSelected
+                    ? 'bg-black border-black text-white shadow-[0_8px_20px_rgba(0,0,0,0.15)] z-10'
+                    : isAvailable
+                      ? 'bg-white border-gray-100 text-gray-500 hover:border-black hover:text-black'
+                      : 'bg-gray-50/50 border-gray-50 text-gray-300 cursor-not-allowed'
                   }`}
-                  style={{ fontFamily: "'Jost', sans-serif" }}
-                >
-                  {size}
-                  {!isAvailable && (
-                    <div className="absolute inset-0 pointer-events-none opacity-40">
-                      <div className="absolute top-1/2 left-0 w-full h-[1px] bg-gray-400 -rotate-45" />
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+                style={{ fontFamily: "'Jost', sans-serif" }}
+              >
+                <span className="relative z-20 whitespace-nowrap">{label}</span>
 
-      {/* Simple List (If no explicit color/size grouping) */}
-      {allColors.length === 0 && allSizes.length === 0 && (
-        <div className="space-y-4">
-          <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-black"
-             style={{ fontFamily: "'DM Mono', monospace" }}>
-            Options
-          </p>
-          <div className="flex flex-wrap gap-2.5">
-            {variants.map((v) => {
-                const isSelected = selectedVariant.id === v.id;
-                const isAvailable = v.in_stock;
-                return (
-                    <button
-                        key={v.id}
-                        onClick={() => onVariantChange(v)}
-                        className={`h-11 px-6 rounded-xl text-xs font-bold transition-all border-2 flex items-center justify-center relative overflow-hidden ${
-                            isSelected
-                            ? 'bg-black border-black text-white shadow-lg'
-                            : isAvailable
-                                ? 'bg-white border-gray-100 text-gray-500 hover:border-black hover:text-black'
-                                : 'bg-gray-50/50 border-gray-50 text-gray-300 cursor-not-allowed opacity-40'
-                        }`}
-                        style={{ fontFamily: "'Jost', sans-serif" }}
-                    >
-                        {v.name}
-                        {!isAvailable && (
-                            <div className="absolute inset-0 pointer-events-none">
-                            <div className="absolute top-1/2 left-0 w-full h-[1px] bg-gray-400 -rotate-45" />
-                            </div>
-                        )}
-                    </button>
-                )
-            })}
-          </div>
+                {!isAvailable && (
+                  <div className="absolute inset-0 pointer-events-none opacity-20">
+                    <div className="absolute top-1/2 left-0 w-full h-[1px] bg-gray-400 -rotate-45" />
+                  </div>
+                )}
+
+                {isSelected && (
+                  <div className="absolute top-0 right-0 w-0 h-0 border-t-[12px] border-l-[12px] border-t-white/20 border-l-transparent" />
+                )}
+              </button>
+            );
+          })}
         </div>
-      )}
+      </div>
     </div>
   );
 };

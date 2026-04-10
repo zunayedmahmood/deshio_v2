@@ -123,8 +123,8 @@ const PremiumProductCard: React.FC<PremiumProductCardProps> = ({
           <button
             onClick={handleToggleWishlist}
             className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-all border shadow-sm ${isInWishlist
-                ? 'bg-black border-black text-white'
-                : 'bg-white/80 border-gray-100 text-black/40 hover:text-black hover:bg-white'
+              ? 'bg-black border-black text-white'
+              : 'bg-white/80 border-gray-100 text-black/40 hover:text-black hover:bg-white'
               } ${isHeartBeating ? 'scale-125' : 'scale-100'}`}
           >
             <Heart className={`h-4 w-4 ${isInWishlist ? 'fill-[var(--gold)] text-[var(--gold)]' : ''}`} />
@@ -185,13 +185,7 @@ const PremiumProductCard: React.FC<PremiumProductCardProps> = ({
           </div>
         )}
 
-        {/* 4.1 — Mobile Action Pill (Tap Reveal equivalent) */}
-        <div className="absolute inset-x-0 bottom-3 px-3 sm:hidden z-10">
-          <div className="bg-white/90 backdrop-blur-md rounded-xl py-2 px-3 flex items-center justify-between border border-black/5 shadow-sm">
-            <span className="text-[10px] font-bold tracking-widest text-black/40 uppercase" style={{ fontFamily: "'DM Mono', monospace" }}>View Details</span>
-            <ArrowRight size={14} className="text-black" />
-          </div>
-        </div>
+
 
         {/* 4.1 — Desktop Action Bar */}
         <div className="absolute inset-x-0 bottom-0 translate-y-full transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] sm:group-hover:translate-y-0 hidden sm:block">

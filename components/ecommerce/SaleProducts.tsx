@@ -73,7 +73,7 @@ export default function SaleProducts() {
                     e.currentTarget.style.display = 'none';
                   }}
                 />
-                
+
                 {/* Discount Badge */}
                 <span className="absolute top-3 left-3 bg-rose-500 text-white px-3 py-1.5 text-xs font-bold rounded-lg shadow-lg">
                   {product.discount}
