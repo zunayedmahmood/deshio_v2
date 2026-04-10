@@ -252,3 +252,33 @@ when you're building the suggestions, make each page (and or its components) a c
 
 
 
+### adding insta reels:
+in e-commerce home page, we have a section with these cards:
+"sneaker heads", "Sweater Essentials" etc.
+This also becomes list in mobile viewport.
+
+We want to replace this section with this:
+->a reel viewer, here there will be 5 reel videos, one in the center, other small paused videos on its left and right.
+we can swipe to control which ones to see and small buttons too.
+-> the center will be playing, keep sound at 60%. we'll add a small button bottom right to mute or unmute (dynamic).
+
+the reel videos will be from here:
+https://www.instagram.com/errum_bd/ . it has to be their latest 5 reels. checked in every 15 min or so. 
+basically, when client uploads reels, they can see their e-commerce homepage get updated with the new reels. 
+this has to be done in a way that doesn't break any existing functionality. you may need to add new components or modify existing ones. 
+
+
+https://www.instagram.com/errum_bd/reel/DW6uSbkERA9/
+https://www.instagram.com/errum_bd/p/DW6DQUGk-ho/
+https://www.instagram.com/errum_bd/reel/DW323H0EboK/
+https://www.instagram.com/errum_bd/p/DWwVRsnEzn8/
+https://www.instagram.com/errum_bd/p/DWnvVqhE6-p/
+
+
+### e-commerce fix:
+Make the auto-slide infinite loop slide speed 65% of what it is right now.
+The slide stops and starts on hover perfectly on desktop. but on mobile, it doesn't restart after tap. fix it. like, tap should go to that product image, but, like the touches that don't.
+
+for each categories we are showing, we show all products, then each subcategories.
+Update this.
+For "All Products" under each category, we'll simply show all products of That category including subcategories.

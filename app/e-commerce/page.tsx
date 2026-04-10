@@ -9,13 +9,13 @@ import NewArrivals from '@/components/ecommerce/NewArrivals';
 import SubcategoryProductTabs from '@/components/ecommerce/SubcategoryProductTabs';
 import SectionReveal from '@/components/ecommerce/SectionReveal';
 import NewArrivalsTicker from '@/components/ecommerce/NewArrivalsTicker';
-import CollectionTiles from '@/components/ecommerce/CollectionTiles';
+import InstagramReelViewer from '@/components/ecommerce/InstagramReelViewer';
 
 export default function HomePage() {
   return (
     <div className="ec-root min-h-screen">
       <Navigation />
-      
+
       {/* 7.1 — Hero section (Full height) */}
       <HeroSection />
 
@@ -27,9 +27,9 @@ export default function HomePage() {
           <OurCategories />
         </SectionReveal>
 
-        {/* 7.4 — Parallax Collection Tiles */}
+        {/* 7.4 — Instagram Reels Feed */}
         <SectionReveal threshold={0.05}>
-          <CollectionTiles />
+          <InstagramReelViewer />
         </SectionReveal>
 
         <SectionReveal>

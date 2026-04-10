@@ -773,3 +773,7 @@ body {
   color: rgba(255,255,255,0.4);
   margin-top: 6px;
 }
+
+.perspective-1000 {
+  perspective: 1000px;
+}
