@@ -145,65 +145,66 @@ const Navbar = () => {
                 </button>
 
                 {showCats && categories.length > 0 && (
-                  <div className="absolute left-1/2 top-full mt-3 -translate-x-1/2 w-[520px] rounded-[var(--radius-lg)] border border-[var(--border-strong)] bg-[var(--bg-lifted)] shadow-[var(--shadow-lifted)] overflow-hidden">
+                  <div className="absolute left-1/2 top-full mt-4 -translate-x-1/2 w-[720px] rounded-[var(--radius-xl)] border border-[var(--border-strong)] bg-[var(--bg-lifted)] shadow-[var(--shadow-lifted)] overflow-hidden">
                     {/* Dropdown header */}
-                    <div className="border-b border-[var(--border-default)] px-5 py-3 flex items-center justify-between">
-                      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '10px', letterSpacing: '0.18em', color: 'var(--text-muted)' }}>
+                    <div className="border-b border-[var(--border-default)] px-8 py-5 flex items-center justify-between bg-[var(--bg-surface)]">
+                      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '12px', fontWeight: 700, letterSpacing: '0.22em', color: 'var(--text-muted)' }}>
                         ALL CATEGORIES
                       </span>
                       <Link
                         href="/e-commerce/categories"
-                        className="text-[11px] text-[var(--cyan)] hover:text-[var(--cyan-bright)] transition-colors font-medium"
+                        className="text-[13px] text-[var(--cyan)] hover:text-[var(--cyan-bright)] transition-colors font-bold uppercase tracking-widest"
                         onClick={() => setShowCats(false)}
                       >
-                        View all →
+                        Explore all →
                       </Link>
                     </div>
 
                     {/* Category grid */}
-                    <div className="p-4 grid grid-cols-2 gap-1 max-h-[400px] overflow-y-auto">
+                    <div className="p-8 grid grid-cols-2 gap-x-10 gap-y-4 max-h-[550px] overflow-y-auto ec-scrollbar">
                       {categories.map(cat => (
-                        <div key={cat.id}>
-                            <Link
-                              href={`/e-commerce/${encodeURIComponent(catSlug(cat))}`}
-                              onClick={() => setShowCats(false)}
-                              className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[var(--text-primary)] hover:bg-[var(--cyan-pale)] hover:text-[var(--cyan)] transition-all group"
-                              style={{ background: 'transparent' }}
-                            >
-                              <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-[11px] font-bold text-[var(--cyan)] border border-[var(--border-default)]"
-                                style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-                                {cat.name.charAt(0)}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-[13px] font-medium text-[var(--text-primary)] truncate transition-colors group-hover:text-[var(--cyan)]">{cat.name}</p>
-                                {cat.children && cat.children.length > 0 && (
-                                  <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{cat.children.length} subcategories</p>
-                                )}
-                              </div>
-                            </Link>
+                        <div key={cat.id} className="group/item">
+                          <Link
+                            href={`/e-commerce/${encodeURIComponent(catSlug(cat))}`}
+                            onClick={() => setShowCats(false)}
+                            className="flex items-center gap-5 rounded-2xl px-4 py-4 text-[var(--text-primary)] hover:bg-[var(--cyan-pale)] transition-all"
+                            style={{ background: 'transparent' }}
+                          >
+                            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl text-[16px] font-bold text-[var(--cyan)] border border-[var(--border-default)] bg-[var(--bg-depth)] group-hover/item:border-[var(--cyan-border)]"
+                              style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+                              {cat.name.charAt(0)}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[16.5px] font-bold text-[var(--text-primary)] truncate transition-colors group-hover/item:text-[var(--cyan)]">{cat.name}</p>
+                              {cat.children && cat.children.length > 0 && (
+                                <p className="text-[11.5px] text-[var(--text-muted)] mt-1 tracking-wide font-medium uppercase">{cat.children.length} collections</p>
+                              )}
+                            </div>
+                          </Link>
 
                           {/* Sub-category pills under each parent - all shown with toggle */}
                           {cat.children && cat.children.length > 0 && (
-                            <div className="pl-[46px] pb-2 flex flex-col gap-0.5">
-                              {(expandedCats.has(cat.id) ? cat.children : cat.children.slice(0, 3)).map(child => (
+                            <div className="pl-[72px] pb-4 flex flex-col gap-2">
+                              {(expandedCats.has(cat.id) ? cat.children : cat.children.slice(0, 4)).map(child => (
                                 <Link
                                   key={child.id}
                                   href={`/e-commerce/${encodeURIComponent(catSlug(child))}`}
                                   onClick={() => setShowCats(false)}
-                                  className="text-[11px] text-[var(--text-muted)] hover:text-[var(--cyan)] py-0.5 transition-colors"
+                                  className="text-[15.5px] font-medium text-[var(--text-primary)] hover:text-[var(--text-primary)] py-0.5 transition-colors relative flex items-center"
                                 >
+                                  <span className="w-1.5 h-px bg-[var(--border-strong)] mr-3 opacity-40"></span>
                                   {child.name}
                                 </Link>
                               ))}
-                              {cat.children.length > 3 && (
+                              {cat.children.length > 4 && (
                                 <button
                                   onClick={e => { e.stopPropagation(); setExpandedCats(prev => { const s = new Set(prev); s.has(cat.id) ? s.delete(cat.id) : s.add(cat.id); return s; }); }}
-                                  className="text-[11px] text-left transition-colors mt-0.5"
+                                  className="text-[11px] font-bold text-left transition-colors mt-1 pl-3 uppercase tracking-widest"
                                   style={{ color: 'var(--gold-light)' }}
                                   onMouseEnter={e => (e.currentTarget.style.color = 'var(--gold)')}
                                   onMouseLeave={e => (e.currentTarget.style.color = 'var(--gold-light)')}
                                 >
-                                  {expandedCats.has(cat.id) ? '↑ Show less' : `+ ${cat.children.length - 3} more`}
+                                  {expandedCats.has(cat.id) ? '↑ Show fewer' : `+ ${cat.children.length - 4} collections`}
                                 </button>
                               )}
                             </div>

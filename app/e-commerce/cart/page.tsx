@@ -6,6 +6,7 @@ import { X, ShoppingCart, Loader2, AlertCircle } from 'lucide-react';
 import Navigation from '@/components/ecommerce/Navigation';
 import cartService, { CartItem, Cart } from '@/services/cartService';
 import checkoutService from '@/services/checkoutService';
+import { getBaseProductName } from '@/lib/productNameUtils';
 
 export default function CartPage() {
   const router = useRouter();
@@ -228,13 +229,11 @@ export default function CartPage() {
 
   if (isLoading) {
     return (
-      <div className="ec-root ec-darkify min-h-screen">
+      <div className="ec-root min-h-screen bg-[var(--bg-root)]">
         <Navigation />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="text-center">
-            <Loader2 className="animate-spin h-12 w-12 text-neutral-900 mx-auto mb-4" />
-            <p className="text-neutral-600">Loading your cart...</p>
-          </div>
+        <div className="ec-container py-32 flex flex-col items-center justify-center">
+          <Loader2 className="animate-spin h-10 w-10 text-[var(--cyan)] mb-4" />
+          <p className="text-[var(--text-secondary)] font-medium">Loading your selection...</p>
         </div>
       </div>
     );
@@ -242,20 +241,18 @@ export default function CartPage() {
 
   if (error && !cart) {
     return (
-      <div className="ec-root ec-darkify min-h-screen">
+      <div className="ec-root min-h-screen bg-[var(--bg-root)]">
         <Navigation />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="text-center">
-            <AlertCircle className="h-24 w-24 text-rose-600 mx-auto mb-4" />
-            <h1 className="text-3xl font-bold text-neutral-900 mb-4">Error Loading Cart</h1>
-            <p className="text-neutral-600 mb-8">{error}</p>
-            <button
-              onClick={fetchCart}
-              className="bg-neutral-900 text-white px-8 py-3 rounded-lg font-semibold hover:bg-neutral-800 transition-colors"
-            >
-              Try Again
-            </button>
-          </div>
+        <div className="ec-container py-32 text-center">
+          <AlertCircle className="h-16 w-16 text-[var(--status-danger)] mx-auto mb-6" />
+          <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Error Loading Cart</h1>
+          <p className="text-[var(--text-secondary)] mb-10 max-w-md mx-auto">{error}</p>
+          <button
+            onClick={fetchCart}
+            className="ec-btn-primary px-10"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     );
@@ -263,73 +260,71 @@ export default function CartPage() {
 
   if (!cart?.cart_items || cart.cart_items.length === 0) {
     return (
-      <div className="ec-root ec-darkify min-h-screen">
+      <div className="ec-root min-h-screen bg-[var(--bg-root)]">
         <Navigation />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="text-center">
-            <ShoppingCart className="h-24 w-24 text-neutral-300 mx-auto mb-4" />
-            <h1 className="text-3xl font-bold text-neutral-900 mb-4">Your cart is empty</h1>
-            <p className="text-neutral-600 mb-8">Add some products to get started!</p>
-            <button
-              onClick={() => router.push('/e-commerce')}
-              className="bg-neutral-900 text-white px-8 py-3 rounded-lg font-semibold hover:bg-neutral-800 transition-colors"
-            >
-              Continue Shopping
-            </button>
+        <div className="ec-container py-32 text-center">
+          <div className="relative inline-block mb-10">
+            <div className="absolute inset-0 bg-[var(--cyan-pale)] rounded-full blur-2xl opacity-20" />
+            <ShoppingCart className="h-20 w-20 text-[var(--text-muted)] relative z-10" />
           </div>
+          <h1 className="text-4xl font-medium text-[var(--text-primary)] mb-4" style={{ fontFamily: "'Cormorant Garamond', serif" }}>Your cart is empty</h1>
+          <p className="text-[var(--text-secondary)] mb-10 max-w-sm mx-auto">Discover our latest collection and find items that inspire confidence.</p>
+          <button
+            onClick={() => router.push('/e-commerce/products')}
+            className="ec-btn-primary px-12"
+          >
+            Explore Collection
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="ec-root ec-darkify min-h-screen pt-24 pb-12">
+    <div className="ec-root min-h-screen bg-[var(--bg-root)]">
       <Navigation />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Cart Items */}
+      
+      <main className="ec-container py-16">
+        <div className="flex flex-col lg:flex-row gap-12">
+          
+          {/* Cart Items Area */}
           <div className="flex-1">
-            {/* Select All & Delete */}
-            <div className="flex items-center justify-between mb-4 pb-4 border-b">
-              <label className="flex items-center gap-3 cursor-pointer">
+            {/* Header Control */}
+            <div className="flex items-center justify-between mb-8 pb-4 border-b border-[var(--border-default)]">
+              <label className="flex items-center gap-3 cursor-pointer group">
                 <input
                   type="checkbox"
                   checked={selectedItems.size === cart.cart_items.length && cart.cart_items.length > 0}
                   onChange={toggleSelectAll}
-                  className="w-5 h-5 cursor-pointer accent-amber-600"
+                  className="w-5 h-5 cursor-pointer accent-[var(--cyan)]"
                 />
-                <span className="text-neutral-700 font-medium">
+                <span className="text-[11px] font-bold tracking-[0.2em] text-[var(--text-primary)] uppercase" style={{ fontFamily: "'DM Mono', monospace" }}>
                   SELECT ALL ({cart.cart_items.length} ITEM{cart.cart_items.length !== 1 ? 'S' : ''})
                 </span>
               </label>
-              <div className="flex gap-2">
+              
+              <div className="flex items-center gap-8">
                 <button
                   onClick={handleDeleteSelected}
                   disabled={selectedItems.size === 0 || isUpdating.size > 0}
-                  className="flex items-center gap-2 text-neutral-600 hover:text-rose-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 text-[var(--text-muted)] hover:text-[var(--status-danger)] transition-all disabled:opacity-30 disabled:cursor-not-allowed group"
                 >
-                  {isUpdating.size > 0 ? (
-                    <Loader2 size={18} className="animate-spin" />
-                  ) : (
-                    <X size={18} />
-                  )}
-                  <span className="text-sm font-medium">DELETE SELECTED</span>
+                  <X size={16} className="group-hover:rotate-90 transition-transform" />
+                  <span className="text-[11px] font-bold tracking-[0.2em]" style={{ fontFamily: "'DM Mono', monospace" }}>DELETE SELECTED</span>
                 </button>
                 <button
                   onClick={handleClearCart}
                   disabled={isUpdating.size > 0}
-                  className="flex items-center gap-2 text-neutral-600 hover:text-rose-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ml-4"
+                  className="flex items-center gap-2 text-[var(--text-muted)] hover:text-[var(--status-danger)] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                 >
-                  <X size={18} />
-                  <span className="text-sm font-medium">CLEAR CART</span>
+                  <X size={16} />
+                  <span className="text-[11px] font-bold tracking-[0.2em]" style={{ fontFamily: "'DM Mono', monospace" }}>CLEAR CART</span>
                 </button>
               </div>
             </div>
 
-            {/* Table Header */}
-            <div className="hidden md:grid grid-cols-12 gap-4 pb-4 border-b font-semibold text-neutral-900">
+            {/* Cart Table Header */}
+            <div className="hidden md:grid grid-cols-12 gap-6 pb-4 border-b border-[var(--border-default)] font-bold text-[var(--text-muted)] text-[10px] tracking-[0.2em]" style={{ fontFamily: "'DM Mono', monospace" }}>
               <div className="col-span-1"></div>
               <div className="col-span-5">PRODUCT</div>
               <div className="col-span-2 text-center">PRICE</div>
@@ -337,264 +332,210 @@ export default function CartPage() {
               <div className="col-span-2 text-right">SUBTOTAL</div>
             </div>
 
-            {/* Cart Items */}
-            <div className="space-y-4 mt-6">
+            {/* Cart Items List */}
+            <div className="space-y-6 mt-8">
               {cart.cart_items.map((item: CartItem) => {
-                const price = typeof item.unit_price === 'string'
-                  ? parseFloat(item.unit_price)
-                  : item.unit_price;
-                const itemTotal = typeof item.total_price === 'string'
-                  ? parseFloat(item.total_price)
-                  : item.total_price;
+                const price = typeof item.unit_price === 'string' ? parseFloat(item.unit_price) : item.unit_price;
+                const itemTotal = typeof item.total_price === 'string' ? parseFloat(item.total_price) : item.total_price;
                 const isItemUpdating = isUpdating.has(item.id);
-                const productImage =
-                  item.product.images?.find((i: any) => i?.is_primary)?.image_url ||
-                  (item.product.images?.[0] as any)?.image_url ||
-                  (item.product.images?.[0] as any)?.url ||
-                  '/placeholder-product.png';
+                
+                const productImage = 
+                  item.product.images?.find((i: any) => i?.is_primary)?.url ||
+                  item.product.images?.[0]?.url ||
+                  '/images/placeholder-product.jpg';
 
                 return (
                   <div
                     key={item.id}
-                    className={`grid grid-cols-1 md:grid-cols-12 gap-4 py-6 border-b items-center transition-opacity ${isItemUpdating ? 'opacity-50' : 'opacity-100'
-                      }`}
+                    className={`grid grid-cols-1 md:grid-cols-12 gap-6 py-8 border-b border-[var(--border-default)] items-center transition-all ${isItemUpdating ? 'opacity-40 grayscale pointer-events-none' : 'opacity-100'}`}
                   >
                     {/* Checkbox */}
-                    <div className="md:col-span-1 flex justify-end md:justify-start">
+                    <div className="md:col-span-1">
                       <input
                         type="checkbox"
                         checked={selectedItems.has(item.id)}
                         onChange={() => toggleSelectItem(item.id)}
-                        disabled={isItemUpdating}
-                        className="w-5 h-5 cursor-pointer accent-amber-600 disabled:cursor-not-allowed"
+                        className="w-5 h-5 cursor-pointer accent-[var(--cyan)]"
                       />
                     </div>
 
-                    {/* Product Info */}
-                    <div className="md:col-span-5 flex items-center gap-4">
-                      <div className="relative">
-                        <img
-                          src={productImage}
-                          alt={item.product.name}
-                          className="w-24 h-24 object-cover rounded-lg"
-                          onError={(e) => {
-                            if (!e.currentTarget.src.includes('/placeholder-product.png')) {
-                              e.currentTarget.src = '/placeholder-product.png';
+                    {/* Product Brand/Title Info */}
+                    <div className="md:col-span-5 flex items-center gap-6">
+                      <div className="relative flex-shrink-0 group">
+                        <div className="h-24 w-20 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--bg-surface)]">
+                          <img
+                            src={
+                              item.product.images?.find((i: any) => i?.is_primary)?.image_url ||
+                              item.product.images?.[0]?.image_url ||
+                              '/images/placeholder-product.jpg'
                             }
-                          }}
-                        />
+                            alt={item.product.name}
+                            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                          />
+                        </div>
                         <button
                           onClick={() => handleRemoveItem(item.id)}
-                          disabled={isItemUpdating}
-                          className="absolute -top-2 -right-2 p-1 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" style={{ background: 'rgba(13,13,13,0.8)', border: '1px solid rgba(255,255,255,0.15)' }}
+                          className="absolute -top-3 -right-3 h-7 w-7 flex items-center justify-center rounded-full bg-[var(--bg-depth)] border border-[var(--border-default)] text-[var(--text-muted)] hover:text-[var(--status-danger)] hover:border-[var(--status-danger)] transition-all shadow-sm"
                         >
-                          {isItemUpdating ? (
-                            <Loader2 size={16} className="text-neutral-500 animate-spin" />
-                          ) : (
-                            <X size={16} className="text-neutral-500" />
-                          )}
+                          <X size={14} />
                         </button>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-neutral-900">
-                          {item.product.name}
+                      
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-[var(--text-primary)] text-base mb-1 leading-snug">
+                          {getBaseProductName(item.product.name)}
                         </h3>
 
-                        {item.variant_options && (
-                          <div className="flex gap-2 mt-1">
-                            {item.variant_options.color && (
-                              <span className="text-xs bg-neutral-100 text-neutral-700 px-2 py-1 rounded-lg">
-                                Color: {item.variant_options.color}
-                              </span>
-                            )}
-                            {item.variant_options.size && (
-                              <span className="text-xs bg-neutral-100 text-neutral-700 px-2 py-1 rounded-lg">
-                                Size: {item.variant_options.size}
-                              </span>
-                            )}
-                          </div>
-                        )}
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {item.variant_options?.color && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[var(--bg-depth)] border border-[var(--border-default)] text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]" style={{ fontFamily: "'DM Mono', monospace" }}>
+                              {item.variant_options.color}
+                            </span>
+                          )}
+                          {item.variant_options?.size && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[var(--bg-depth)] border border-[var(--border-default)] text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]" style={{ fontFamily: "'DM Mono', monospace" }}>
+                              {item.variant_options.size}
+                            </span>
+                          )}
+                        </div>
 
-                        {item.product.category && (
-                          <p className="text-sm text-neutral-500 mt-1">
-                            {typeof item.product.category === 'string'
-                              ? item.product.category
-                              : item.product.category}
-                          </p>
-                        )}
                         {!item.product.in_stock && (
-                          <p className="text-sm text-rose-600 font-medium mt-1">
-                            Out of Stock
-                          </p>
+                          <span className="text-[10px] font-bold text-[var(--status-danger)] px-2 py-1 rounded-md bg-[var(--status-danger-pale)] uppercase tracking-wider">Out of Stock</span>
                         )}
                         {item.product.in_stock && (item.product.available_inventory ?? 0) < 5 && (
-                          <p className="text-sm text-orange-600 font-medium mt-1">
-                            Only {item.product.available_inventory} left in stock
-                          </p>
+                          <span className="text-[10px] font-bold text-[var(--gold)] px-2 py-1 rounded-md bg-[var(--gold-pale)] uppercase tracking-wider">Only {item.product.available_inventory} left</span>
                         )}
                         {item.product.in_stock && item.quantity > (item.product.available_inventory ?? 0) && (
-                          <p className="text-sm text-rose-600 font-medium mt-1">
-                            Insufficient stock available
-                          </p>
-                        )}
-                        {item.notes && (
-                          <p className="text-sm text-neutral-500 mt-1 italic">
-                            Note: {item.notes}
-                          </p>
+                          <p className="text-[11px] text-[var(--status-danger)] mt-2 font-medium">Insufficient stock for this amount</p>
                         )}
                       </div>
                     </div>
 
-                    {/* Price */}
+                    {/* Price Display */}
                     <div className="md:col-span-2 text-left md:text-center">
-                      <span className="md:hidden font-semibold mr-2">Price:</span>
-                      <span className="text-neutral-900">
-                        ৳{price.toLocaleString('en-BD', { minimumFractionDigits: 2 })}
-                      </span>
+                      <p className="md:hidden text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1" style={{ fontFamily: "'DM Mono', monospace" }}>Price</p>
+                      <p className="text-[var(--text-secondary)] font-medium">
+                        ৳{price.toLocaleString()}
+                      </p>
                     </div>
 
-                    {/* Quantity */}
+                    {/* Quantity Control */}
                     <div className="md:col-span-2 flex justify-start md:justify-center">
-                      <div className="flex items-center border border-neutral-300 rounded-lg">
+                      <div className="inline-flex items-center rounded-xl bg-[var(--bg-depth)] border border-[var(--border-default)]">
                         <button
                           onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
-                          disabled={isItemUpdating || item.quantity <= 1}
-                          className="px-3 py-2 hover:bg-neutral-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={item.quantity <= 1}
+                          className="w-10 h-10 flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-20 transition-colors"
                         >
                           -
                         </button>
-                        <input
-                          type="number"
-                          value={item.quantity}
-                          onChange={(e) => {
-                            const val = parseInt(e.target.value) || 1;
-                            if (val > 0) {
-                              handleUpdateQuantity(item.id, val);
-                            }
-                          }}
-                          disabled={isItemUpdating}
-                          className="w-16 text-center outline-none py-2 text-white" style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', borderRight: '1px solid rgba(255,255,255,0.1)', background: 'transparent' }}
-                          min="1"
-                        />
+                        <span className="w-10 text-center text-sm font-bold text-[var(--text-primary)]" style={{ fontFamily: "'DM Mono', monospace" }}>
+                          {item.quantity}
+                        </span>
                         <button
                           onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
-                          disabled={isItemUpdating || item.quantity >= (item.product.available_inventory ?? 999)}
-                          className="px-3 py-2 hover:bg-neutral-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={item.quantity >= (item.product.available_inventory ?? 999)}
+                          className="w-10 h-10 flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-20 transition-colors"
                         >
                           +
                         </button>
                       </div>
                     </div>
 
-                    {/* Subtotal */}
+                    {/* Subtotal Display */}
                     <div className="md:col-span-2 text-left md:text-right">
-                      <span className="md:hidden font-semibold mr-2">Subtotal:</span>
-                      <span className="font-bold text-amber-600">
-                        ৳{itemTotal.toLocaleString('en-BD', { minimumFractionDigits: 2 })}
-                      </span>
+                      <p className="md:hidden text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1" style={{ fontFamily: "'DM Mono', monospace" }}>Subtotal</p>
+                      <p className="text-[16px] font-bold text-[var(--cyan)]">
+                        ৳{itemTotal.toLocaleString()}
+                      </p>
                     </div>
                   </div>
                 );
               })}
             </div>
 
-            {/* Coupon */}
-            <div className="mt-8 flex flex-col sm:flex-row gap-4">
+            {/* Coupon Application Block */}
+            <div className="mt-12 flex flex-col md:flex-row gap-4">
               <input
                 type="text"
+                placeholder="PROMO CODE"
                 value={couponCode}
-                onChange={(e) => setCouponCode(e.target.value)}
-                placeholder="Coupon code"
-                className="flex-1 px-4 py-3 border border-neutral-300 rounded-lg outline-none focus:ring-2 focus:ring-neutral-200"
+                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                className="w-full md:w-80 px-5 py-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-default)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--cyan)] transition-all font-bold tracking-[0.2em] text-[12px]"
+                style={{ fontFamily: "'DM Mono', monospace" }}
               />
               <button
-                onClick={() => {
-                  console.log('Apply coupon:', couponCode);
-                  alert('Coupon functionality coming soon!');
-                }}
-                disabled={!couponCode.trim()}
-                className="bg-neutral-900 text-white px-8 py-3 rounded-lg font-semibold hover:bg-neutral-800 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!couponCode}
+                className="ec-btn-secondary px-10 whitespace-nowrap"
               >
-                APPLY COUPON
+                Apply Coupon
               </button>
             </div>
           </div>
 
-          {/* Cart Totals */}
-          <div className="lg:w-96">
-            <div className="bg-white border border-neutral-200 rounded-lg-xl p-6 sticky top-4">
-              <h2 className="text-2xl font-bold text-neutral-900 mb-6">CART TOTALS</h2>
+          {/* Cart Sidebar: Totals & Checkout */}
+          <aside className="lg:w-[400px]">
+            <div className="ec-surface p-8 sticky top-24">
+              <h2 className="text-[20px] font-bold text-[var(--text-primary)] uppercase tracking-[0.2em] mb-8" style={{ fontFamily: "'DM Mono', monospace" }}>
+                Summary
+              </h2>
 
-              <div className="space-y-4">
-                <div className="flex justify-between py-3 border-b">
-                  <span className="text-neutral-700">Subtotal ({selectedItems.size} items)</span>
-                  <span className="font-semibold text-neutral-900">
-                    ৳{subtotal.toLocaleString('en-BD', { minimumFractionDigits: 2 })}
-                  </span>
+              <div className="space-y-6">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-[var(--text-secondary)]">Subtotal ({selectedItems.size} items)</span>
+                  <span className="font-semibold text-[var(--text-primary)]">৳{subtotal.toLocaleString()}</span>
                 </div>
 
-                <div className="py-3 border-b">
-                  <div className="flex justify-between mb-2">
-                    <span className="text-neutral-700">
-                      Inside Dhaka: <span className="text-neutral-900 font-semibold">৳60.00</span>
-                    </span>
+                <div className="flex justify-between items-center text-sm">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[var(--text-secondary)]">Standard Delivery</span>
+                    <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold">Inside Dhaka</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-neutral-700">Shipping</span>
-                    <span className="font-semibold text-neutral-900">
-                      ৳{shippingFee.toFixed(2)}
-                    </span>
-                  </div>
+                  <span className="font-semibold text-[var(--text-primary)]">৳{shippingFee.toFixed(2)}</span>
+                </div>
+
+                <div className="h-px bg-[var(--border-default)] my-4" />
+
+                <div className="flex justify-between items-end">
+                  <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1.5" style={{ fontFamily: "'DM Mono', monospace" }}>Total Estimated</span>
+                  <span className="text-3xl font-bold text-[var(--gold)]">৳{total.toLocaleString()}</span>
+                </div>
+
+                <div className="pt-6 space-y-4">
                   <button
-                    onClick={() => {
-                      alert('Address change functionality coming soon!');
-                    }}
-                    className="text-sm text-neutral-900 hover:underline mt-2"
+                    onClick={handleProceedToCheckout}
+                    disabled={selectedItems.size === 0 || isUpdating.size > 0 || isAnyItemSelectedOverStock}
+                    className="w-full ec-btn-primary py-5 text-base font-bold tracking-[0.2em]"
+                    style={{ fontFamily: "'DM Mono', monospace" }}
                   >
-                    Change address
+                    {isUpdating.size > 0 ? 'SYNCHRONIZING...' : 'CHECKOUT NOW'}
+                  </button>
+                  
+                  <button
+                    onClick={() => router.push('/e-commerce/products')}
+                    className="w-full py-4 text-[12px] font-bold text-[var(--text-muted)] hover:text-[var(--cyan)] transition-all uppercase tracking-widest"
+                    style={{ fontFamily: "'DM Mono', monospace" }}
+                  >
+                    Continue Shopping
                   </button>
                 </div>
+              </div>
 
-                <div className="flex justify-between py-4">
-                  <span className="text-xl font-bold text-neutral-900">Total</span>
-                  <span className="text-2xl font-bold text-amber-600">
-                    ৳{total.toLocaleString('en-BD', { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
-
-                <button
-                  onClick={handleProceedToCheckout}
-                  disabled={selectedItems.size === 0 || isUpdating.size > 0 || isAnyItemSelectedOverStock}
-                  className="w-full bg-[var(--gold)] text-white py-4 rounded-lg font-bold text-lg hover:bg-[#9a6b2e] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isUpdating.size > 0 ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="animate-spin" size={20} />
-                      Processing...
-                    </span>
-                  ) : (
-                    `PROCEED TO CHECKOUT (${selectedItems.size})`
-                  )}
-                </button>
-
-                <button
-                  onClick={() => router.push('/e-commerce')}
-                  className="w-full py-3 rounded-lg font-semibold transition-colors mt-3"
-                  style={{
-                    background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.18)',
-                    color: 'rgba(255,255,255,0.9)',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                >
-                  Continue Shopping
-                </button>
+              {/* Secure Info */}
+              <div className="mt-10 flex items-center justify-center gap-4 py-4 border-t border-[var(--border-default)]">
+                 <div className="flex flex-col items-center gap-1 opacity-50">
+                    <span className="text-[9px] font-bold tracking-[0.1em] text-[var(--text-muted)] uppercase">Secure Payments</span>
+                    <div className="flex items-center gap-2">
+                       {['Visa', 'bKash', 'Amex'].map(tag => (
+                         <span key={tag} className="text-[10px] border border-[var(--border-default)] px-2 rounded-md">{tag}</span>
+                       ))}
+                    </div>
+                 </div>
               </div>
             </div>
-          </div>
+          </aside>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
