@@ -153,7 +153,10 @@ class DailyBranchReportController extends Controller
             return response()->streamDownload(function () use ($filepath, $tmpDir) {
                 readfile($filepath);
                 $this->cleanupDir($tmpDir);
-            }, $filename, ['Content-Type' => 'text/csv; charset=utf-8']);
+            }, $filename, [
+                'Content-Type'        => 'text/csv; charset=utf-8',
+                'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            ]);
         }
 
         $zipName = "daily_branch_reports_{$from}_to_{$to}.zip";

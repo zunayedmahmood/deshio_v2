@@ -46,15 +46,34 @@ const dailyBranchReportService = {
     return response.data;
   },
 
-  downloadUrl(params: DailyReportParams & { combined?: boolean }): string {
-    const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
-    const query = new URLSearchParams();
-    if (params.date)     query.set('date',     params.date);
-    if (params.from)     query.set('from',     params.from);
-    if (params.to)       query.set('to',       params.to);
-    if (params.store_id) query.set('store_id', String(params.store_id));
-    if (params.combined) query.set('combined', '1');
-    return `${base}/reports/daily-branch?${query.toString()}`;
+  async downloadCsv(params: DailyReportParams & { combined?: boolean }): Promise<void> {
+    const query: Record<string, string> = {};
+    if (params.date)     query.date     = params.date;
+    if (params.from)     query.from     = params.from;
+    if (params.to)       query.to       = params.to;
+    if (params.store_id) query.store_id = String(params.store_id);
+    if (params.combined) query.combined = '1';
+
+    // Fetch through axios so the Authorization header is attached automatically
+    const response = await axiosInstance.get('/reports/daily-branch', {
+      params: query,
+      responseType: 'blob',
+    });
+
+    // Derive filename from Content-Disposition header, or fall back to a sensible default
+    const disposition = response.headers['content-disposition'] ?? '';
+    const match = disposition.match(/filename="?([^";\n]+)"?/);
+    const filename = match?.[1] ?? `daily_branch_report_${params.from ?? params.date ?? 'export'}.csv`;
+
+    // Create a temporary object URL and trigger the browser download
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const a   = document.createElement('a');
+    a.href    = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
   },
 };
 
