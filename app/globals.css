@@ -1123,3 +1123,26 @@ body {
 .animate-heart-beat {
   animation: heart-beat 280ms var(--ease-bounce);
 }
+
+/* ── Instagram Embed: suppress internal scrollbars ───────────────────────
+   Instagram's embed iframe/blockquote can generate its own scrollbar when
+   the embed height doesn't exactly match the content. We force the wrapper
+   and any nested iframes to show their full content without clipping or
+   internal scroll. The carousel container itself manages overflow.
+─────────────────────────────────────────────────────────────────────────── */
+.instagram-embed-no-scroll,
+.instagram-embed-no-scroll * {
+  overflow: visible !important;
+  max-height: none !important;
+}
+
+/* But iframes themselves can't be overflow:visible — make them overflow:hidden
+   (no scrollbar) instead of overflow:scroll/auto */
+.instagram-embed-no-scroll iframe {
+  overflow: hidden !important;
+  scrollbar-width: none !important;
+}
+
+.instagram-embed-no-scroll iframe::-webkit-scrollbar {
+  display: none !important;
+}
