@@ -1198,7 +1198,10 @@ export default function SocialCommercePage() {
                   <h3 className="font-bold text-sm text-gray-900 dark:text-white">{group.base_name}</h3>
                   <div className="flex items-center gap-3 mt-1">
                     <span className="text-xs font-bold text-teal-600">{group.min_price} ৳</span>
-                    <span className="text-[10px] font-medium px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full">Stock: {group.total_stock}</span>
+                    <span className="text-[10px] font-medium px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full">Available: {group.total_available ?? group.total_stock}</span>
+                    {group.total_reserved ? (
+                      <span className="text-[10px] font-medium px-2 py-0.5 bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 rounded-full">Reserved: {group.total_reserved}</span>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -1217,7 +1220,12 @@ export default function SocialCommercePage() {
                     <div className="flex items-center gap-4 text-xs">
                       <span className="font-bold">{variant.selling_price} ৳</span>
                       <span className="text-gray-400">|</span>
-                      <span className={variant.stock_quantity > 0 ? 'text-green-600' : 'text-red-500'}>Stock: {variant.stock_quantity}</span>
+                      <span className={(variant.available_inventory ?? variant.stock_quantity) > 0 ? 'text-green-600' : 'text-red-500'}>
+                        Avail: {variant.available_inventory ?? variant.stock_quantity}
+                      </span>
+                      {variant.reserved_inventory ? (
+                        <span className="text-blue-500 font-medium">({variant.reserved_inventory} Res)</span>
+                      ) : null}
                       <Plus size={14} className="text-teal-600" />
                     </div>
                   </div>
@@ -1262,7 +1270,12 @@ export default function SocialCommercePage() {
                         {qty > 0 ? 'In Stock' : 'Out of Stock'}
                       </span>
                     </td>
-                    <td className="py-3 text-right font-bold text-sm">{qty}</td>
+                    <td className="py-3 text-right font-bold text-sm">
+                      <div className="flex flex-col items-end">
+                        <span>{qty}</span>
+                        <span className="text-[10px] text-gray-400 font-normal">Physical</span>
+                      </div>
+                    </td>
                   </tr>
                 );
               })}

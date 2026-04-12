@@ -164,8 +164,11 @@ export default function StoreAssignmentPage() {
 
       const inventoryDetails = rawDetails.map((d: any) => {
         const requiredQty = toNumber(d?.required_quantity);
-        const availableQty = toNumber(d?.available_quantity ?? d?.quantity ?? d?.stock ?? 0);
         const productId = toNumber(d?.product_id);
+        const physicalQty = toNumber(d?.physical_quantity ?? d?.quantity ?? d?.stock ?? 0);
+        const assignedQty = toNumber(d?.assigned_quantity ?? 0);
+        const availableQty = toNumber(d?.available_quantity ?? (physicalQty - assignedQty));
+        const globalAvailable = toNumber(d?.global_available ?? 0);
 
         return {
           ...d,
@@ -173,7 +176,10 @@ export default function StoreAssignmentPage() {
           product_name: d?.product_name ?? d?.name ?? 'Unknown Product',
           product_sku: d?.product_sku ?? d?.sku ?? '',
           required_quantity: requiredQty,
+          physical_quantity: physicalQty,
+          assigned_quantity: assignedQty,
           available_quantity: availableQty,
+          global_available: globalAvailable,
           can_fulfill: availableQty >= requiredQty,
         };
       });
@@ -997,9 +1003,19 @@ export default function StoreAssignmentPage() {
                                 )}
                               </div>
                               <div className="flex items-center justify-between text-xs">
-                                <span className="text-gray-600 dark:text-gray-400">
-                                  Required: {detail.required_quantity} | Available: {detail.available_quantity}
-                                </span>
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-gray-600 dark:text-gray-400">
+                                    Required: <span className="font-bold text-gray-900 dark:text-white">{detail.required_quantity}</span>
+                                  </span>
+                                  <div className="flex flex-wrap gap-2 text-[10px]">
+                                    <span className="bg-white/50 dark:bg-black/20 px-1.5 py-0.5 rounded border border-gray-100 dark:border-gray-700">Physical: {detail.physical_quantity}</span>
+                                    <span className="bg-white/50 dark:bg-black/20 px-1.5 py-0.5 rounded border border-gray-100 dark:border-gray-700 text-amber-600 dark:text-amber-400">Promise: {detail.assigned_quantity}</span>
+                                    <span className="bg-blue-100/50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800 font-bold text-blue-700 dark:text-blue-300">Available: {detail.available_quantity}</span>
+                                    {detail.global_available !== undefined && (
+                                      <span className="bg-teal-100/50 dark:bg-teal-900/30 px-1.5 py-0.5 rounded border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300">Global Avail: {detail.global_available}</span>
+                                    )}
+                                  </div>
+                                </div>
                                 <span
                                   className={`font-semibold ${
                                     detail.can_fulfill
