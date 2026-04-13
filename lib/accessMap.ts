@@ -70,6 +70,7 @@ export const PAGE_ACCESS: Record<string, RoleSlug[]> = {
   '/hrm/attendance': ['super-admin', 'admin', 'branch-manager', 'online-moderator'],
   '/hrm/sales-targets': ['super-admin', 'admin', 'branch-manager', 'online-moderator'],
   '/hrm/rewards-fines': ['super-admin', 'admin', 'branch-manager', 'online-moderator'],
+  '/cash-sheet': ['super-admin', 'admin'],
 };
 
 /**

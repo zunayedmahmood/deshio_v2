@@ -133,6 +133,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     { icon: History, label: 'Activity Log', href: '/activity-logs' },
     { icon: CreditCard, label: 'Transaction', href: '/transaction' },
     { icon: CreditCard, label: 'Accounting', href: '/accounting' },
+    { icon: CreditCard, label: 'Cash Sheet', href: '/cash-sheet' },
     {
       icon: Users,
       label: 'Human Resources (HRM)',
