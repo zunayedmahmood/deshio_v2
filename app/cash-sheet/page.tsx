@@ -179,9 +179,9 @@ function NoteCell({ value, onSave, disabled }: NoteCellProps) {
 function StatCell({ value, highlight }: { value: number; highlight?: 'green' | 'blue' | 'red' }) {
   const color =
     highlight === 'green' ? 'text-emerald-600 dark:text-emerald-400 font-medium' :
-      highlight === 'blue' ? 'text-blue-600 dark:text-blue-400 font-medium' :
-        highlight === 'red' ? 'text-red-500 dark:text-red-400' :
-          'text-gray-700 dark:text-gray-300';
+    highlight === 'blue'  ? 'text-blue-600 dark:text-blue-400 font-medium' :
+    highlight === 'red'   ? 'text-red-500 dark:text-red-400' :
+    'text-gray-700 dark:text-gray-300';
 
   return (
     <td className={`px-2 py-1.5 text-right text-xs whitespace-nowrap tabular-nums ${color}`}>
@@ -215,9 +215,9 @@ export default function CashSheetPage() {
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
   // Role-based access
-  const isAdmin = role === 'admin' || role === 'super-admin';
-  const isBranch = role === 'branch-manager';
-  const canViewAll = isAdmin;
+  const isAdmin     = role === 'admin' || role === 'super-admin';
+  const isBranch    = role === 'branch-manager';
+  const canViewAll  = isAdmin;
   const canEditOwner = isAdmin;
   const canEditBranch = isAdmin || isBranch;
 
@@ -282,8 +282,8 @@ export default function CashSheetPage() {
       const cash = r.totals.cash;
       const bank = r.totals.bank;
       const finalBank = bank + r.disbursements.sslzc_received + r.disbursements.pathao_received;
-      newOwner.total_cash = cash + newOwner.boss_cash_add;
-      newOwner.total_bank = finalBank + newOwner.boss_bank_add;
+      newOwner.total_cash     = cash + newOwner.boss_cash_add;
+      newOwner.total_bank     = finalBank + newOwner.boss_bank_add;
       newOwner.cash_after_cost = newOwner.total_cash - newOwner.boss_cash_cost;
       newOwner.bank_after_cost = newOwner.total_bank - newOwner.boss_bank_cost;
       return { ...r, owner: newOwner };
@@ -468,13 +468,13 @@ export default function CashSheetPage() {
                     {/* per branch */}
                     {visibleStores.map(s => (
                       <>
-                        <th key={`${s.id}-sale`} className="px-2 py-1.5 text-right font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Sale</th>
-                        <th key={`${s.id}-cash`} className="px-2 py-1.5 text-right font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Cash</th>
-                        <th key={`${s.id}-bank`} className="px-2 py-1.5 text-right font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Bank</th>
-                        <th key={`${s.id}-exon`} className="px-2 py-1.5 text-right font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Ex/On</th>
-                        <th key={`${s.id}-sal`} className="px-2 py-1.5 text-right font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Salary</th>
-                        <th key={`${s.id}-cost`} className="px-2 py-1.5 text-right font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Cost</th>
-                        <th key={`${s.id}-det`} className="px-2 py-1.5 text-left  font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Details</th>
+                        <th key={`${s.id}-sale`}    className="px-2 py-1.5 text-right font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Sale</th>
+                        <th key={`${s.id}-cash`}    className="px-2 py-1.5 text-right font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Cash</th>
+                        <th key={`${s.id}-bank`}    className="px-2 py-1.5 text-right font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Bank</th>
+                        <th key={`${s.id}-exon`}    className="px-2 py-1.5 text-right font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Ex/On</th>
+                        <th key={`${s.id}-sal`}     className="px-2 py-1.5 text-right font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Salary</th>
+                        <th key={`${s.id}-cost`}    className="px-2 py-1.5 text-right font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Cost</th>
+                        <th key={`${s.id}-det`}     className="px-2 py-1.5 text-left  font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">Details</th>
                       </>
                     ))}
 
@@ -732,9 +732,9 @@ export default function CashSheetPage() {
                                 <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-1">{box.label}</div>
                                 <div className={`text-base font-bold tabular-nums
                                   ${box.color === 'emerald' ? 'text-emerald-600 dark:text-emerald-400' :
-                                    box.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
-                                      box.color === 'green' ? 'text-green-600 dark:text-green-400' :
-                                        'text-indigo-600 dark:text-indigo-400'}`}>
+                                    box.color === 'blue'    ? 'text-blue-600 dark:text-blue-400' :
+                                    box.color === 'green'   ? 'text-green-600 dark:text-green-400' :
+                                    'text-indigo-600 dark:text-indigo-400'}`}>
                                   ৳{Math.round(box.value).toLocaleString('en-BD')}
                                 </div>
                               </div>

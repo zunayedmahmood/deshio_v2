@@ -819,6 +819,23 @@ Route::middleware('auth:api')->group(function () {
     });
 
     // ============================================
+    // DAILY CASH SHEET ROUTES
+    // Daily accounting sheet (branches + online + owner)
+    // ============================================
+
+    Route::prefix('cash-sheet')->group(function () {
+        $c = \App\Http\Controllers\CashSheetController::class;
+        Route::get('/',              [$c, 'index']);
+        Route::get('/entries',       [$c, 'entries']);
+        Route::post('/branch-cost',  [$c, 'storeBranchCost']);
+        Route::delete('/branch-cost/{id}', [$c, 'destroyBranchCost']);
+        Route::post('/admin',        [$c, 'storeAdmin']);
+        Route::delete('/admin/{id}', [$c, 'destroyAdmin']);
+        Route::post('/owner',        [$c, 'storeOwner']);
+        Route::delete('/owner/{id}', [$c, 'destroyOwner']);
+    });
+
+    // ============================================
     // REPORTING & ANALYTICS ROUTES
     // Business intelligence and dashboard metrics
     // ============================================

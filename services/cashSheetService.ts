@@ -1,69 +1,45 @@
 import axiosInstance from '@/lib/axios';
 
+// ── Sheet types ───────────────────────────────────────────────────────────────
+
 export interface BranchDay {
   store_id: number;
   store_name: string;
   daily_sale: number;
-  daily_cash: number;
-  daily_bank: number;
-  ex_on: number;
-  salary_set_aside: number;
-  daily_cost: number;
-  daily_cost_details: string | null;
-}
-
-export interface OnlineDay {
-  daily_sales: number;
-  advance: number;
-  online_payment: number;
-  cod: number;
-}
-
-export interface Disbursements {
-  sslzc_received: number;
-  pathao_received: number;
-}
-
-export interface DayTotals {
-  total_sale: number;
+  raw_cash: number;
   cash: number;
   bank: number;
-  online_payment: number;
-  sslzc: number;
-  pathao: number;
-  final_bank: number;
-}
-
-export interface OwnerDay {
-  boss_cash_add: number;
-  boss_cash_add_details: string | null;
-  boss_bank_add: number;
-  boss_bank_add_details: string | null;
-  total_cash: number;
-  total_bank: number;
-  boss_cash_cost: number;
-  boss_cash_cost_details: string | null;
-  cash_after_cost: number;
-  boss_bank_cost: number;
-  boss_bank_cost_details: string | null;
-  bank_after_cost: number;
+  ex_on: number;
+  salary: number;
+  cash_to_bank: number;
+  daily_cost: number;
 }
 
 export interface CashSheetRow {
   date: string;
   branches: BranchDay[];
-  online: OnlineDay;
-  disbursements: Disbursements;
-  totals: DayTotals;
-  owner: OwnerDay;
+  online: { daily_sales: number; advance: number; online_payment: number; cod: number };
+  disbursements: { sslzc_received: number; pathao_received: number };
+  totals: { total_sale: number; cash: number; bank: number; final_bank: number };
+  owner: {
+    cash_invest: number; bank_invest: number;
+    total_cash: number; total_bank: number;
+    cash_cost: number; bank_cost: number;
+    cash_after_cost: number; bank_after_cost: number;
+  };
 }
 
 export interface CashSheetSummary {
   branches: BranchDay[];
-  online: OnlineDay;
-  disbursements: Disbursements;
-  totals: DayTotals;
-  owner: OwnerDay;
+  online: { daily_sales: number; advance: number; online_payment: number; cod: number };
+  disbursements: { sslzc_received: number; pathao_received: number };
+  totals: { total_sale: number; cash: number; bank: number; final_bank: number };
+  owner: {
+    cash_invest: number; bank_invest: number;
+    total_cash: number; total_bank: number;
+    cash_cost: number; bank_cost: number;
+    cash_after_cost: number; bank_after_cost: number;
+  };
 }
 
 export interface CashSheetResponse {
@@ -74,27 +50,52 @@ export interface CashSheetResponse {
   summary: CashSheetSummary;
 }
 
-export interface SaveBranchPayload {
-  date: string;
+// ── Entry types ───────────────────────────────────────────────────────────────
+
+export interface BranchCostEntry {
+  id: number;
+  entry_date: string;
   store_id: number;
-  salary_set_aside?: number;
-  daily_cost?: number;
-  daily_cost_details?: string;
+  store?: { id: number; name: string };
+  amount: number;
+  details: string | null;
+  created_by?: { id: number; name: string } | null;
+  created_at: string;
 }
 
-export interface SaveOwnerPayload {
-  date: string;
-  sslzc_received?: number;
-  pathao_received?: number;
-  boss_cash_add?: number;
-  boss_cash_add_details?: string;
-  boss_bank_add?: number;
-  boss_bank_add_details?: string;
-  boss_cash_cost?: number;
-  boss_cash_cost_details?: string;
-  boss_bank_cost?: number;
-  boss_bank_cost_details?: string;
+export type AdminEntryType = 'salary_setaside' | 'cash_to_bank' | 'sslzc' | 'pathao';
+export interface AdminEntry {
+  id: number;
+  entry_date: string;
+  type: AdminEntryType;
+  store_id: number | null;
+  store?: { id: number; name: string } | null;
+  amount: number;
+  details: string | null;
+  created_by?: { id: number; name: string } | null;
+  created_at: string;
 }
+
+export type OwnerEntryType = 'cash_invest' | 'bank_invest' | 'cash_cost' | 'bank_cost';
+export interface OwnerEntry {
+  id: number;
+  entry_date: string;
+  type: OwnerEntryType;
+  amount: number;
+  details: string | null;
+  created_by?: { id: number; name: string } | null;
+  created_at: string;
+}
+
+export interface DayEntries {
+  success: boolean;
+  date: string;
+  branch_costs: BranchCostEntry[];
+  admin_entries: AdminEntry[];
+  owner_entries: OwnerEntry[];
+}
+
+// ── Service ───────────────────────────────────────────────────────────────────
 
 const cashSheetService = {
   async getSheet(month: string): Promise<CashSheetResponse> {
@@ -102,12 +103,36 @@ const cashSheetService = {
     return res.data;
   },
 
-  async saveBranch(payload: SaveBranchPayload): Promise<void> {
-    await axiosInstance.post('/cash-sheet/branch', payload);
+  async getEntries(date: string): Promise<DayEntries> {
+    const res = await axiosInstance.get('/cash-sheet/entries', { params: { date } });
+    return res.data;
   },
 
-  async saveOwner(payload: SaveOwnerPayload): Promise<void> {
-    await axiosInstance.post('/cash-sheet/owner', payload);
+  // Branch cost
+  async addBranchCost(payload: { entry_date: string; store_id: number; amount: number; details?: string }): Promise<BranchCostEntry> {
+    const res = await axiosInstance.post('/cash-sheet/branch-cost', payload);
+    return res.data.entry;
+  },
+  async deleteBranchCost(id: number): Promise<void> {
+    await axiosInstance.delete(`/cash-sheet/branch-cost/${id}`);
+  },
+
+  // Admin entry
+  async addAdminEntry(payload: { entry_date: string; type: AdminEntryType; store_id?: number | null; amount: number; details?: string }): Promise<AdminEntry> {
+    const res = await axiosInstance.post('/cash-sheet/admin', payload);
+    return res.data.entry;
+  },
+  async deleteAdminEntry(id: number): Promise<void> {
+    await axiosInstance.delete(`/cash-sheet/admin/${id}`);
+  },
+
+  // Owner entry
+  async addOwnerEntry(payload: { entry_date: string; type: OwnerEntryType; amount: number; details?: string }): Promise<OwnerEntry> {
+    const res = await axiosInstance.post('/cash-sheet/owner', payload);
+    return res.data.entry;
+  },
+  async deleteOwnerEntry(id: number): Promise<void> {
+    await axiosInstance.delete(`/cash-sheet/owner/${id}`);
   },
 };
 
