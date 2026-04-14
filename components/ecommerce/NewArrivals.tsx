@@ -72,20 +72,9 @@ const NewArrivals: React.FC<NewArrivalsProps> = ({ categoryId, limit = 8 }) => {
       // Sort by created_at ONLY — not updated_at
       const sorted = [...rawCards].sort((a, b) => getCreatedMs(b) - getCreatedMs(a));
 
-      // Keep only products created within the last 180 days.
-      // No fallback — if nothing qualifies, the section hides itself.
-      // This prevents old/test products from ever appearing as "new arrivals".
-      const CUTOFF_MS = 180 * 24 * 60 * 60 * 1000;
-      const cutoff = Date.now() - CUTOFF_MS;
-
-      const recent = sorted.filter(p => {
-        const created = getCreatedMs(p);
-        // If we couldn't extract a created_at date, exclude (safer than showing stale items)
-        if (created === 0) return false;
-        return created >= cutoff;
-      });
-
-      setProducts(recent.slice(0, limit));
+      // Always show the newest top N products available, without strict date cutoffs.
+      // This ensures the section never ungracefully hides itself in dev environments or stale datasets.
+      setProducts(sorted.slice(0, limit));
     } catch (error) {
       console.error('Error fetching new arrivals:', error);
       setProducts([]);

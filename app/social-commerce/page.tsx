@@ -745,7 +745,8 @@ export default function SocialCommercePage() {
     setCart(cart.filter((item) => item.id !== id));
   };
 
-  const subtotal = cart.reduce((sum, item) => sum + item.amount, 0);
+  const subtotal = cart.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
+  const totalDiscount = cart.reduce((sum, item) => sum + (item.discount_amount || 0), 0);
 
   const handleConfirmOrder = async () => {
     if (!userName || !userPhone) {
@@ -791,7 +792,7 @@ export default function SocialCommercePage() {
 
     if (paymentOption === 'partial') {
       const adv = parseFloat(advanceAmount) || 0;
-      if (adv <= 0 || adv >= subtotal + (parseFloat(transportCost) || 0)) {
+      if (adv <= 0 || adv >= subtotal - totalDiscount + (parseFloat(transportCost) || 0)) {
         fireToast('Please enter a valid advance amount', 'error');
         return;
       }
@@ -810,7 +811,7 @@ export default function SocialCommercePage() {
       setIsProcessingOrder(true);
       console.log('📦 CREATING SOCIAL COMMERCE ORDER');
 
-      const total = subtotal + (parseFloat(transportCost) || 0);
+      const total = subtotal - totalDiscount + (parseFloat(transportCost) || 0);
 
       const shipping_address = isInternational
         ? {
@@ -972,7 +973,14 @@ export default function SocialCommercePage() {
                   </td>
                   <td className="px-2 py-3 text-center text-gray-700 dark:text-gray-300">{item.quantity}</td>
                   <td className="px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">
-                    {item.amount.toLocaleString()} Tk
+                    <div className="flex flex-col items-end">
+                      <span>{(item.unit_price * item.quantity).toLocaleString()} Tk</span>
+                      {(item.discount_amount || 0) > 0 && (
+                        <span className="text-[10px] text-red-500 font-medium">
+                          - {item.discount_amount.toLocaleString()} Tk (Disc)
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-2 py-3 text-center">
                     <button
@@ -996,6 +1004,12 @@ export default function SocialCommercePage() {
             <span>Subtotal</span>
             <span className="font-medium text-gray-900 dark:text-white">{subtotal.toLocaleString()} ৳</span>
           </div>
+          {totalDiscount > 0 && (
+            <div className="flex justify-between text-xs text-red-500">
+              <span>Discount</span>
+              <span className="font-medium">-{totalDiscount.toLocaleString()} ৳</span>
+            </div>
+          )}
           <div className="flex justify-between items-center text-xs">
             <span className="text-gray-600 dark:text-gray-400">Transport Cost</span>
             <div className="flex items-center gap-2">
@@ -1014,7 +1028,7 @@ export default function SocialCommercePage() {
           </div>
           <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between text-lg font-bold text-teal-600 dark:text-teal-400">
             <span>Total</span>
-            <span>{(subtotal + (parseFloat(transportCost) || 0)).toLocaleString()} ৳</span>
+            <span>{(subtotal - totalDiscount + (parseFloat(transportCost) || 0)).toLocaleString()} ৳</span>
           </div>
         </div>
 
