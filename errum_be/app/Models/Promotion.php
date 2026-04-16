@@ -32,6 +32,7 @@ class Promotion extends Model
         'end_date',
         'is_active',
         'is_public',
+        'is_automatic',
         'created_by',
     ];
 
@@ -48,6 +49,7 @@ class Promotion extends Model
         'end_date' => 'datetime',
         'is_active' => 'boolean',
         'is_public' => 'boolean',
+        'is_automatic' => 'boolean',
         'applicable_products' => 'array',
         'applicable_categories' => 'array',
         'applicable_customers' => 'array',

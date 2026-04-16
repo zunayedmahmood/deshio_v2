@@ -83,6 +83,7 @@ class PromotionController extends Controller
             'end_date' => 'nullable|date|after:start_date',
             'is_active' => 'boolean',
             'is_public' => 'boolean',
+            'is_automatic' => 'boolean',
         ]);
 
         if ($validator->fails()) {
@@ -140,6 +141,7 @@ class PromotionController extends Controller
             'end_date' => 'nullable|date|after:start_date',
             'is_active' => 'boolean',
             'is_public' => 'boolean',
+            'is_automatic' => 'boolean',
         ]);
 
         if ($validator->fails()) {
@@ -217,10 +219,10 @@ class PromotionController extends Controller
                   ->orWhereColumn('usage_count', '<', 'usage_limit');
             })
             ->get([
-                'id', 'name', 'description', 'type', 'discount_value',
+                'id', 'name', 'description', 'type', 'discount_value', 'code',
                 'minimum_purchase', 'maximum_discount',
                 'applicable_products', 'applicable_categories',
-                'start_date', 'end_date',
+                'start_date', 'end_date', 'is_automatic',
             ]);
 
         return response()->json(['success' => true, 'data' => $promotions]);

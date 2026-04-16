@@ -65,7 +65,7 @@ export default function HomePage() {
 
       {/* 2. Collection Tiles */}
       <SectionReveal>
-        <CollectionTiles />
+        <CollectionTiles categories={categories} />
       </SectionReveal>
 
       {/* 3. Instagram Reels Feed */}
