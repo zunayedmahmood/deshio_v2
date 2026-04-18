@@ -329,6 +329,21 @@ this is what we want to keep from the old one: instagram viewer.
 
 some pages like categoreies, search page, about-us etc are not in here. update all the pages, their components to match this new styling, theme and UI.
 
-wefwefwefwefefwef wedsv
 
-this change was made to push dummy commit.
+### sareng digital:
+This is the e-commerce pages and components of a different project we made.
+Simply use it to understand the pages we want. 
+
+then make a detailed and lengthy md files for each page and component, explaining the changes we are going to make to make it Sareng Digital.
+
+We want it feel modern, premium, smooth, and live. it should be dynamic and feel highly responsive.
+especially make the home page compete with popular e-commerce sites like gadget and gear, startech and feel specially curated etc.
+
+we want a hardcoded section for the Pendrives in the home page.
+also, we want the hero image and insta reels to not be hardcoded. we want to be able to change them from admin panel. (something we'll do later. for now just keep it in mind)
+for products, try to use pictures instead of Emojis.
+try to avoid direct animal Emojis or pictures. we will prefer geometrics shapes/design or abstract icons.
+
+This website should be highly optmised and built with mobile view as first priority while also catering to desktop view.
+
+I want you to make an md file with the full instructions for an AI model to make these changes.

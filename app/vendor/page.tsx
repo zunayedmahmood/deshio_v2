@@ -239,7 +239,7 @@ export default function VendorPaymentPage() {
   useEffect(() => {
     loadVendors();
     loadStores();
-    loadProducts();
+    // loadProducts(); // Removed: too slow to load all products on mount
     loadCategories();
     loadPaymentMethods();
   }, []);
@@ -473,6 +473,64 @@ export default function VendorPaymentPage() {
     return () => window.clearTimeout(t);
   }, [showAddPurchase, purchaseForm, poSearch, poCategoryId, poShowAllProducts]);
 
+  // ✅ Live search products for the PO modal (API-driven to handle large catalogs)
+  useEffect(() => {
+    if (!showAddPurchase) return;
+
+    // If no search/filter, don't trigger API call (saves resources)
+    if (!poSearch.trim() && !poCategoryId) return;
+
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const response = await productService.getAll({
+          search: poSearch.trim(),
+          category_id: poCategoryId ? parseInt(poCategoryId) : undefined,
+          per_page: 200, // Show enough results to be useful
+          is_archived: false,
+        });
+
+        const results = response.data || [];
+        setProducts((prev) => {
+          const map = new Map(prev.map((p) => [p.id, p]));
+          results.forEach((p) => map.set(p.id, p));
+          return Array.from(map.values());
+        });
+      } catch (error) {
+        console.error('PO product search error:', error);
+      }
+    }, 450);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [poSearch, poCategoryId, showAddPurchase]);
+
+  // ✅ Pre-load product details for items in the purchase order (e.g. from draft restoration)
+  useEffect(() => {
+    if (!showAddPurchase) return;
+
+    const missingIds = purchaseForm.items
+      .map((it) => parseInt(it.product_id || '0', 10))
+      .filter((id) => id > 0 && !products.find((p) => p.id === id));
+
+    if (missingIds.length === 0) return;
+
+    const fetchMissing = async () => {
+      try {
+        const fetched = await Promise.all(missingIds.map((id) => productService.getById(id)));
+        setProducts((prev) => {
+          const map = new Map(prev.map((p) => [p.id, p]));
+          fetched.forEach((p) => {
+            if (p?.id) map.set(p.id, p);
+          });
+          return Array.from(map.values());
+        });
+      } catch (e) {
+        console.error('Failed to pre-load missing PO products:', e);
+      }
+    };
+
+    fetchMissing();
+  }, [showAddPurchase, purchaseForm.items.length]);
+
   /**
    * Grouping rule for variations:
    * Group ONLY by the FULL SKU (exact match), never by name or SKU-prefix.
@@ -488,7 +546,7 @@ export default function VendorPaymentPage() {
 
   const getVariationSortWeight = (p: Product): number => {
     const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL', 'FREE SIZE', 'FREESIZE', 'ONE SIZE', 'ONESIZE'];
-    
+
     // 1. Try variation_suffix for standard tokens
     const suffix = (p.variation_suffix || '').toUpperCase().replace(/^-/, '').trim();
     const sidx = SIZE_ORDER.indexOf(suffix);
@@ -526,39 +584,63 @@ export default function VendorPaymentPage() {
     return products.filter((x) => getVariantGroupKey(x) === key);
   };
 
-  const openVariantPicker = (productId: string) => {
+  const openVariantPicker = async (productId: string) => {
     const pid = parseInt(productId || '0', 10);
     if (!pid) return;
 
-    const base = products.find((p) => (p as any).id === pid);
-    if (!base) return;
+    try {
+      setLoading(true);
+      // Fetch the full SKU group from API to ensure we have all variants even if not in local cache
+      const groupData = await productService.getSkuGroup(pid);
+      const options: ProductWithId[] = (groupData.products || [])
+        .filter((x): x is ProductWithId => typeof (x as any)?.id === 'number')
+        .sort((a, b) => {
+          const wa = getVariationSortWeight(a);
+          const wb = getVariationSortWeight(b);
+          if (wa !== wb) return wa - wb;
+          return (a.name || '').localeCompare(b.name || '');
+        });
 
-    const options: ProductWithId[] = getVariantGroupProducts(base)
-      .filter((x): x is ProductWithId => typeof (x as any)?.id === 'number')
-      .sort((a, b) => {
-        const wa = getVariationSortWeight(a);
-        const wb = getVariationSortWeight(b);
-        if (wa !== wb) return wa - wb;
-        return (a.name || '').localeCompare(b.name || '');
+      if (options.length === 0) {
+        // Fallback: use the base product itself if no group found
+        const base = products.find((p) => p.id === pid);
+        if (!base) {
+          showAlert('error', 'Product not found');
+          return;
+        }
+        options.push(base as ProductWithId);
+      }
+
+      const inputs: Record<number, { quantity: string; unit_cost: string; unit_sell_price: string }> = {};
+      options.forEach((opt) => {
+        const existing = purchaseForm.items.find((it: any) => String(it.product_id) === String(opt.id));
+        inputs[opt.id] = {
+          quantity: existing?.quantity_ordered || '0',
+          unit_cost: existing?.unit_cost || '',
+          unit_sell_price: existing?.unit_sell_price || '',
+        };
       });
 
-    const inputs: Record<number, { quantity: string; unit_cost: string; unit_sell_price: string }> = {};
-    options.forEach((opt) => {
-      const existing = purchaseForm.items.find((it: any) => String(it.product_id) === String(opt.id));
-      inputs[opt.id] = {
-        quantity: existing?.quantity_ordered || '0',
-        unit_cost: existing?.unit_cost || '',
-        unit_sell_price: existing?.unit_sell_price || '',
-      };
-    });
+      // Update global products cache so these variants resolve correctly in the UI
+      setProducts((prev) => {
+        const map = new Map(prev.map((p) => [p.id, p]));
+        options.forEach((p) => map.set(p.id, p));
+        return Array.from(map.values());
+      });
 
-    setVariantBaseProduct(base);
-    setVariantOptions(options);
-    setVariantInputs(inputs);
-    setVariantBulkQty('');
-    setVariantBulkCost('');
-    setVariantBulkSell('');
-    setShowVariantPicker(true);
+      setVariantBaseProduct(options[0]);
+      setVariantOptions(options);
+      setVariantInputs(inputs);
+      setVariantBulkQty('');
+      setVariantBulkCost('');
+      setVariantBulkSell('');
+      setShowVariantPicker(true);
+    } catch (error: any) {
+      console.error('Failed to open variant picker:', error);
+      showAlert('error', 'Failed to load product variations');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const applyVariantPicker = () => {
