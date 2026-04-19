@@ -29,7 +29,7 @@ export const PAGE_ACCESS: Record<string, RoleSlug[]> = {
   '/product/field': ['super-admin', 'admin', 'online-moderator'],
   '/product/list': ['super-admin', 'admin', 'branch-manager', 'online-moderator', 'pos-salesman'],
   '/product/archived': ['super-admin', 'admin', 'branch-manager', 'online-moderator'],
-  '/product/batch': ['super-admin', 'admin', 'branch-manager'],
+  '/product/batch': ['super-admin', 'admin', 'branch-manager', 'online-moderator'],
 
   // Inventory
   '/inventory': ['super-admin', 'admin', 'branch-manager', 'online-moderator', 'pos-salesman', 'employee'],
