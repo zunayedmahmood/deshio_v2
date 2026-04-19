@@ -503,6 +503,7 @@ export default function ProductPage() {
             sku: product.sku,
             color: getColorAndSize(product).color,
             size: getColorAndSize(product).size,
+            variation_suffix: (product as any).variation_suffix,
             image: primaryImageUrl,
           },
           ...serverVariants.map((v: any) => {
@@ -510,12 +511,16 @@ export default function ProductPage() {
             const vImgUrl = vImg
               ? (vImg.url?.startsWith('http') ? vImg.url : getImageUrl(vImg.image_path ?? vImg.url))
               : null;
+            
+            const vColorSize = getColorAndSize(v);
+
             return {
               id: v.id,
               name: v.name,
               sku: v.sku,
-              color: undefined as string | undefined,
-              size: undefined as string | undefined,
+              color: vColorSize.color,
+              size: vColorSize.size,
+              variation_suffix: v.variation_suffix,
               image: vImgUrl,
             };
           }),
@@ -572,7 +577,15 @@ export default function ProductPage() {
         ?? product.images?.[0];
       const variantImageUrl = variantPrimaryImage ? getImageUrl(variantPrimaryImage.image_path) : null;
 
-      group.variants.push({ id: product.id, name: product.name, sku: product.sku, color, size, image: variantImageUrl });
+      group.variants.push({
+        id: product.id,
+        name: product.name,
+        sku: product.sku,
+        color,
+        size,
+        variation_suffix: (product as any).variation_suffix,
+        image: variantImageUrl
+      });
     });
 
     groups.forEach(group => {
