@@ -86,7 +86,7 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
               key={img.id || index}
               onMouseEnter={() => scrollToImage(index)}
               onClick={() => scrollToImage(index)}
-              className={`relative overflow-hidden rounded-md bg-white border transition-all duration-200 ${
+              className={`relative overflow-hidden rounded-md bg-transparent border transition-all duration-200 ${
                 activeIndex === index ? 'border-gray-900 ring-1 ring-gray-900' : 'border-gray-200 hover:border-gray-400'
               }`}
               style={{ aspectRatio: '1/1' }}
@@ -107,8 +107,8 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="relative overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar md:overflow-hidden rounded-lg md:rounded-2xl border border-gray-100 bg-gray-50/50"
-          style={{ aspectRatio: '4/5' }}
+          className="relative overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar md:overflow-hidden rounded-lg md:rounded-2xl border-none bg-transparent"
+          style={{ aspectRatio: '4/5', maxWidth: '85%' }}
         >
           <div className="flex h-full md:block">
             {safeImages.map((img, index) => (
@@ -121,21 +121,21 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
                 <img
                   src={img.url}
                   alt={`${productName} view ${index + 1}`}
-                  className="w-full h-full object-contain p-2 sm:p-4 transition-transform duration-500"
+                  className="w-full h-full object-contain transition-transform duration-500"
                 />
               </div>
             ))}
           </div>
 
           {/* Status Badges */}
-          <div className="absolute top-4 left-4 flex flex-col gap-2 z-20">
+          <div className="absolute top-0 left-0 flex flex-col gap-2 z-20">
             {!inStock && (
-              <span className="bg-black text-white px-3 py-1 rounded-sm text-[8px] font-bold tracking-widest uppercase shadow-sm">
+              <span className="bg-black text-white px-2 py-1 rounded-sm text-[8px] font-bold tracking-widest uppercase shadow-sm">
                 Out of Stock
               </span>
             )}
             {discountPercent > 0 && (
-              <span className="bg-[#b83228] text-white px-3 py-1 rounded-sm text-[8px] font-bold tracking-widest uppercase">
+              <span className="bg-[#b83228] text-white px-2 py-1 rounded-sm text-[8px] font-bold tracking-widest uppercase">
                 {discountPercent}% OFF
               </span>
             )}

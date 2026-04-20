@@ -971,8 +971,8 @@ export default function ProductDetailPage() {
       </div>
 
       {/* Main product section */}
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8 sm:pt-28 sm:pb-12 md:pt-16 md:pb-16">
-        <div className="grid lg:grid-cols-[6fr_4fr] gap-10 lg:gap-20 items-start">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-8 md:pt-10 md:pb-12">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-start">
 
           {/* 3.1 — Image Gallery */}
           <ProductImageGallery
@@ -983,8 +983,8 @@ export default function ProductDetailPage() {
           />
 
           {/* ── Buy Column ── */}
-          <div className="lg:sticky lg:top-24 space-y-8">
-            <div className="space-y-6">
+          <div className="lg:sticky lg:top-24 space-y-4">
+            <div className="space-y-4">
               {/* Product Info */}
               <div className="space-y-4">
                 <div className="flex justify-between items-start">
@@ -1022,7 +1022,7 @@ export default function ProductDetailPage() {
                 </div>
 
                 {/* Stock Progress Bar */}
-                <div className="space-y-3 p-5 bg-gray-50/50 rounded-2xl border border-gray-100">
+                <div className="space-y-2 p-3 bg-gray-50/50 rounded-xl border border-gray-100">
                   <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
                     <span className={availableInventory <= 5 ? 'text-[#b83228]' : 'text-gray-600'}>
                       {availableInventory <= 0 ? 'Out of stock' :
@@ -1031,7 +1031,7 @@ export default function ProductDetailPage() {
                     </span>
                     <span className="text-gray-400">{Math.round(Math.min((availableInventory / 25) * 100, 100))}%</span>
                   </div>
-                  <div className="h-[6px] w-full bg-white rounded-full overflow-hidden border border-gray-100">
+                  <div className="h-[4px] w-full bg-white rounded-full overflow-hidden">
                     <div
                       className={`h-full transition-all duration-1000 ease-out ${
                         availableInventory <= 5 ? 'bg-[#b83228]' : 'bg-gray-400'
@@ -1092,28 +1092,28 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Payment Options */}
-              <div className="pt-2">
+              <div className="pt-0">
                 <img
                   src="/payment_option.png"
                   alt="Payment Options"
-                  className="w-full h-auto object-contain"
+                  className="w-[85%] h-auto object-contain mx-auto lg:mx-0"
                 />
               </div>
 
               {/* Accordion Sections */}
-              <div className="pt-8 space-y-4 border-t border-gray-100">
+              <div className="pt-4 space-y-2 border-t border-gray-100">
                 {[
                   { title: 'DESCRIPTION', content: product.description || product.short_description },
                   { title: 'ADDITIONAL INFORMATION', content: `SKU: ${selectedVariant.sku}\nCategory: ${getCategoryName(product.category)}` }
                 ].map((section, idx) => (
-                  <details key={idx} className="group overflow-hidden rounded-lg border border-gray-100">
-                    <summary className="flex items-center justify-between cursor-pointer list-none p-4 bg-gray-50/50 hover:bg-gray-50 transition-colors">
-                      <span className="text-[11px] font-bold tracking-widest text-gray-900">
+                  <details key={idx} className="group overflow-hidden rounded-md border border-gray-100">
+                    <summary className="flex items-center justify-between cursor-pointer list-none p-3 bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                      <span className="text-[10px] font-bold tracking-widest text-gray-900">
                         {section.title}
                       </span>
-                      <Plus size={16} className="text-gray-400 group-open:rotate-45 transition-transform" />
+                      <Plus size={14} className="text-gray-400 group-open:rotate-45 transition-transform" />
                     </summary>
-                    <div className="p-4 text-sm text-gray-600 leading-relaxed whitespace-pre-line bg-white border-t border-gray-100">
+                    <div className="p-3 text-sm text-gray-600 leading-relaxed whitespace-pre-line bg-white border-t border-gray-100">
                       {section.content}
                     </div>
                   </details>
@@ -1121,24 +1121,24 @@ export default function ProductDetailPage() {
               </div>
 
               {/* Bottom Trust Badges */}
-              <div className="grid grid-cols-3 gap-4 pt-8 border-t border-gray-100">
-                <div className="flex flex-col items-center text-center gap-2">
-                  <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400">
-                    <Truck size={20} strokeWidth={1.5} />
+              <div className="grid grid-cols-3 gap-2 pt-4 border-t border-gray-100">
+                <div className="flex flex-col items-center text-center gap-1">
+                  <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400">
+                    <Truck size={16} strokeWidth={1.5} />
                   </div>
-                  <span className="text-[9px] font-bold tracking-wider text-gray-900 uppercase leading-tight">Shipping<br/>Worldwide</span>
+                  <span className="text-[8px] font-bold tracking-wider text-gray-900 uppercase">Shipping Worldwide</span>
                 </div>
-                <div className="flex flex-col items-center text-center gap-2">
-                  <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400">
-                    <RotateCcw size={20} strokeWidth={1.5} />
+                <div className="flex flex-col items-center text-center gap-1">
+                  <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400">
+                    <RotateCcw size={16} strokeWidth={1.5} />
                   </div>
-                  <span className="text-[9px] font-bold tracking-wider text-gray-900 uppercase leading-tight">Easy<br/>Returns</span>
+                  <span className="text-[8px] font-bold tracking-wider text-gray-900 uppercase">Easy Returns</span>
                 </div>
-                <div className="flex flex-col items-center text-center gap-2">
-                  <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400">
-                    <ShieldCheck size={20} strokeWidth={1.5} />
+                <div className="flex flex-col items-center text-center gap-1">
+                  <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400">
+                    <ShieldCheck size={16} strokeWidth={1.5} />
                   </div>
-                  <span className="text-[9px] font-bold tracking-wider text-gray-900 uppercase leading-tight">Secure<br/>Checkout</span>
+                  <span className="text-[8px] font-bold tracking-wider text-gray-900 uppercase">Secure Checkout</span>
                 </div>
               </div>
             </div>

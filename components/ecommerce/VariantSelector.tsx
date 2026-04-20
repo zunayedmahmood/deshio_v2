@@ -72,18 +72,18 @@ const VariantSelector: React.FC<VariantSelectorProps> = ({
   const isSizeVariant = /^\d+/.test(activeLabel) || activeLabel.includes('US') || activeLabel.includes('EU');
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-[11px] font-bold tracking-widest text-gray-900 uppercase">
+    <div className="space-y-4">
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-[10px] font-bold tracking-widest text-gray-900 uppercase">
             {isSizeVariant ? 'Select Size' : 'Select Option'}:
           </span>
-          <span className="text-[11px] font-medium text-gray-500 uppercase">
+          <span className="text-[10px] font-medium text-gray-500 uppercase">
             {activeLabel}
           </span>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2">
           {variants.map((v) => {
             const isSelected = selectedVariant.id === v.id;
             const isAvailable = v.in_stock && (v.available_inventory ?? 0) > 0;
@@ -98,11 +98,11 @@ const VariantSelector: React.FC<VariantSelectorProps> = ({
                 onClick={() => onVariantChange(v)}
                 className={`group relative flex items-center justify-center transition-all duration-200 ${
                   isSizeVariant 
-                    ? 'w-12 h-12 rounded-full border text-sm font-medium' 
-                    : 'px-6 py-2.5 rounded-full border text-[11px] font-bold uppercase tracking-wider'
+                    ? 'w-10 h-10 rounded-full border text-[13px] font-medium' 
+                    : 'px-5 py-2 rounded-full border text-[10px] font-bold uppercase tracking-wider'
                 } ${
                   isSelected
-                    ? 'bg-gray-900 border-gray-900 text-white shadow-md'
+                    ? 'bg-gray-900 border-gray-900 text-white shadow-sm'
                     : isAvailable
                       ? 'bg-white border-gray-200 text-gray-900 hover:border-gray-900'
                       : 'bg-white border-gray-100 text-gray-300 cursor-not-allowed'
