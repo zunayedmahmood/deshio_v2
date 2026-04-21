@@ -430,6 +430,34 @@ export default function ProductDetailPage() {
   };
 
 
+    }
+  }, [productId]);
+
+  const buildVariantFromAny = (variant: any): ProductVariant => {
+    const name = variant?.name || '';
+    const meta = deriveVariantMeta(variant, name);
+
+    return {
+      id: Number(variant?.id),
+      name,
+      sku: variant?.sku || `product-${variant?.id}`,
+      color: meta.color,
+      size: meta.size,
+      variation_suffix: meta.variationSuffix,
+      option_label: meta.optionLabel,
+      selling_price: Number(variant?.selling_price ?? variant?.price ?? 0),
+      in_stock:
+        typeof variant?.in_stock === 'boolean'
+          ? variant.in_stock
+          : Number(variant?.stock_quantity || 0) > 0,
+      stock_quantity: Number(variant?.stock_quantity || 0),
+      available_inventory: variant?.available_inventory != null
+        ? Number(variant.available_inventory)
+        : Number(variant?.stock_quantity || 0),
+      images: Array.isArray(variant?.images) ? variant.images : [],
+    };
+  };
+
   // Fetch product data and variations
   useEffect(() => {
     if (!productId) {
@@ -446,6 +474,9 @@ export default function ProductDetailPage() {
       const existingMatch = productVariants.find(v => v.id === productId);
       if (existingMatch) {
         setSelectedVariant(existingMatch);
+        // Even if we found it, it might have partial images. 
+        // handleVariantChange handles fetching full details if needed, 
+        // but for initial load, if it's a found variant, we should ideally ensure it's full.
         return;
       }
 
@@ -463,30 +494,6 @@ export default function ProductDetailPage() {
           ? (mainProduct as any).variants
           : [];
 
-        const buildVariantFromAny = (variant: any): ProductVariant => {
-          const name = variant?.name || '';
-          const meta = deriveVariantMeta(variant, name);
-
-          return {
-            id: Number(variant?.id),
-            name,
-            sku: variant?.sku || `product-${variant?.id}`,
-            color: meta.color,
-            size: meta.size,
-            variation_suffix: meta.variationSuffix,
-            option_label: meta.optionLabel,
-            selling_price: Number(variant?.selling_price ?? variant?.price ?? 0),
-            in_stock:
-              typeof variant?.in_stock === 'boolean'
-                ? variant.in_stock
-                : Number(variant?.stock_quantity || 0) > 0,
-            stock_quantity: Number(variant?.stock_quantity || 0),
-            available_inventory: variant?.available_inventory != null
-              ? Number(variant.available_inventory)
-              : Number(variant?.stock_quantity || 0),
-            images: Array.isArray(variant?.images) ? variant.images : [],
-          };
-        };
 
         // Prefer backend-provided grouped variants from single-product endpoint
         if (directVariantsRaw.length > 0) {
@@ -672,16 +679,33 @@ export default function ProductDetailPage() {
   }, [selectedVariant]);
 
   // Handlers
-  const handleVariantChange = (variant: ProductVariant) => {
+  const handleVariantChange = async (variant: ProductVariant) => {
     // 3.8 — Prevent scroll-to-top on variant change
     if (typeof window !== 'undefined') {
       (window as any).__ERRUM_SKIP_SCROLL__ = true;
     }
+
+    // Instantly update for responsiveness (shows primary image from the list)
     setSelectedVariant(variant);
     setSelectedImageIndex(0);
     setQuantity(1);
+
     // 3.5 — No page reload
     window.history.pushState(null, '', `/e-commerce/product/${variant.id}`);
+
+    // Background fetch for FULL details (including all images)
+    try {
+      const response = await catalogService.getProduct(variant.id, { include_availability: false });
+      if (response?.product) {
+        const fullVariant = buildVariantFromAny(response.product);
+
+        // Update the variant in the list and current selection
+        setProductVariants(prev => prev.map(v => v.id === variant.id ? fullVariant : v));
+        setSelectedVariant(prev => (prev?.id === variant.id ? fullVariant : prev));
+      }
+    } catch (err) {
+      console.warn('Failed to fetch full variant details in background:', err);
+    }
   };
 
   const handleToggleWishlist = () => {
