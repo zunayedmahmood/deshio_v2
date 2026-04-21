@@ -430,9 +430,6 @@ export default function ProductDetailPage() {
   };
 
 
-    }
-  }, [productId]);
-
   const buildVariantFromAny = (variant: any): ProductVariant => {
     const name = variant?.name || '';
     const meta = deriveVariantMeta(variant, name);
