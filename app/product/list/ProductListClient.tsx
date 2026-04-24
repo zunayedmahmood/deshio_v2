@@ -250,6 +250,7 @@ export default function ProductPage() {
             per_page: SERVER_PAGE_SIZE,
             page: pageToLoad,
             enable_fuzzy: true,
+            group_by_sku: true,
             in_stock: stockStatus === 'in_stock' ? 'true' : stockStatus === 'not_in_stock' ? 'false' : undefined,
           });
         } catch {
@@ -468,7 +469,7 @@ export default function ProductPage() {
             const vImgUrl = vImg
               ? (vImg.url?.startsWith('http') ? vImg.url : getImageUrl(vImg.image_path ?? vImg.url))
               : null;
-            
+
             const vColorSize = getColorAndSize(v);
 
             return {
