@@ -166,7 +166,7 @@ body {
     --transition-fast: 100ms var(--ease-smooth);
     --transition-base: 220ms var(--ease-smooth);
     --transition-slow: 380ms var(--ease-smooth);
-    
+
     /* --- Custom Fonts --- */
     --font-poppins: "Poppins", sans-serif;
     --font-libre: "Libre Baskerville", serif;

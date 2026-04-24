@@ -11,17 +11,8 @@ export type LookupApiResponse<T> = {
 export type LookupOrder = any; // Keep flexible; backend may evolve.
 
 const lookupService = {
-  basePath: '/lookup',
-  
   async getOrder(orderId: number): Promise<LookupApiResponse<LookupOrder>> {
-    const res = await axios.get(`${this.basePath}/order/${orderId}`);
-    return res.data;
-  },
-
-  async getProductByBarcode(barcode: string): Promise<LookupApiResponse<any>> {
-    const res = await axios.get(`${this.basePath}/product`, {
-      params: { barcode },
-    });
+    const res = await axios.get(`/lookup/order/${orderId}`);
     return res.data;
   },
 };

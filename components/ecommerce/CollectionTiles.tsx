@@ -2,17 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { CatalogCategory } from '@/services/catalogService';
 
 interface Collection {
-  id: string | number;
+  id: string;
   title: string;
   subtitle: string;
   image: string;
   href: string;
+  video?: string;
 }
 
-const DEFAULT_COLLECTIONS: Collection[] = [
+const collections: Collection[] = [
   {
     id: '1',
     title: 'Sneaker Head',
@@ -36,24 +36,12 @@ const DEFAULT_COLLECTIONS: Collection[] = [
   }
 ];
 
-interface CollectionTilesProps {
-  categories?: CatalogCategory[];
-}
-
-export default function CollectionTiles({ categories }: CollectionTilesProps) {
+export default function CollectionTiles() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-  const displayCollections: Collection[] = categories && categories.length > 0
-    ? categories.slice(0, 8).map(cat => ({
-        id: cat.id,
-        title: cat.name,
-        subtitle: cat.description || `Explore our ${cat.name} collection`,
-        image: cat.image_url || 'https://images.unsplash.com/photo-1552346154-21d32810aba3?q=80&w=2070&auto=format&fit=crop',
-        href: `/e-commerce/${cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-')}`
-      }))
-    : DEFAULT_COLLECTIONS;
-
   const handleMouseMove = (e: React.MouseEvent) => {
+    // We want to calculate relative movement from the center of each tile,
+    // but for simplicity, global relative movement in the viewport works too.
     const x = (e.clientX / window.innerWidth - 0.5) * 20;
     const y = (e.clientY / window.innerHeight - 0.5) * 20;
     setMousePos({ x, y });
@@ -66,7 +54,7 @@ export default function CollectionTiles({ categories }: CollectionTilesProps) {
     >
       <div className="ec-container">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-          {displayCollections.map((item) => (
+          {collections.map((item) => (
             <Link
               key={item.id}
               href={item.href}
@@ -86,12 +74,12 @@ export default function CollectionTiles({ categories }: CollectionTilesProps) {
 
               {/* Content */}
               <div className="absolute inset-0 p-8 flex flex-col justify-end">
-                <p className="text-white/60 text-[10px] font-mono tracking-widest uppercase mb-1 line-clamp-2">{item.subtitle}</p>
-                <h3 className="text-white text-2xl font-serif mb-2 line-clamp-1">{item.title}</h3>
+                <p className="text-white/60 text-xs font-mono tracking-widest uppercase mb-2">{item.subtitle}</p>
+                <h3 className="text-white text-3xl font-serif mb-4">{item.title}</h3>
 
-                <div className="overflow-hidden h-6">
-                  <div className="transition-transform duration-500 transform translate-y-6 group-hover:translate-y-0 flex items-center gap-2 text-white text-[10px] font-semibold uppercase tracking-wider">
-                    Explore Collection <span className="text-sm">→</span>
+                <div className="overflow-hidden h-10">
+                  <div className="transition-transform duration-500 transform translate-y-10 group-hover:translate-y-0 flex items-center gap-2 text-white text-sm font-semibold uppercase tracking-wider">
+                    Explore Collection <span className="text-xl">→</span>
                   </div>
                 </div>
               </div>

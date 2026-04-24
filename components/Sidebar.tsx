@@ -31,15 +31,15 @@ import { PAGE_ACCESS } from '@/lib/accessMap';
 // ──────────────────────────────
 type MenuItem =
   | {
-      icon: React.ComponentType<{ className?: string }>;
-      label: string;
-      href: string;
-    }
+    icon: React.ComponentType<{ className?: string }>;
+    label: string;
+    href: string;
+  }
   | {
-      icon: React.ComponentType<{ className?: string }>;
-      label: string;
-      subMenu: { label: string; href: string }[];
-    };
+    icon: React.ComponentType<{ className?: string }>;
+    label: string;
+    subMenu: { label: string; href: string }[];
+  };
 
 // ──────────────────────────────
 // Props
@@ -57,12 +57,12 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const canAccessHref = (href: string) => {
     if (isSuperAdmin) return true;
     if (isLoading) return true;
-    
+
     const clean = href.split('?')[0];
     const allowedRoles = PAGE_ACCESS[clean];
-    
+
     if (!allowedRoles) return true; // no mapping = accessible
-    
+
     return isRole(allowedRoles);
   };
 
@@ -139,11 +139,11 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       label: 'Cash Sheet',
       href: '/cash-sheet',
       subMenu: [
-        { label: 'Monthly Sheet',  href: '/cash-sheet' },
-        { label: 'Branch Costs',   href: '/cash-sheet/branch-cost' },
-        { label: 'Admin Panel',    href: '/cash-sheet/admin' },
-        { label: 'Owner Panel',    href: '/cash-sheet/owner' },
-        { label: 'Summary View',   href: '/cash-sheet/summary' },
+        { label: 'Monthly Sheet', href: '/cash-sheet' },
+        { label: 'Branch Costs', href: '/cash-sheet/branch-cost' },
+        { label: 'Admin Panel', href: '/cash-sheet/admin' },
+        { label: 'Owner Panel', href: '/cash-sheet/owner' },
+        { label: 'Summary View', href: '/cash-sheet/summary' },
       ],
     },
     {

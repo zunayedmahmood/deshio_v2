@@ -245,7 +245,7 @@ export default function CampaignsPage() {
     const flatten = (nodes: CategoryTree[]) => { nodes.forEach(n => { flat.push(n); if (n.children) flatten(n.children); }); };
     flatten(categoryTree);
     setSelectedCategories(prev => prev.map(c => { const f = flat.find(n => n.id === c.id); return f ? { id: c.id, title: f.title } : c; }));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryTree]);
 
   /* filter tree by search text */
