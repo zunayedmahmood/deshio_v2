@@ -39,113 +39,87 @@ class LookupController extends Controller
             ], 422);
         }
 
-        // Find the barcode
-        $barcodeRecord = ProductBarcode::with([
-            'product.category',
-            'product.vendor',
-            'batch.store',
-            'currentStore',
-            'defectiveRecord.identifiedBy'
-        ])->where('barcode', $request->barcode)->first();
+        // Find the product using scanBarcode
+        $scanResult = \App\Models\Product::scanBarcode($request->barcode);
 
-        if (!$barcodeRecord) {
+        if (!$scanResult['found']) {
             return response()->json([
                 'success' => false,
-                'message' => 'Barcode not found'
+                'message' => $scanResult['message'] ?? 'Barcode not found'
             ], 404);
         }
 
+        $product = $scanResult['product'];
+        $barcodeInfo = [
+            'barcode' => $scanResult['is_mother_barcode'] ? $product->barcode : $request->barcode,
+            'is_mother_barcode' => $scanResult['is_mother_barcode'],
+            'type' => $scanResult['is_mother_barcode'] ? 'mother' : 'unique',
+        ];
+
         // 1. Product Information
         $productInfo = [
-            'id' => $barcodeRecord->product->id,
-            'sku' => $barcodeRecord->product->sku,
-            'name' => $barcodeRecord->product->name,
-            'description' => $barcodeRecord->product->description,
-            'brand' => $barcodeRecord->product->brand,
-            'category' => $barcodeRecord->product->category ? [
-                'id' => $barcodeRecord->product->category->id,
-                'name' => $barcodeRecord->product->category->name,
+            'id' => $product->id,
+            'sku' => $product->sku,
+            'name' => $product->name,
+            'description' => $product->description,
+            'brand' => $product->brand,
+            'category' => $product->category ? [
+                'id' => $product->category->id,
+                'name' => $product->category->name,
             ] : null,
-            'vendor' => $barcodeRecord->product->vendor ? [
-                'id' => $barcodeRecord->product->vendor->id,
-                'name' => $barcodeRecord->product->vendor->name,
-                'company_name' => $barcodeRecord->product->vendor->company_name,
+            'vendor' => $product->vendor ? [
+                'id' => $product->vendor->id,
+                'name' => $product->vendor->name,
+                'company_name' => $product->vendor->company_name,
             ] : null,
         ];
 
-        // 2. Barcode Information
-        $barcodeInfo = [
-            'barcode' => $barcodeRecord->barcode,
-            'type' => $barcodeRecord->type,
-            'is_primary' => $barcodeRecord->is_primary,
-            'is_active' => $barcodeRecord->is_active,
-            'is_defective' => $barcodeRecord->is_defective,
-            'generated_at' => $barcodeRecord->generated_at?->format('Y-m-d H:i:s'),
-            'current_status' => $barcodeRecord->current_status,
-            'location_updated_at' => $barcodeRecord->location_updated_at?->format('Y-m-d H:i:s'),
-            'location_metadata' => $barcodeRecord->location_metadata,
-        ];
-
-        // 3. Current Location
-        $currentLocation = $barcodeRecord->currentStore ? [
-            'store_id' => $barcodeRecord->currentStore->id,
-            'store_name' => $barcodeRecord->currentStore->name,
-            'store_code' => $barcodeRecord->currentStore->store_code,
-            'store_type' => $barcodeRecord->currentStore->store_type,
-            'address' => $barcodeRecord->currentStore->address,
-            'phone' => $barcodeRecord->currentStore->phone,
-        ] : null;
+        // 3. Current Location (from batches)
+        $currentLocations = \App\Models\ProductBatch::where('product_id', $product->id)
+            ->where('quantity', '>', 0)
+            ->with('store')
+            ->get()
+            ->map(function($batch) {
+                return [
+                    'store_id' => $batch->store->id,
+                    'store_name' => $batch->store->name,
+                    'quantity' => $batch->quantity,
+                    'batch_number' => $batch->batch_number,
+                ];
+            });
 
         // 4. Batch Information
-        $batchInfo = null;
-        if ($barcodeRecord->batch) {
-            $batchInfo = [
-                'id' => $barcodeRecord->batch->id,
-                'batch_number' => $barcodeRecord->batch->batch_number,
-                'cost_price' => $barcodeRecord->batch->cost_price,
-                'sell_price' => $barcodeRecord->batch->sell_price,
-                'manufactured_date' => $barcodeRecord->batch->manufactured_date?->format('Y-m-d'),
-                'expiry_date' => $barcodeRecord->batch->expiry_date?->format('Y-m-d'),
-                'original_store' => $barcodeRecord->batch->store ? [
-                    'id' => $barcodeRecord->batch->store->id,
-                    'name' => $barcodeRecord->batch->store->name,
-                    'store_code' => $barcodeRecord->batch->store->store_code,
-                ] : null,
-            ];
-        }
+        $batches = \App\Models\ProductBatch::where('product_id', $product->id)
+            ->with('store')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($batch) {
+                return [
+                    'id' => $batch->id,
+                    'batch_number' => $batch->batch_number,
+                    'quantity' => $batch->quantity,
+                    'cost_price' => $batch->cost_price,
+                    'sell_price' => $batch->sell_price,
+                    'store' => $batch->store ? [
+                        'id' => $batch->store->id,
+                        'name' => $batch->store->name,
+                    ] : null,
+                ];
+            });
 
         // 5. Purchase Order Origin - Enhanced with full PO and Vendor details
         $purchaseOrderOrigin = null;
         $purchaseOrderDetails = null;
         $vendorDetails = null;
 
-        // First check metadata for basic PO info
-        if ($barcodeRecord->location_metadata && isset($barcodeRecord->location_metadata['po_number'])) {
-            $purchaseOrderOrigin = [
-                'po_number' => $barcodeRecord->location_metadata['po_number'],
-                'received_date' => $barcodeRecord->location_metadata['received_date'] ?? null,
-                'source' => $barcodeRecord->location_metadata['source'] ?? 'purchase_order',
-            ];
-        }
-
-        // Try to find PO through batch connection (PurchaseOrderItem -> PurchaseOrder)
-        $poItem = null;
-        if ($barcodeRecord->batch_id) {
-            $poItem = PurchaseOrderItem::with(['purchaseOrder.vendor', 'purchaseOrder.store', 'purchaseOrder.createdBy'])
-                ->where('product_batch_id', $barcodeRecord->batch_id)
-                ->first();
-        }
-
-        // If no batch link, try finding PO by product_id (most recent received PO for this product)
-        if (!$poItem) {
-            $poItem = PurchaseOrderItem::with(['purchaseOrder.vendor', 'purchaseOrder.store', 'purchaseOrder.createdBy'])
-                ->where('product_id', $barcodeRecord->product_id)
-                ->whereHas('purchaseOrder', function($q) {
-                    $q->whereIn('status', ['received', 'partially_received', 'approved']);
-                })
-                ->orderBy('created_at', 'desc')
-                ->first();
-        }
+        // Try to find PO through product_id (most recent received PO for this product)
+        $poItem = PurchaseOrderItem::with(['purchaseOrder.vendor', 'purchaseOrder.store', 'purchaseOrder.createdBy'])
+            ->where('product_id', $product->id)
+            ->whereHas('purchaseOrder', function($q) {
+                $q->whereIn('status', ['received', 'partially_received', 'approved']);
+            })
+            ->orderBy('created_at', 'desc')
+            ->first();
 
         if ($poItem && $poItem->purchaseOrder) {
             $po = $poItem->purchaseOrder;
@@ -212,59 +186,32 @@ class LookupController extends Controller
             }
         }
 
-        // 6. Get all activity history for this barcode (DB-agnostic: PostgreSQL + MySQL/MariaDB)
-        $driver = DB::connection()->getDriverName();
-        $activityHistory = Activity::where(function ($query) use ($barcodeRecord, $driver) {
-            $query->where(function ($q) use ($barcodeRecord) {
-                $q->where('subject_type', 'App\\Models\\ProductBarcode')
-                  ->where('subject_id', $barcodeRecord->id);
-            })->orWhere(function ($q) use ($barcodeRecord, $driver) {
-                // Also get activities where this barcode is mentioned in properties JSON
-                if ($driver === 'pgsql') {
-                    $q->whereRaw(
-                        "(properties::jsonb @> ?::jsonb)",
-                        [json_encode(['product_barcode_id' => $barcodeRecord->id])]
-                    );
-                } else {
-                    // MySQL / MariaDB
-                    $q->where(function ($mysql) use ($barcodeRecord) {
-                        foreach ([
-                            '$.product_barcode_id',
-                            '$.attributes.product_barcode_id',
-                            '$.old.product_barcode_id',
-                            '$.new.product_barcode_id',
-                        ] as $path) {
-                            $mysql->orWhereRaw(
-                                'JSON_VALID(properties) AND CAST(JSON_UNQUOTE(JSON_EXTRACT(properties, ?)) AS UNSIGNED) = ?',
-                                [$path, (int) $barcodeRecord->id]
-                            );
-                        }
-                    });
-                }
+        // 6. Get all activity history for this product
+        $activityHistory = Activity::where('subject_type', 'App\\Models\\Product')
+            ->where('subject_id', $product->id)
+            ->with(['causer'])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($activity) {
+                return [
+                    'id' => $activity->id,
+                    'event' => $activity->event,
+                    'description' => $activity->description,
+                    'timestamp' => $activity->created_at->format('Y-m-d H:i:s'),
+                    'human_time' => $activity->created_at->diffForHumans(),
+                    'performed_by' => $activity->causer ? [
+                        'id' => $activity->causer->id,
+                        'type' => class_basename($activity->causer),
+                        'name' => $activity->causer->name ?? $activity->causer->username ?? 'Unknown',
+                    ] : null,
+                    'changes' => $this->extractChanges($activity),
+                ];
             });
-        })
-        ->with(['causer'])
-        ->orderBy('created_at', 'asc')
-        ->get()
-        ->map(function ($activity) {
-            return [
-                'id' => $activity->id,
-                'event' => $activity->event,
-                'description' => $activity->description,
-                'timestamp' => $activity->created_at->format('Y-m-d H:i:s'),
-                'human_time' => $activity->created_at->diffForHumans(),
-                'performed_by' => $activity->causer ? [
-                    'id' => $activity->causer->id,
-                    'type' => class_basename($activity->causer),
-                    'name' => $activity->causer->name ?? $activity->causer->username ?? 'Unknown',
-                ] : null,
-                'changes' => $this->extractChanges($activity),
-            ];
-        });
 
-        // 7. Get Sale Records (OrderItems where this barcode was sold)
+        // 7. Get Sale Records (OrderItems for this product)
         $saleRecords = \App\Models\OrderItem::with(['order.customer', 'order.store'])
-            ->where('product_barcode_id', $barcodeRecord->id)
+            ->where('product_id', $product->id)
+            ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($item) {
                 return [
@@ -272,26 +219,23 @@ class LookupController extends Controller
                     'order_number' => $item->order->order_number,
                     'order_date' => $item->order->order_date?->format('Y-m-d H:i:s'),
                     'order_status' => $item->order->status,
+                    'quantity' => $item->quantity,
                     'sale_price' => $item->unit_price,
                     'store' => $item->order->store ? [
                         'id' => $item->order->store->id,
                         'name' => $item->order->store->name,
-                        'store_code' => $item->order->store->store_code,
                     ] : null,
                     'customer' => $item->order->customer ? [
                         'id' => $item->order->customer->id,
                         'name' => $item->order->customer->name,
-                        'phone' => $item->order->customer->phone,
-                        'customer_code' => $item->order->customer->customer_code,
-                        'customer_type' => $item->order->customer->customer_type,
                     ] : null,
                 ];
             });
 
         // 8. Get Return Records
         $returnRecords = \App\Models\ProductReturn::with(['order', 'customer', 'store'])
-            ->whereHas('order.items', function ($query) use ($barcodeRecord) {
-                $query->where('product_barcode_id', $barcodeRecord->id);
+            ->whereHas('order.items', function ($query) use ($product) {
+                $query->where('product_id', $product->id);
             })
             ->get()
             ->map(function ($return) {
@@ -300,74 +244,49 @@ class LookupController extends Controller
                     'return_number' => $return->return_number,
                     'return_date' => $return->return_date?->format('Y-m-d H:i:s'),
                     'return_reason' => $return->return_reason,
-                    'return_type' => $return->return_type,
                     'status' => $return->status,
                     'refund_amount' => $return->total_refund_amount,
-                    'received_at_store' => $return->receivedAtStore ? [
-                        'id' => $return->receivedAtStore->id,
-                        'name' => $return->receivedAtStore->name,
-                    ] : null,
                 ];
             });
 
-        // 9. Get Dispatch Records (ProductDispatchItems involving this barcode)
+        // 9. Get Dispatch Records
         $dispatchRecords = \App\Models\ProductDispatchItem::with([
             'dispatch.sourceStore',
-            'dispatch.destinationStore',
-            'dispatch.createdBy'
+            'dispatch.destinationStore'
         ])
-        ->whereHas('scannedBarcodes', function ($query) use ($barcodeRecord) {
-            $query->where('product_barcode_id', $barcodeRecord->id);
-        })
-        ->orWhere('product_barcode_id', $barcodeRecord->id)
+        ->where('product_id', $product->id)
         ->get()
         ->map(function ($item) {
             return [
-                'dispatch_id' => $item->dispatch->id,
                 'dispatch_number' => $item->dispatch->dispatch_number,
                 'dispatch_date' => $item->dispatch->dispatch_date?->format('Y-m-d H:i:s'),
                 'status' => $item->dispatch->status,
-                'from_store' => $item->dispatch->sourceStore ? [
-                    'id' => $item->dispatch->sourceStore->id,
-                    'name' => $item->dispatch->sourceStore->name,
-                    'store_code' => $item->dispatch->sourceStore->store_code,
-                ] : null,
-                'to_store' => $item->dispatch->destinationStore ? [
-                    'id' => $item->dispatch->destinationStore->id,
-                    'name' => $item->dispatch->destinationStore->name,
-                    'store_code' => $item->dispatch->destinationStore->store_code,
-                ] : null,
-                'dispatched_by' => $item->dispatch->createdBy ? [
-                    'id' => $item->dispatch->createdBy->id,
-                    'name' => $item->dispatch->createdBy->name,
-                ] : null,
+                'quantity' => $item->quantity,
+                'from_store' => $item->dispatch->sourceStore->name ?? 'N/A',
+                'to_store' => $item->dispatch->destinationStore->name ?? 'N/A',
             ];
         });
 
-        // 10. Defective Product Record
-        $defectiveRecord = null;
-        if ($barcodeRecord->defectiveRecord) {
-            $defectiveRecord = [
-                'id' => $barcodeRecord->defectiveRecord->id,
-                'defect_reason' => $barcodeRecord->defectiveRecord->defect_reason,
-                'condition' => $barcodeRecord->defectiveRecord->condition,
-                'severity' => $barcodeRecord->defectiveRecord->severity,
-                'discount_percentage' => $barcodeRecord->defectiveRecord->discount_percentage,
-                'identified_date' => $barcodeRecord->defectiveRecord->identified_date?->format('Y-m-d H:i:s'),
-                'identified_by' => $barcodeRecord->defectiveRecord->identifiedBy ? [
-                    'id' => $barcodeRecord->defectiveRecord->identifiedBy->id,
-                    'name' => $barcodeRecord->defectiveRecord->identifiedBy->name,
-                ] : null,
-                'status' => $barcodeRecord->defectiveRecord->status,
-            ];
-        }
+        // 10. Defective Product Records
+        $defectiveRecords = \App\Models\DefectiveProduct::where('product_id', $product->id)
+            ->with(['identifiedBy', 'store'])
+            ->get()
+            ->map(function ($defective) {
+                return [
+                    'quantity' => $defective->quantity,
+                    'defect_reason' => $defective->defect_reason,
+                    'status' => $defective->status,
+                    'store' => $defective->store->name ?? 'N/A',
+                    'identified_date' => $defective->identified_date?->format('Y-m-d H:i:s'),
+                ];
+            });
 
         // 11. Build complete lifecycle timeline
         $lifecycle = [
             [
                 'stage' => 'origin',
-                'title' => 'Purchase Order Receipt',
-                'timestamp' => $barcodeRecord->generated_at?->format('Y-m-d H:i:s'),
+                'title' => 'Product Recognition',
+                'timestamp' => $product->created_at?->format('Y-m-d H:i:s'),
                 'data' => $purchaseOrderOrigin,
             ],
             [
@@ -383,16 +302,10 @@ class LookupController extends Controller
                 'data' => $saleRecords,
             ],
             [
-                'stage' => 'returns',
-                'title' => 'Return History',
-                'count' => $returnRecords->count(),
-                'data' => $returnRecords,
-            ],
-            [
                 'stage' => 'defective',
-                'title' => 'Defective Status',
-                'is_defective' => $barcodeRecord->is_defective,
-                'data' => $defectiveRecord,
+                'title' => 'Defective History',
+                'count' => $defectiveRecords->count(),
+                'data' => $defectiveRecords,
             ],
         ];
 
@@ -401,22 +314,19 @@ class LookupController extends Controller
             'data' => [
                 'product' => $productInfo,
                 'barcode' => $barcodeInfo,
-                'current_location' => $currentLocation,
-                'batch' => $batchInfo,
+                'current_locations' => $currentLocations,
+                'batches' => $batches,
                 'purchase_order_origin' => $purchaseOrderOrigin,
-                'purchase_order' => $purchaseOrderDetails,  // NEW: Full PO details
-                'vendor' => $vendorDetails,                  // NEW: Full vendor details
+                'purchase_order' => $purchaseOrderDetails,
+                'vendor' => $vendorDetails,
                 'lifecycle' => $lifecycle,
                 'activity_history' => $activityHistory,
                 'summary' => [
                     'total_dispatches' => $dispatchRecords->count(),
                     'total_sales' => $saleRecords->count(),
                     'total_returns' => $returnRecords->count(),
-                    'is_currently_defective' => $barcodeRecord->is_defective,
-                    'is_active' => $barcodeRecord->is_active,
-                    'current_status' => $barcodeRecord->current_status,
+                    'total_defective' => $defectiveRecords->sum('quantity'),
                     'has_purchase_order' => $purchaseOrderDetails !== null,
-                    'has_vendor_info' => $vendorDetails !== null,
                 ],
             ]
         ]);
@@ -424,14 +334,6 @@ class LookupController extends Controller
 
     /**
      * 2. ORDER LOOKUP
-     * 
-     * Complete order details with all products sold (with barcodes if fulfilled):
-     * - Order information
-     * - Customer details
-     * - All items with specific barcode numbers (if fulfilled)
-     * - Payment records
-     * - Shipment tracking
-     * - Complete timestamped edit history
      */
     public function orderLookup(Request $request, $orderId)
     {
@@ -440,7 +342,6 @@ class LookupController extends Controller
             'store',
             'items.product',
             'items.batch',
-            'items.barcode',
             'payments.paymentMethod',
             'shipments',
             'createdBy',
@@ -454,54 +355,7 @@ class LookupController extends Controller
             ], 404);
         }
 
-        // 1. Order Information
-        $orderInfo = [
-            'id' => $order->id,
-            'order_number' => $order->order_number,
-            'order_type' => $order->order_type,
-            'status' => $order->status,
-            'fulfillment_status' => $order->fulfillment_status,
-            'payment_status' => $order->payment_status,
-            'order_date' => $order->order_date?->format('Y-m-d H:i:s'),
-            'confirmed_at' => $order->confirmed_at?->format('Y-m-d H:i:s'),
-            'fulfilled_at' => $order->fulfilled_at?->format('Y-m-d H:i:s'),
-            'shipped_at' => $order->shipped_at?->format('Y-m-d H:i:s'),
-            'delivered_at' => $order->delivered_at?->format('Y-m-d H:i:s'),
-            'cancelled_at' => $order->cancelled_at?->format('Y-m-d H:i:s'),
-            'subtotal' => $order->subtotal,
-            'tax_amount' => $order->tax_amount,
-            'discount_amount' => $order->discount_amount,
-            'shipping_amount' => $order->shipping_amount,
-            'total_amount' => $order->total_amount,
-            'paid_amount' => $order->paid_amount,
-            'outstanding_amount' => $order->outstanding_amount,
-        ];
-
-        // 2. Customer Information
-        $customerInfo = $order->customer ? [
-            'id' => $order->customer->id,
-            'customer_code' => $order->customer->customer_code,
-            'customer_type' => $order->customer->customer_type,
-            'name' => $order->customer->name,
-            'phone' => $order->customer->phone,
-            'email' => $order->customer->email,
-            'address' => $order->customer->address,
-            'city' => $order->customer->city,
-            'total_orders' => $order->customer->total_orders,
-            'total_purchases' => $order->customer->total_purchases,
-        ] : null;
-
-        // 3. Store Information
-        $storeInfo = $order->store ? [
-            'id' => $order->store->id,
-            'name' => $order->store->name,
-            'store_code' => $order->store->store_code,
-            'store_type' => $order->store->store_type,
-            'address' => $order->store->address,
-            'phone' => $order->store->phone,
-        ] : null;
-
-        // 4. Order Items with Barcodes
+        // Order Items
         $orderItems = collect($order->items)->map(function ($item) {
             return [
                 'item_id' => $item->id,
@@ -514,128 +368,20 @@ class LookupController extends Controller
                 'batch' => $item->batch ? [
                     'id' => $item->batch->id,
                     'batch_number' => $item->batch->batch_number,
-                    'cost_price' => $item->batch->cost_price,
-                    'sell_price' => $item->batch->sell_price,
-                ] : null,
-                'barcode' => $item->barcode ? [
-                    'barcode' => $item->barcode->barcode,
-                    'type' => $item->barcode->type,
-                    'is_active' => $item->barcode->is_active,
-                    'current_status' => $item->barcode->current_status,
                 ] : null,
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,
-                'discount_amount' => $item->discount_amount,
-                'tax_amount' => $item->tax_amount,
                 'total_amount' => $item->total_amount,
-                'notes' => $item->notes,
             ];
         });
-
-        // 5. Payment Records
-        $paymentRecords = collect($order->payments)->map(function ($payment) {
-            return [
-                'payment_id' => $payment->id,
-                'payment_date' => $payment->payment_date?->format('Y-m-d H:i:s'),
-                'amount' => $payment->amount,
-                'payment_method' => $payment->paymentMethod ? [
-                    'id' => $payment->paymentMethod->id,
-                    'name' => $payment->paymentMethod->name,
-                    'type' => $payment->paymentMethod->type,
-                ] : null,
-                'transaction_id' => $payment->transaction_id,
-                'status' => $payment->status,
-                'notes' => $payment->notes,
-            ];
-        });
-
-        // 6. Shipment Records
-        $shipmentRecords = collect($order->shipments)->map(function ($shipment) {
-            return [
-                'shipment_id' => $shipment->id,
-                'tracking_number' => $shipment->tracking_number,
-                'carrier_name' => $shipment->carrier_name,
-                'status' => $shipment->status,
-                'shipped_at' => $shipment->shipped_at?->format('Y-m-d H:i:s'),
-                'delivered_at' => $shipment->delivered_at?->format('Y-m-d H:i:s'),
-                'shipping_address' => $shipment->shipping_address,
-            ];
-        });
-
-        // 7. Get Complete Activity History for this Order
-        $orderItemIds = collect($order->items)->pluck('id')->toArray();
-        $paymentIds = collect($order->payments)->pluck('id')->toArray();
-        $shipmentIds = collect($order->shipments)->pluck('id')->toArray();
-        
-        $activityHistory = Activity::where(function ($query) use ($order, $orderItemIds, $paymentIds, $shipmentIds) {
-            $query->where(function ($q) use ($order) {
-                // Order activities
-                $q->where('subject_type', 'App\\Models\\Order')
-                  ->where('subject_id', $order->id);
-            })->orWhere(function ($q) use ($orderItemIds) {
-                // OrderItem activities
-                $q->where('subject_type', 'App\\Models\\OrderItem')
-                  ->whereIn('subject_id', $orderItemIds);
-            })->orWhere(function ($q) use ($paymentIds) {
-                // OrderPayment activities
-                $q->where('subject_type', 'App\\Models\\OrderPayment')
-                  ->whereIn('subject_id', $paymentIds);
-            })->orWhere(function ($q) use ($shipmentIds) {
-                // Shipment activities
-                $q->where('subject_type', 'App\\Models\\Shipment')
-                  ->whereIn('subject_id', $shipmentIds);
-            });
-        })
-        ->with(['causer'])
-        ->orderBy('created_at', 'desc')
-        ->get()
-        ->map(function ($activity) {
-            return [
-                'id' => $activity->id,
-                'event' => $activity->event,
-                'subject_type' => class_basename($activity->subject_type),
-                'description' => $activity->description,
-                'timestamp' => $activity->created_at->format('Y-m-d H:i:s'),
-                'human_time' => $activity->created_at->diffForHumans(),
-                'performed_by' => $activity->causer ? [
-                    'id' => $activity->causer->id,
-                    'type' => class_basename($activity->causer),
-                    'name' => $activity->causer->name ?? $activity->causer->username ?? 'Unknown',
-                ] : null,
-                'changes' => $this->extractChanges($activity),
-            ];
-        });
-
-        // 8. Created By & Fulfilled By
-        $createdBy = $order->createdBy ? [
-            'id' => $order->createdBy->id,
-            'name' => $order->createdBy->name,
-            'email' => $order->createdBy->email,
-        ] : null;
-
-        $fulfilledBy = $order->fulfilledBy ? [
-            'id' => $order->fulfilledBy->id,
-            'name' => $order->fulfilledBy->name,
-            'email' => $order->fulfilledBy->email,
-        ] : null;
 
         return response()->json([
             'success' => true,
             'data' => [
-                'order' => $orderInfo,
-                'customer' => $customerInfo,
-                'store' => $storeInfo,
+                'order' => $order,
                 'items' => $orderItems,
-                'payments' => $paymentRecords,
-                'shipments' => $shipmentRecords,
-                'created_by' => $createdBy,
-                'fulfilled_by' => $fulfilledBy,
-                'activity_history' => $activityHistory,
                 'summary' => [
                     'total_items' => count($order->items),
-                    'items_with_barcodes' => collect($order->items)->whereNotNull('product_barcode_id')->count(),
-                    'total_payments' => count($order->payments),
-                    'total_shipments' => count($order->shipments),
                     'is_fulfilled' => $order->fulfillment_status === 'fulfilled',
                     'is_paid' => $order->payment_status === 'paid',
                 ],
@@ -645,22 +391,13 @@ class LookupController extends Controller
 
     /**
      * 3. BATCH LOOKUP
-     * 
-     * Complete batch information with all products and activity history:
-     * - Batch details
-     * - All product barcodes in the batch
-     * - Current stock status
-     * - All movements, dispatches, sales
-     * - Complete timestamped edit history
      */
     public function batchLookup(Request $request, $batchId)
     {
         $batch = ProductBatch::with([
             'product.category',
             'product.vendor',
-            'store',
-            'barcodes.currentStore',
-            'barcodes.defectiveRecord'
+            'store'
         ])->find($batchId);
 
         if (!$batch) {
@@ -677,14 +414,6 @@ class LookupController extends Controller
             'quantity' => $batch->quantity,
             'cost_price' => $batch->cost_price,
             'sell_price' => $batch->sell_price,
-            'tax_percentage' => $batch->tax_percentage,
-            'base_price' => $batch->base_price,
-            'tax_amount' => $batch->tax_amount,
-            'manufactured_date' => $batch->manufactured_date?->format('Y-m-d'),
-            'expiry_date' => $batch->expiry_date?->format('Y-m-d'),
-            'is_active' => $batch->is_active,
-            'availability' => $batch->availability,
-            'notes' => $batch->notes,
             'created_at' => $batch->created_at?->format('Y-m-d H:i:s'),
         ];
 
@@ -693,53 +422,15 @@ class LookupController extends Controller
             'id' => $batch->product->id,
             'sku' => $batch->product->sku,
             'name' => $batch->product->name,
-            'description' => $batch->product->description,
-            'brand' => $batch->product->brand,
-            'category' => $batch->product->category ? [
-                'id' => $batch->product->category->id,
-                'name' => $batch->product->category->name,
-            ] : null,
-            'vendor' => $batch->product->vendor ? [
-                'id' => $batch->product->vendor->id,
-                'name' => $batch->product->vendor->name,
-                'company_name' => $batch->product->vendor->company_name,
-            ] : null,
         ];
 
         // 3. Store Information
         $storeInfo = $batch->store ? [
             'id' => $batch->store->id,
             'name' => $batch->store->name,
-            'store_code' => $batch->store->store_code,
-            'store_type' => $batch->store->store_type,
-            'address' => $batch->store->address,
         ] : null;
 
-        // 4. All Barcodes in this Batch
-        $barcodes = collect($batch->barcodes)->map(function ($barcode) {
-            return [
-                'id' => $barcode->id,
-                'barcode' => $barcode->barcode,
-                'type' => $barcode->type,
-                'is_primary' => $barcode->is_primary,
-                'is_active' => $barcode->is_active,
-                'is_defective' => $barcode->is_defective,
-                'current_status' => $barcode->current_status,
-                'generated_at' => $barcode->generated_at?->format('Y-m-d H:i:s'),
-                'current_location' => $barcode->currentStore ? [
-                    'id' => $barcode->currentStore->id,
-                    'name' => $barcode->currentStore->name,
-                    'store_code' => $barcode->currentStore->store_code,
-                ] : null,
-                'defective_record' => $barcode->defectiveRecord ? [
-                    'defect_reason' => $barcode->defectiveRecord->defect_reason,
-                    'condition' => $barcode->defectiveRecord->condition,
-                    'discount_percentage' => $barcode->defectiveRecord->discount_percentage,
-                ] : null,
-            ];
-        });
-
-        // 5. Sales from this Batch
+        // 4. Sales from this Batch
         $salesRecords = \App\Models\OrderItem::with(['order.customer', 'order.store'])
             ->where('product_batch_id', $batch->id)
             ->get()
@@ -750,15 +441,11 @@ class LookupController extends Controller
                     'quantity' => $item->quantity,
                     'unit_price' => $item->unit_price,
                     'total_amount' => $item->total_amount,
-                    'barcode' => $item->barcode?->barcode,
-                    'customer' => $item->order->customer ? [
-                        'name' => $item->order->customer->name,
-                        'customer_code' => $item->order->customer->customer_code,
-                    ] : null,
+                    'customer' => $item->order->customer->name ?? 'N/A',
                 ];
             });
 
-        // 6. Dispatch Records
+        // 5. Dispatch Records
         $dispatchRecords = \App\Models\ProductDispatchItem::with([
             'dispatch.sourceStore',
             'dispatch.destinationStore'
@@ -771,89 +458,10 @@ class LookupController extends Controller
                 'dispatch_date' => $item->dispatch->dispatch_date?->format('Y-m-d H:i:s'),
                 'status' => $item->dispatch->status,
                 'quantity' => $item->quantity,
-                'from_store' => $item->dispatch->sourceStore ? [
-                    'name' => $item->dispatch->sourceStore->name,
-                    'store_code' => $item->dispatch->sourceStore->store_code,
-                ] : null,
-                'to_store' => $item->dispatch->destinationStore ? [
-                    'name' => $item->dispatch->destinationStore->name,
-                    'store_code' => $item->dispatch->destinationStore->store_code,
-                ] : null,
+                'from_store' => $item->dispatch->sourceStore->name ?? 'N/A',
+                'to_store' => $item->dispatch->destinationStore->name ?? 'N/A',
             ];
         });
-
-        // 7. Movement Records
-        $movementRecords = \App\Models\ProductMovement::with(['fromStore', 'toStore', 'performedBy'])
-            ->where('product_batch_id', $batch->id)
-            ->get()
-            ->map(function ($movement) {
-                return [
-                    'movement_type' => $movement->movement_type,
-                    'quantity' => $movement->quantity,
-                    'timestamp' => $movement->created_at?->format('Y-m-d H:i:s'),
-                    'from_store' => $movement->fromStore ? [
-                        'name' => $movement->fromStore->name,
-                        'store_code' => $movement->fromStore->store_code,
-                    ] : null,
-                    'to_store' => $movement->toStore ? [
-                        'name' => $movement->toStore->name,
-                        'store_code' => $movement->toStore->store_code,
-                    ] : null,
-                    'performed_by' => $movement->performedBy ? [
-                        'name' => $movement->performedBy->name,
-                    ] : null,
-                    'notes' => $movement->notes,
-                ];
-            });
-
-        // 8. Complete Activity History for this Batch
-        $barcodeIds = collect($batch->barcodes)->pluck('id')->toArray();
-        
-        $activityHistory = Activity::where(function ($query) use ($batch, $barcodeIds) {
-            $query->where(function ($q) use ($batch) {
-                // Batch activities
-                $q->where('subject_type', 'App\\Models\\ProductBatch')
-                  ->where('subject_id', $batch->id);
-            })->orWhere(function ($q) use ($barcodeIds) {
-                // Barcode activities for this batch
-                $q->where('subject_type', 'App\\Models\\ProductBarcode')
-                  ->whereIn('subject_id', $barcodeIds);
-            });
-        })
-        ->with(['causer'])
-        ->orderBy('created_at', 'desc')
-        ->get()
-        ->map(function ($activity) {
-            return [
-                'id' => $activity->id,
-                'event' => $activity->event,
-                'subject_type' => class_basename($activity->subject_type),
-                'description' => $activity->description,
-                'timestamp' => $activity->created_at->format('Y-m-d H:i:s'),
-                'human_time' => $activity->created_at->diffForHumans(),
-                'performed_by' => $activity->causer ? [
-                    'id' => $activity->causer->id,
-                    'type' => class_basename($activity->causer),
-                    'name' => $activity->causer->name ?? $activity->causer->username ?? 'Unknown',
-                ] : null,
-                'changes' => $this->extractChanges($activity),
-            ];
-        });
-
-        $totalBarcodes = count($batch->barcodes);
-        $activeBarcodes = collect($batch->barcodes)->where('is_active', true)->count();
-        $defectiveBarcodes = collect($batch->barcodes)->where('is_defective', true)->count();
-        
-        $stockSummary = [
-            'total_barcodes_generated' => $totalBarcodes,
-            'active_barcodes' => $activeBarcodes,
-            'sold_barcodes' => $totalBarcodes - $activeBarcodes,
-            'defective_barcodes' => $defectiveBarcodes,
-            'current_stock_quantity' => $batch->quantity,
-            'total_sales' => $salesRecords->count(),
-            'total_dispatches' => $dispatchRecords->count(),
-            'total_movements' => $movementRecords->count(),
-        ];
 
         return response()->json([
             'success' => true,
@@ -861,12 +469,13 @@ class LookupController extends Controller
                 'batch' => $batchInfo,
                 'product' => $productInfo,
                 'store' => $storeInfo,
-                'barcodes' => $barcodes,
                 'sales_records' => $salesRecords,
                 'dispatch_records' => $dispatchRecords,
-                'movement_records' => $movementRecords,
-                'activity_history' => $activityHistory,
-                'stock_summary' => $stockSummary,
+                'summary' => [
+                    'current_stock' => $batch->quantity,
+                    'total_sales' => $salesRecords->sum('quantity'),
+                    'total_dispatches' => $dispatchRecords->sum('quantity'),
+                ],
             ]
         ]);
     }

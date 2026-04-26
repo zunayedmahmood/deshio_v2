@@ -95,8 +95,17 @@ class Order extends Model
 
         static::creating(function ($order) {
             if (empty($order->order_number)) {
-                $order->order_number = static::generateOrderNumber();
+                $order->order_number = static::generateOrderNumber($order->order_type ?? 'counter');
             }
+
+            // Auto-assign first online store for social commerce orders if no store is assigned
+            if ($order->order_type === 'social_commerce' && empty($order->store_id)) {
+                $onlineStore = Store::where('is_online', true)->first();
+                if ($onlineStore) {
+                    $order->store_id = $onlineStore->id;
+                }
+            }
+
             $order->order_date = $order->order_date ?? now();
         });
     }
@@ -827,11 +836,44 @@ class Order extends Model
     }
 
     // Static methods
-    public static function generateOrderNumber(): string
+    public static function generateOrderNumber(string $type = 'counter'): string
     {
-        do {
-            $orderNumber = 'ORD-' . date('Ymd') . '-' . strtoupper(substr(md5(uniqid()), 0, 6));
-        } while (static::where('order_number', $orderNumber)->exists());
+        $prefix = match ($type) {
+            'social_commerce' => 'ORD-S-',
+            'ecommerce'       => 'ORD-E-',
+            default           => 'ORD-P-', // POS/Counter
+        };
+
+        $group = in_array($type, ['social_commerce', 'ecommerce']) ? 'online' : 'offline';
+        $groupTypes = ($group === 'online') ? ['ecommerce', 'social_commerce'] : ['counter'];
+        $groupPrefixes = ($group === 'online') ? ['ORD-S-', 'ORD-E-'] : ['ORD-P-'];
+
+        // Find the latest order in this group with the new prefix pattern
+        $latestOrder = static::whereIn('order_type', $groupTypes)
+            ->where(function ($query) use ($groupPrefixes) {
+                foreach ($groupPrefixes as $gp) {
+                    $query->orWhere('order_number', 'LIKE', $gp . '%');
+                }
+            })
+            ->orderBy('id', 'desc')
+            ->first();
+
+        $nextCounter = 1;
+        if ($latestOrder) {
+            // Extract the counter from the end of the order_number
+            // Supports both single hyphen (ORD-S-1) and multiple (just in case)
+            $parts = explode('-', $latestOrder->order_number);
+            $lastCounter = (int) end($parts);
+            $nextCounter = $lastCounter + 1;
+        }
+
+        $orderNumber = $prefix . $nextCounter;
+
+        // Double check uniqueness just in case
+        while (static::where('order_number', $orderNumber)->exists()) {
+            $nextCounter++;
+            $orderNumber = $prefix . $nextCounter;
+        }
 
         return $orderNumber;
     }

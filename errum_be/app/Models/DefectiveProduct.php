@@ -13,9 +13,10 @@ class DefectiveProduct extends Model
 
     protected $fillable = [
         'product_id',
-        'product_barcode_id',
+        'product_barcode_id', // DEPRECATED: Track individual barcode
         'product_batch_id',
         'store_id',
+        'quantity',           // NEW: Track quantity of defective items
         'defect_type',
         'defect_description',
         'defect_images',
@@ -44,6 +45,7 @@ class DefectiveProduct extends Model
     ];
 
     protected $casts = [
+        'quantity' => 'integer',
         'defect_images' => 'array',
         'metadata' => 'array',
         'original_price' => 'decimal:2',

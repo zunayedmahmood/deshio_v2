@@ -14,14 +14,7 @@ use App\Http\Controllers\ContactMessageController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\ProductImageController;
 use App\Http\Controllers\ProductBatchController;
-use App\Http\Controllers\ProductBarcodeController;
-use App\Http\Controllers\ProductDispatchController;
-use App\Http\Controllers\ShipmentController;
-use App\Http\Controllers\ProductReturnController;
-use App\Http\Controllers\RefundController;
-use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\InventoryRebalancingController;
-use App\Http\Controllers\BarcodeLocationController;
 use App\Http\Controllers\FieldController;
 use App\Http\Controllers\RecycleBinController;
 use App\Http\Controllers\CustomerController;
@@ -1407,23 +1400,7 @@ Route::middleware('auth:api')->group(function () {
     // Update all batch prices for a product
     Route::post('/products/{product_id}/batches/update-price', [ProductBatchController::class, 'updateAllBatchPrices']);
 
-    // Product Barcode Management Routes
-    Route::prefix('barcodes')->group(function () {
-        Route::get('/', [ProductBarcodeController::class, 'index']);
-        Route::post('/generate', [ProductBarcodeController::class, 'generate']);
-        Route::post('/scan', [ProductBarcodeController::class, 'scan']);
-        Route::post('/batch-scan', [ProductBarcodeController::class, 'batchScan']);
-        Route::get('/{barcode}/history', [ProductBarcodeController::class, 'getHistory']);
-        Route::get('/{barcode}/location', [ProductBarcodeController::class, 'getCurrentLocation']);
-        
-        Route::prefix('{id}')->group(function () {
-            Route::patch('/make-primary', [ProductBarcodeController::class, 'makePrimary']);
-            Route::delete('/', [ProductBarcodeController::class, 'deactivate']);
-        });
-    });
 
-    // Get barcodes for a specific product
-    Route::get('/products/{productId}/barcodes', [ProductBarcodeController::class, 'getProductBarcodes']);
 
     // Product Dispatch Management Routes
     Route::prefix('dispatches')->group(function () {
@@ -1548,42 +1525,7 @@ Route::middleware('auth:api')->group(function () {
         });
     });
 
-    // ============================================
-    // BARCODE LOCATION TRACKING ROUTES
-    // Track exact location and complete history of every physical unit
-    // ============================================
-    
-    Route::prefix('barcode-tracking')->group(function () {
-        // Individual barcode tracking
-        Route::get('/{barcode}/location', [BarcodeLocationController::class, 'getBarcodeLocation']);
-        Route::get('/{barcode}/history', [BarcodeLocationController::class, 'getBarcodeHistory']);
-        
-        // Store-based tracking
-        Route::get('/store/{storeId}', [BarcodeLocationController::class, 'getBarcodesAtStore']);
-        
-        // Advanced search and filtering
-        Route::post('/search', [BarcodeLocationController::class, 'advancedSearch']);
-        
-        // Grouped views
-        Route::get('/grouped-by-status', [BarcodeLocationController::class, 'getGroupedByStatus']);
-        Route::get('/grouped-by-store', [BarcodeLocationController::class, 'getGroupedByStore']);
-        Route::get('/grouped-by-product', [BarcodeLocationController::class, 'getGroupedByProduct']);
-        
-        // Movement history
-        Route::get('/movements', [BarcodeLocationController::class, 'getMovements']);
-        
-        // Statistics and analytics
-        Route::get('/statistics', [BarcodeLocationController::class, 'getStatistics']);
-        Route::get('/stagnant', [BarcodeLocationController::class, 'getStagnantBarcodes']);
-        Route::get('/overdue-transit', [BarcodeLocationController::class, 'getOverdueTransit']);
-        
-        // Specialized view endpoints
-        Route::get('/by-product/{productId}', [BarcodeLocationController::class, 'getByProduct']);
-        Route::get('/by-batch/{batchId}', [BarcodeLocationController::class, 'getByBatch']);
-        Route::get('/sales', [BarcodeLocationController::class, 'getSales']);
-        Route::post('/compare-stores', [BarcodeLocationController::class, 'compareStores']);
-        Route::get('/recent', [BarcodeLocationController::class, 'getRecent']);
-    });
+
 
     // ============================================
     // RECYCLE BIN / SOFT DELETE MANAGEMENT

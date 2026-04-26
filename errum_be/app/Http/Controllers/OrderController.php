@@ -228,7 +228,7 @@ class OrderController extends Controller
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.batch_id' => 'nullable|exists:product_batches,id',  // Optional for pre-orders
-            'items.*.barcode' => 'nullable|string|exists:product_barcodes,barcode',  // Optional barcode for tracking
+            'items.*.barcode' => 'nullable|string|exists:products,barcode',  // Mother barcode for tracking
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.discount_amount' => 'nullable|numeric|min:0',
@@ -484,34 +484,26 @@ class OrderController extends Controller
                     throw new \Exception("Product batch not available at this store");
                 }
 
-                // Handle barcode if provided (optional for backward compatibility)
-                $barcodeId = null;
-                if (!empty($itemData['barcode']) && $batch) {
-                    $barcode = \App\Models\ProductBarcode::where('barcode', $itemData['barcode'])
-                        ->where('product_id', $product->id)
-                        ->where('batch_id', $batch->id)
-                        ->first();
+                // Handle barcodes for tracking (individual or mother)
+                $motherBarcode = null;
+                if (isset($itemData['barcode'])) {
+                    $barcodeValue = $itemData['barcode'];
+                    $scanResult = \App\Models\Product::scanBarcode($barcodeValue);
                     
-                    if (!$barcode) {
-                        throw new \Exception("Barcode {$itemData['barcode']} not found for product {$product->name}");
+                    if (!$scanResult['found']) {
+                        throw new \Exception("Barcode {$barcodeValue} not found in system");
+                    } else {
+                        $motherBarcode = $scanResult['product']->barcode;
                     }
-                    
-                    // Check if barcode is already sold
-                    if (in_array($barcode->current_status, ['sold', 'with_customer'])) {
-                        throw new \Exception("Barcode {$itemData['barcode']} has already been sold");
-                    }
-                    
-                    if ($barcode->is_defective) {
-                        throw new \Exception("Barcode {$itemData['barcode']} is marked as defective");
-                    }
-                    
-                    $barcodeId = $barcode->id;
+                } else {
+                    // Fallback to product's mother barcode
+                    $motherBarcode = $product->barcode;
                 }
                 
                 // Debug: Log barcode capture
                 Log::info('Order item barcode capture', [
                     'barcode_value' => $itemData['barcode'] ?? 'NOT_PROVIDED',
-                    'barcode_id' => $barcodeId,
+                    'mother_barcode' => $motherBarcode,
                     'product_id' => $product->id,
                     'batch_id' => $batch?->id
                 ]);
@@ -547,7 +539,7 @@ class OrderController extends Controller
                     'order_id' => $order->id,
                     'product_id' => $product->id,
                     'product_batch_id' => $batch?->id,  // Nullable for pre-orders
-                    'product_barcode_id' => $barcodeId,  // NEW: Store barcode if provided
+                    'mother_barcode' => $motherBarcode,  // New mother barcode
                     'product_name' => $product->name,
                     'product_sku' => $product->sku,
                     'quantity' => $quantity,
@@ -835,9 +827,9 @@ class OrderController extends Controller
         // Social/Ecommerce orders: use product_id + batch_id + quantity
         $validator = Validator::make($request->all(), [
             // Barcode scanning (for counter orders)
-            'barcode' => 'nullable|string|exists:product_barcodes,barcode',
+            'barcode' => 'nullable|string',
             'barcodes' => 'nullable|array|min:1',
-            'barcodes.*' => 'string|exists:product_barcodes,barcode',
+            'barcodes.*' => 'string',
             
             // Product selection (for social_commerce/ecommerce orders)
             'product_id' => 'nullable|exists:products,id',
@@ -847,7 +839,6 @@ class OrderController extends Controller
             'unit_price' => 'nullable|numeric|min:0',  // Optional, use batch price if not provided
             'discount_amount' => 'nullable|numeric|min:0',
         ], [
-            'barcode.exists' => 'Invalid barcode',
             'product_id.exists' => 'Product not found',
             'batch_id.exists' => 'Batch not found',
             'quantity.required_with' => 'Quantity is required when adding by product',
@@ -891,40 +882,31 @@ class OrderController extends Controller
                     : [$request->barcode];
                 
                 foreach ($barcodesToAdd as $barcodeValue) {
-                    $barcode = \App\Models\ProductBarcode::where('barcode', $barcodeValue)
-                        ->with(['product', 'batch'])
-                        ->first();
-
-                    if (!$barcode) {
+                    $scanResult = \App\Models\Product::scanBarcode($barcodeValue);
+                    
+                    if (!$scanResult['found']) {
                         throw new \Exception("Barcode {$barcodeValue} not found");
                     }
 
-                    // Validate barcode is available (not already sold/with customer)
-                    if (in_array($barcode->current_status, ['sold', 'with_customer'])) {
-                        throw new \Exception("Barcode {$barcodeValue} has already been sold and is not available");
+                    $product = $scanResult['product'];
+                    
+                    // Optimized batch selection: try current store first (FIFO), else any store (FIFO)
+                    $batchQuery = ProductBatch::where('product_id', $product->id)
+                        ->where('quantity', '>=', 1)
+                        ->where('availability', true)
+                        ->where(function($q) {
+                            $q->whereNull('expiry_date')->orWhere('expiry_date', '>', now());
+                        })
+                        ->orderBy('expiry_date', 'asc');
+                    
+                    if ($order->store_id) {
+                        $batch = (clone $batchQuery)->where('store_id', $order->store_id)->first() ?: $batchQuery->first();
+                    } else {
+                        $batch = $batchQuery->first();
                     }
 
-                    // Validate barcode is not defective
-                    if ($barcode->is_defective) {
-                        throw new \Exception("Barcode {$barcodeValue} is marked as defective");
-                    }
-
-                    // Validate batch exists and has stock
-                    if (!$barcode->batch) {
-                        throw new \Exception("Barcode {$barcodeValue} is not associated with any batch");
-                    }
-
-                    $batch = $barcode->batch;
-                    $product = $barcode->product;
-
-                    // Validate batch has stock
-                    if ($batch->quantity < 1) {
-                        throw new \Exception("Product batch {$batch->batch_number} has no stock available");
-                    }
-
-                    // Validate store
-                    if ($batch->store_id != $order->store_id) {
-                        throw new \Exception("Product from batch {$batch->batch_number} not available at this store");
+                    if (!$batch) {
+                        throw new \Exception("Product {$product->name} not available in stock");
                     }
 
                     // Use provided price or batch price
@@ -935,12 +917,12 @@ class OrderController extends Controller
                     $taxPercentage = $batch->tax_percentage ?? 0;
                     $taxCalculation = $this->calculateTax($unitPrice, 1, $taxPercentage);
 
-                    // Create order item with barcode tracking
+                    // Create order item with mother barcode tracking
                     $orderItem = OrderItem::create([
                         'order_id' => $order->id,
                         'product_id' => $product->id,
                         'product_batch_id' => $batch->id,
-                        'product_barcode_id' => $barcode->id,  // NEW: Track specific barcode
+                        'mother_barcode' => $product->barcode,
                         'product_name' => $product->name,
                         'product_sku' => $product->sku,
                         'quantity' => 1,  // Always 1 per barcode
@@ -1030,7 +1012,7 @@ class OrderController extends Controller
                         'order_id' => $order->id,
                         'product_id' => $product->id,
                         'product_batch_id' => $batch ? $batch->id : null,
-                        'product_barcode_id' => null,  // No barcode yet - assigned during fulfillment
+                        'mother_barcode' => $product->barcode,
                         'product_name' => $product->name,
                         'product_sku' => $product->sku,
                         'quantity' => $quantity,
@@ -1271,7 +1253,7 @@ class OrderController extends Controller
      */
     public function complete($id)
     {
-        $order = Order::with(['items.batch', 'items.barcode'])->find($id);
+        $order = Order::with(['items.batch'])->find($id);
 
         if (!$order) {
             return response()->json([
@@ -1300,56 +1282,49 @@ class OrderController extends Controller
         try {
             // Reduce inventory for each item
             foreach ($order->items as $item) {
-                $batch = $item->batch;
-
-                if (!$batch) {
-                    throw new \Exception("Batch not found for item {$item->product_name}");
-                }
-
-                if ($batch->quantity < $item->quantity) {
-                    throw new \Exception("Insufficient stock for {$item->product_name}. Available: {$batch->quantity}");
-                }
-
-                // Handle barcode-tracked items (check if barcode exists and is not null)
-                if ($item->product_barcode_id && $item->barcode) {
-                    $barcode = $item->barcode;
-                    
-                    // Validate barcode is still available (not already sold)
-                    if ($barcode->current_status === 'sold' || $barcode->current_status === 'with_customer') {
-                        throw new \Exception("Barcode {$barcode->barcode} for {$item->product_name} has already been sold.");
+                // FIFO Stock Deduction for Mother Barcode or missing batch
+                $quantityToDeduct = $item->quantity;
+                
+                // If we have a specific batch (Counter sale usually), try to deduct from it first
+                if ($item->product_batch_id) {
+                    $batch = $item->batch;
+                    if ($batch && $batch->quantity > 0) {
+                        $deduction = min($quantityToDeduct, $batch->quantity);
+                        $batch->removeStock($deduction);
+                        $quantityToDeduct -= $deduction;
                     }
-
-                    // Mark barcode as sold but keep it active for history/returns/refunds
-                    // IMPORTANT: is_active stays TRUE to preserve history for returns/refunds/defects
-                    $barcode->update([
-                        'is_active' => true, // Keep active for history tracking
-                        'current_status' => 'with_customer', // Tracks lifecycle state
-                        'location_updated_at' => now(),
-                        'location_metadata' => [
-                            'sold_via' => 'order',
-                            'order_number' => $order->order_number,
-                            'order_id' => $order->id,
-                            'sale_date' => now()->toISOString(),
-                            'sold_by' => auth()->id(),
-                        ]
-                    ]);
-
-                    // Log barcode sale
-                    $note = sprintf(
-                        "[%s] Sold 1 unit (Barcode: %s) via Order #%s",
-                        now()->format('Y-m-d H:i:s'),
-                        $barcode->barcode,
-                        $order->order_number
-                    );
-                } else {
-                    // Log non-barcode sale
-                    $note = sprintf(
-                        "[%s] Sold %d unit(s) (No barcode tracking) via Order #%s",
-                        now()->format('Y-m-d H:i:s'),
-                        $item->quantity,
-                        $order->order_number
-                    );
                 }
+
+                // If still quantity left (or no specific batch provided), use FIFO across all batches of product at this store
+                if ($quantityToDeduct > 0) {
+                    $availableBatches = ProductBatch::where('product_id', $item->product_id)
+                        ->where('store_id', $order->store_id)
+                        ->where('availability', true)
+                        ->where('quantity', '>', 0)
+                        ->orderBy('created_at', 'asc') // FIFO
+                        ->get();
+                    
+                    foreach ($availableBatches as $fifoBatch) {
+                        $deduction = min($quantityToDeduct, $fifoBatch->quantity);
+                        $fifoBatch->removeStock($deduction);
+                        $quantityToDeduct -= $deduction;
+                        
+                        if ($quantityToDeduct <= 0) break;
+                    }
+                }
+
+                if ($quantityToDeduct > 0) {
+                    throw new \Exception("Insufficient total stock for {$item->product_name} in store. Still need to deduct {$quantityToDeduct}");
+                }
+
+                // Log mother barcode or non-specific barcode sale
+                $note = sprintf(
+                    "[%s] Sold %d unit(s) (Mother Barcode: %s) via Order #%s",
+                    now()->format('Y-m-d H:i:s'),
+                    $item->quantity,
+                    $item->mother_barcode ?? 'N/A',
+                    $order->order_number
+                );
 
                 // Ensure COGS is stored/updated at the time of completion
                 $calculatedCogs = ($batch ? ($batch->cost_price ?? 0) * $item->quantity : 0);
@@ -1367,26 +1342,18 @@ class OrderController extends Controller
                 
                 $item->update(['cogs' => round($calculatedCogs, 2)]);
 
-                // Stock deduction is now centralizing here in OrderController@complete
-                // We always deduct now because early deduction was removed from Create and Scan
-                $alreadyDeducted = false; 
-                
-                if (!$alreadyDeducted) {
-                    $batch->removeStock($item->quantity);
+                // RELEASE RESERVATION concurrently to keep available_stock (Total - Reserved) consistent
+                if ($reservedRecord = ReservedProduct::where('product_id', $item->product_id)->first()) {
+                    $reservedRecord->decrement('reserved_inventory', $item->quantity);
+                    $reservedRecord->refresh();
+                    $reservedRecord->available_inventory = $reservedRecord->total_inventory - $reservedRecord->reserved_inventory;
+                    $reservedRecord->save();
 
-                    // RELEASE RESERVATION concurrently to keep available_stock (Total - Reserved) consistent
-                    if ($reservedRecord = ReservedProduct::where('product_id', $item->product_id)->first()) {
-                        $reservedRecord->decrement('reserved_inventory', $item->quantity);
-                        $reservedRecord->refresh();
-                        $reservedRecord->available_inventory = $reservedRecord->total_inventory - $reservedRecord->reserved_inventory;
-                        $reservedRecord->save();
-
-                        Log::info('Reservation released at order completion', [
-                            'order_id' => $order->id,
-                            'product_id' => $item->product_id,
-                            'quantity' => $item->quantity,
-                        ]);
-                    }
+                    Log::info('Reservation released at order completion', [
+                        'order_id' => $order->id,
+                        'product_id' => $item->product_id,
+                        'quantity' => $item->quantity,
+                    ]);
                 }
                 
                 $batch->update([
@@ -1428,21 +1395,9 @@ class OrderController extends Controller
 
             DB::commit();
 
-            $message = 'Order completed successfully. Inventory updated.';
-            $items = collect($order->items);
-            $trackedCount = $items->filter(fn($item) => $item->product_barcode_id && $item->barcode)->count();
-            $untrackedCount = $items->count() - $trackedCount;
-            
-            if ($trackedCount > 0) {
-                $message .= " {$trackedCount} item(s) tracked with barcodes.";
-            }
-            if ($untrackedCount > 0) {
-                $message .= " {$untrackedCount} item(s) completed without barcode tracking.";
-            }
-
             return response()->json([
                 'success' => true,
-                'message' => $message,
+                'message' => 'Order completed successfully. Inventory updated.',
                 'data' => $this->formatOrderResponse($order->fresh([
                     'customer',
                     'store',
@@ -1661,10 +1616,8 @@ class OrderController extends Controller
                     'product_id' => $item->product_id,
                     'product_name' => $item->product_name,
                     'product_sku' => $item->product_sku,
-                    'batch_id' => $item->product_batch_id,
-                    'batch_number' => $item->batch?->batch_number,
-                    'barcode_id' => $item->product_barcode_id,
-                    'barcode' => $item->barcode?->barcode,
+                    'product_batch_id' => $item->product_batch_id,
+                    'mother_barcode' => $item->mother_barcode,
                     'quantity' => $item->quantity,
                     'global_available' => $item->product?->reservedProduct?->available_inventory ?? 0,
                     'unit_price' => number_format((float)$item->unit_price, 2),
@@ -1773,7 +1726,7 @@ class OrderController extends Controller
             'fulfillments' => 'required|array|min:1',
             'fulfillments.*.order_item_id' => 'required|exists:order_items,id',
             'fulfillments.*.barcodes' => 'required|array|min:1',
-            'fulfillments.*.barcodes.*' => 'required|string|exists:product_barcodes,barcode',
+            'fulfillments.*.barcodes.*' => 'required|string|exists:products,barcode',
         ]);
 
         if ($validator->fails()) {

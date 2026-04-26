@@ -180,26 +180,28 @@ class StockIntelligenceController extends Controller
             ->get()
             ->keyBy('batch_id');
 
-        // ── Step 3: Get store distribution (where barcodes of this batch went) ──
-        $barcodeDistrib = DB::table('product_barcodes as bc')
-            ->join('stores as s', 'bc.current_store_id', '=', 's.id')
-            ->whereIn('bc.batch_id', $batchIds)
-            ->where('bc.is_active', true)
+        // ── Step 3: Get store distribution (where this logical batch is spread across stores) ──
+        $batchNumbers = $batches->pluck('batch_number')->unique()->filter()->values()->toArray();
+
+        $batchDistrib = DB::table('product_batches as pb')
+            ->join('stores as s', 'pb.store_id', '=', 's.id')
+            ->whereIn('pb.batch_number', $batchNumbers)
+            ->where('pb.is_active', true)
             ->select([
-                'bc.batch_id',
-                'bc.current_store_id as store_id',
+                'pb.batch_number',
+                'pb.store_id',
                 's.name as store_name',
-                'bc.current_status',
-                DB::raw('COUNT(*) as barcode_count'),
+                DB::raw("CASE WHEN pb.quantity > 0 THEN 'instock' ELSE 'out_of_stock' END as current_status"),
+                DB::raw('SUM(pb.quantity) as total_quantity'),
             ])
-            ->groupBy('bc.batch_id', 'bc.current_store_id', 's.name', 'bc.current_status')
+            ->groupBy('pb.batch_number', 'pb.store_id', 's.name', 'pb.quantity')
             ->get()
-            ->groupBy('batch_id');
+            ->groupBy('batch_number');
 
         // ── Step 4: Enrich each batch row ──────────────────────────────────
-        $enriched = $batches->map(function ($batch) use ($salesPerBatch, $barcodeDistrib) {
+        $enriched = $batches->map(function ($batch) use ($salesPerBatch, $batchDistrib) {
             $sales    = $salesPerBatch[$batch->batch_id] ?? null;
-            $distrib  = $barcodeDistrib[$batch->batch_id] ?? collect();
+            $distrib  = $batchDistrib[$batch->batch_number] ?? collect();
 
             $unitsSold     = $sales ? (int) $sales->units_sold    : 0;
             $revenue       = $sales ? round((float) $sales->revenue, 2)    : 0.0;
@@ -240,8 +242,8 @@ class StockIntelligenceController extends Controller
                 return [
                     'store_id'   => (int) $storeId,
                     'store_name' => $rows->first()->store_name,
-                    'count'      => $rows->sum('barcode_count'),
-                    'statuses'   => $rows->pluck('current_status', 'current_status')->keys()->values(),
+                    'count'      => (int) $rows->sum('total_quantity'),
+                    'statuses'   => $rows->pluck('current_status')->unique()->values(),
                 ];
             })->values()->toArray();
 

@@ -35,6 +35,7 @@ class Product extends Model
         'vendor_id',
         'brand',
         'sku',
+        'barcode',
         'name',
         'base_name',
         'variation_suffix',
@@ -59,6 +60,11 @@ class Product extends Model
                 $product->sku = static::generateUniqueSku();
             }
             
+            // Auto-generate mother barcode if not provided
+            if (empty($product->barcode)) {
+                $product->barcode = static::generateUniqueBarcode();
+            }
+
             // Auto-set base_name if not provided (for backward compatibility)
             if (empty($product->base_name) && !empty($product->name)) {
                 $product->base_name = $product->name;
@@ -295,8 +301,16 @@ class Product extends Model
         return $this->barcodes()->primary()->active()->first();
     }
 
+    public function scopeByMotherBarcode($query, $barcode)
+    {
+        return $query->where('barcode', $barcode);
+    }
+
     public function getPrimaryBarcodeAttribute()
     {
+        if (!empty($this->barcode)) {
+            return $this->barcode;
+        }
         $primaryBarcode = $this->primaryBarcode();
         return $primaryBarcode ? $primaryBarcode->barcode : null;
     }
@@ -422,5 +436,56 @@ class Product extends Model
         }
 
         return $query->avg('sell_price');
+    }
+
+    /**
+     * Generate a unique mother barcode
+     */
+    public static function generateUniqueBarcode(): string
+    {
+        do {
+            // Generate random 13-digit number
+            $barcode = (string) random_int(1000000000000, 9999999999999);
+        } while (static::where('barcode', $barcode)->exists());
+
+        return $barcode;
+    }
+
+    /**
+     * Scan a barcode (Mother Barcode Only)
+     */
+    public static function scanBarcode($barcodeValue)
+    {
+        $product = static::where('barcode', $barcodeValue)->first();
+        
+        if (!$product) {
+            return [
+                'found' => false,
+                'message' => 'Barcode not found in system',
+            ];
+        }
+
+        // Aggregate stock across all available batches (FIFO)
+        $currentBatch = ProductBatch::where('product_id', $product->id)
+            ->where('availability', true)
+            ->where('quantity', '>', 0)
+            ->orderBy('created_at', 'asc')
+            ->first();
+
+        return [
+            'found' => true,
+            'is_mother_barcode' => true,
+            'barcode' => (object)[
+                'id' => null,
+                'barcode' => $barcodeValue,
+                'type' => 'MOTHER',
+                'is_defective' => false
+            ],
+            'product' => $product,
+            'current_location' => $currentBatch ? $currentBatch->store : null,
+            'current_batch' => $currentBatch,
+            'is_available' => $currentBatch !== null,
+            'quantity_available' => ProductBatch::where('product_id', $product->id)->sum('quantity'),
+        ];
     }
 }

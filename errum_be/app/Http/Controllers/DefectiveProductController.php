@@ -26,7 +26,6 @@ class DefectiveProductController extends Controller
         try {
             $query = DefectiveProduct::with([
                 'product',
-                'barcode',
                 'batch',
                 'store',
                 'identifiedBy',
@@ -69,10 +68,9 @@ class DefectiveProductController extends Controller
             if ($request->has('search')) {
                 $search = $request->search;
                 $query->where(function ($q) use ($search) {
-                    $q->whereHas('barcode', function ($bq) use ($search) {
-                        $this->whereLike($bq, 'barcode', $search);
-                    })->orWhereHas('product', function ($pq) use ($search) {
+                    $q->whereHas('product', function ($pq) use ($search) {
                         $this->whereLike($pq, 'name', $search);
+                        $pq->orWhere('barcode', 'like', "%{$search}%");
                     });
                 });
             }
@@ -106,7 +104,6 @@ class DefectiveProductController extends Controller
         try {
             $defectiveProduct = DefectiveProduct::with([
                 'product',
-                'barcode',
                 'batch',
                 'store',
                 'identifiedBy',
@@ -134,13 +131,14 @@ class DefectiveProductController extends Controller
     public function markAsDefective(Request $request): JsonResponse
     {
         $request->validate([
-            'product_barcode_id' => 'required|exists:product_barcodes,id',
+            'product_id' => 'required|exists:products,id',
+            'product_batch_id' => 'required|exists:product_batches,id',
+            'quantity' => 'required|integer|min:1',
             'store_id' => 'required|exists:stores,id',
             'defect_type' => 'required|string|in:physical_damage,malfunction,cosmetic,missing_parts,packaging_damage,expired,counterfeit,other',
             'defect_description' => 'required|string',
             'severity' => 'required|in:minor,moderate,major,critical',
             'original_price' => 'required|numeric|min:0',
-            'product_batch_id' => 'nullable|exists:product_batches,id',
             'defect_images' => 'nullable|array',
             'defect_images.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120',
             'internal_notes' => 'nullable|string',
@@ -148,11 +146,10 @@ class DefectiveProductController extends Controller
 
         DB::beginTransaction();
         try {
-            $barcode = ProductBarcode::findOrFail($request->product_barcode_id);
+            $productBatch = \App\Models\ProductBatch::findOrFail($request->product_batch_id);
 
-            // Check if already marked as defective
-            if ($barcode->isDefective()) {
-                throw new \Exception('This product is already marked as defective');
+            if ($productBatch->quantity < $request->quantity) {
+                throw new \Exception('Insufficient stock in batch to mark as defective.');
             }
 
             $employee = auth()->user();
@@ -169,10 +166,12 @@ class DefectiveProductController extends Controller
                 }
             }
 
-            // Mark barcode as defective and create defective product record
-            $defectiveProduct = $barcode->markAsDefective([
-                'store_id' => $request->store_id,
+            // Create defective product record
+            $defectiveProduct = DefectiveProduct::create([
+                'product_id' => $request->product_id,
                 'product_batch_id' => $request->product_batch_id,
+                'quantity' => $request->quantity,
+                'store_id' => $request->store_id,
                 'defect_type' => $request->defect_type,
                 'defect_description' => $request->defect_description,
                 'severity' => $request->severity,
@@ -180,14 +179,35 @@ class DefectiveProductController extends Controller
                 'defect_images' => !empty($imagePaths) ? $imagePaths : null,
                 'identified_by' => $employee->id,
                 'internal_notes' => $request->internal_notes,
+                'status' => 'identified',
+                'identified_at' => now(),
+            ]);
+
+            // Deduct from batch quantity
+            $productBatch->quantity -= $request->quantity;
+            $productBatch->save();
+
+            // Log movement
+            \App\Models\ProductMovement::create([
+                'product_id' => $request->product_id,
+                'product_batch_id' => $request->product_batch_id,
+                'store_id' => $request->store_id,
+                'movement_type' => 'defective',
+                'quantity' => $request->quantity,
+                'unit_cost' => $request->original_price,
+                'total_cost' => $request->original_price * $request->quantity,
+                'reference_type' => 'defective_product',
+                'reference_id' => $defectiveProduct->id,
+                'performed_by' => $employee->id,
+                'notes' => "Marked {$request->quantity} units as defective: {$request->defect_description}",
             ]);
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Product marked as defective successfully',
-                'data' => $defectiveProduct->load(['product', 'barcode', 'store', 'identifiedBy']),
+                'message' => 'Product quantity marked as defective successfully',
+                'data' => $defectiveProduct->load(['product', 'store', 'identifiedBy']),
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -231,7 +251,7 @@ class DefectiveProductController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Product inspected successfully',
-                'data' => $defectiveProduct->load(['product', 'barcode', 'inspectedBy']),
+                'data' => $defectiveProduct->load(['product', 'inspectedBy']),
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -316,7 +336,7 @@ class DefectiveProductController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Defective product sold successfully',
-                'data' => $defectiveProduct->load(['product', 'barcode', 'order', 'soldBy']),
+                'data' => $defectiveProduct->load(['product', 'order', 'soldBy']),
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -406,7 +426,7 @@ class DefectiveProductController extends Controller
     {
         try {
             $query = DefectiveProduct::availableForSale()
-                ->with(['product', 'barcode', 'store']);
+                ->with(['product', 'store']);
 
             if ($request->has('store_id')) {
                 $query->where('store_id', $request->store_id);
@@ -507,40 +527,26 @@ class DefectiveProductController extends Controller
         ]);
 
         try {
-            $barcodeRecord = ProductBarcode::where('barcode', $request->barcode)->first();
+            $product = Product::scanBarcode($request->barcode);
 
-            if (!$barcodeRecord) {
+            if (!$product) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Barcode not found',
+                    'message' => 'Product not found with this barcode',
                 ], 404);
             }
 
-            if (!$barcodeRecord->isDefective()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'This product is not marked as defective',
-                    'data' => [
-                        'is_defective' => false,
-                        'barcode' => $barcodeRecord,
-                        'product' => $barcodeRecord->product,
-                    ],
-                ]);
-            }
-
-            $defectiveProduct = $barcodeRecord->defectiveRecord()
-                ->with(['product', 'store', 'identifiedBy', 'inspectedBy'])
-                ->first();
+            $defectiveProducts = DefectiveProduct::where('product_id', $product->id)
+                ->whereIn('status', ['identified', 'inspected', 'available_for_sale'])
+                ->with(['store', 'identifiedBy', 'inspectedBy'])
+                ->get();
 
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'is_defective' => true,
-                    'defective_product' => $defectiveProduct,
-                    'can_be_sold' => $defectiveProduct->canBeSold(),
-                    'suggested_price' => $defectiveProduct->suggested_selling_price,
-                    'minimum_price' => $defectiveProduct->minimum_selling_price,
-                    'discount_percentage' => $defectiveProduct->getDiscountPercentage(),
+                    'product' => $product,
+                    'defective_records' => $defectiveProducts,
+                    'has_defective' => $defectiveProducts->isNotEmpty(),
                 ],
             ]);
         } catch (\Exception $e) {

@@ -219,16 +219,21 @@ export default function PurchaseOrdersPage() {
       const price = toNumber(it?.unit_sell_price ?? pb?.sell_price ?? (isRole(['online-moderator']) ? 0 : it?.unit_cost) ?? 0);
 
       const fallbackCode =
+        it?.product?.barcode ||
+        pb?.product?.barcode ||
         pb?.barcode?.barcode ||
         pb?.barcode ||
         pb?.primary_barcode ||
         pb?.batch_number;
 
+      const qty = toNumber(it?.quantity_received ?? it?.quantity_ordered ?? 1);
+
       out.push({
         batchId: Number(batchId),
         productName: String(productName),
         price,
-        fallbackCode: fallbackCode ? String(fallbackCode) : undefined,
+        fallbackCode: fallbackCode ? String(fallbackCode) : '',
+        qty: qty > 0 ? qty : 1,
       });
     }
 

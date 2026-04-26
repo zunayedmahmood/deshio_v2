@@ -379,3 +379,57 @@ any change  to any file after  this should behind the   scene automatically upda
 
 now make me the skill library (folder  of multiple folders, each with one SKILL.md)
 
+
+
+### mother barcode
+Our main goal is this:
+We will only use mother barcodes for everything now onwards. on every frontend page and components.
+we will remove all logic and traces of unique barcodes from backend and frontend, except support for the seeder to generate mother barcodes for existing products.
+all observers and other code need to be updated.
+all batch creation logic need to updated.
+barcode per product_id will be one and unique.
+
+we will remove legacy support for unique barcodes. so,
+entering / scanning unique barcodes in frontend should give a barcode not found error.
+
+
+these are places you must check
+order, product, product_batch, dispatch, po, return exchange, defective, accounting, sales, reserved_products etc controllers, models, services, jobs, observers, requests, routes, policies, etc
+
+among frontend pages, purchase-order, product/ all pages, inventory/ all pages, lookup, POS, social-commerce, e-commerce pages, etc and their components.
+
+identify the changes required and carry them out.
+
+
+### order id:
+we want this feature in order creation, specifically in the order id.
+
+order can be of two types:
+online: Ecommerce, Social-commerce
+offline: POS 
+
+we want to change the order ID format.
+the online needs to be following a counter (starts from 1 and goes on).
+same for offline orders, but a separate counter.
+
+for online orders, social commerce will have S and e-commerce will have E.
+so, the orders page should sho order id like this: ORD-S-1, ORD-S-2, ORD-E-3, ORD-S-4, ....
+
+for offline orders, the orders will have id like this: ORD-P-1, ORD-P-2, ...
+the offline and online counter needs to be separate.
+
+however, changes should be backwards compatible that is, old order ids should be compatible.
+
+this change should not need changes in migrations or seeders etc.
+
+
+### store-assignment page:
+we want to add this new logic in backend for social-commerce page:
+
+when a new order is created, it now is pending_assignment. then, we have to manually assign a store to it.
+
+we want this logic hardcoded:
+stores have a property "online store" or something like that.
+
+when a social-commerce order is placed, the first store with "online store" true will be assigned to it.
+however, if it can't find something like that, leave it as is, and store-assignment page will handle it.

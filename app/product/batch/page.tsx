@@ -184,11 +184,6 @@ export default function BatchPage() {
         quantity: quantityNum,
         cost_price: costPriceNum,
         sell_price: sellingPriceNum,
-        // ✅ Generate barcodes during batch creation
-        generate_barcodes: true,
-        barcode_type: 'CODE128',
-        // ✅ Generate individual barcodes for each unit (if quantity <= 100)
-        individual_barcodes: quantityNum <= 100,
       };
 
       const response = await batchService.createBatch(batchData);

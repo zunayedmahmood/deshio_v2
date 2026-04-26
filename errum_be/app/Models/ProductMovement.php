@@ -12,8 +12,8 @@ class ProductMovement extends Model
     use HasFactory, AutoLogsActivity;
 
     protected $fillable = [
+        'product_id',           // Direct link to product
         'product_batch_id',
-        'product_barcode_id',
         'from_store_id',
         'to_store_id',
         'product_dispatch_id',
@@ -25,10 +25,10 @@ class ProductMovement extends Model
         'total_value',
         'movement_date',
         'reference_number',
-        'reference_type',       // NEW: Type of reference (order, dispatch, return, etc.)
-        'reference_id',         // NEW: ID of referenced record
-        'status_before',        // NEW: Status before movement
-        'status_after',         // NEW: Status after movement
+        'reference_type',
+        'reference_id',
+        'status_before',
+        'status_after',
         'notes',
         'performed_by',
     ];
@@ -68,10 +68,7 @@ class ProductMovement extends Model
         return $this->belongsTo(ProductBatch::class, 'product_batch_id');
     }
 
-    public function barcode(): BelongsTo
-    {
-        return $this->belongsTo(ProductBarcode::class, 'product_barcode_id');
-    }
+
 
     public function fromStore(): BelongsTo
     {
@@ -93,9 +90,9 @@ class ProductMovement extends Model
         return $this->belongsTo(Employee::class, 'performed_by');
     }
 
-    public function product()
+    public function product(): BelongsTo
     {
-        return $this->batch->product();
+        return $this->belongsTo(Product::class);
     }
 
     public function scopeByBatch($query, $batchId)
@@ -103,10 +100,7 @@ class ProductMovement extends Model
         return $query->where('product_batch_id', $batchId);
     }
 
-    public function scopeByBarcode($query, $barcodeId)
-    {
-        return $query->where('product_barcode_id', $barcodeId);
-    }
+
 
     public function scopeByStore($query, $storeId)
     {
@@ -175,17 +169,17 @@ class ProductMovement extends Model
         return static::create($data);
     }
 
-    public static function getProductLocationHistory($barcodeId)
+    public static function getProductLocationHistory($productId)
     {
-        return static::byBarcode($barcodeId)
+        return static::where('product_id', $productId)
                     ->with(['fromStore', 'toStore', 'batch.product', 'performedBy'])
                     ->orderBy('movement_date', 'desc')
                     ->get();
     }
 
-    public static function getCurrentLocation($barcodeId)
+    public static function getCurrentLocation($productId)
     {
-        return static::byBarcode($barcodeId)
+        return static::where('product_id', $productId)
                     ->with('toStore')
                     ->orderBy('movement_date', 'desc')
                     ->first()
@@ -194,7 +188,7 @@ class ProductMovement extends Model
 
     public static function getStoreInventoryMovements($storeId, $startDate = null, $endDate = null)
     {
-        $query = static::byStore($storeId)->with(['batch.product', 'barcode', 'performedBy']);
+        $query = static::byStore($storeId)->with(['batch.product', 'performedBy']);
 
         if ($startDate && $endDate) {
             $query->dateRange($startDate, $endDate);

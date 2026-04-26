@@ -14,8 +14,8 @@ class ProductDispatchItem extends Model
     protected $fillable = [
         'product_dispatch_id',
         'product_batch_id',
-        'product_barcode_id',  // NEW: Track individual physical unit
         'quantity',
+        'scanned_quantity', // Added: Track how many units have been scanned via mother barcode
         'unit_cost',
         'unit_price',
         'total_cost',
@@ -29,6 +29,7 @@ class ProductDispatchItem extends Model
 
     protected $casts = [
         'quantity' => 'integer',
+        'scanned_quantity' => 'integer',
         'unit_cost' => 'decimal:2',
         'unit_price' => 'decimal:2',
         'total_cost' => 'decimal:2',
@@ -215,7 +216,7 @@ class ProductDispatchItem extends Model
      */
     public function hasAllBarcodesScanned(): bool
     {
-        return $this->scannedBarcodes()->count() >= $this->quantity;
+        return ($this->scanned_quantity ?? 0) >= $this->quantity;
     }
 
     /**
@@ -223,7 +224,7 @@ class ProductDispatchItem extends Model
      */
     public function getScannedBarcodesCount(): int
     {
-        return $this->scannedBarcodes()->count();
+        return $this->scanned_quantity ?? 0;
     }
 
     /**

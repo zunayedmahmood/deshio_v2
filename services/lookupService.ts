@@ -15,6 +15,16 @@ const lookupService = {
     const res = await axios.get(`/lookup/order/${orderId}`);
     return res.data;
   },
+
+  async getProductByBarcode(barcode: string): Promise<LookupApiResponse<any>> {
+    const res = await axios.get(`/lookup/product/${barcode}`);
+    return res.data;
+  },
+
+  async getBatch(batchId: number): Promise<LookupApiResponse<any>> {
+    const res = await axios.get(`/lookup/batch/${batchId}`);
+    return res.data;
+  },
 };
 
 export default lookupService;

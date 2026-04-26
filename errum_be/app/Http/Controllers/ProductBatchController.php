@@ -205,6 +205,7 @@ class ProductBatchController extends Controller
                 'cost_price' => $request->cost_price,
                 'sell_price' => $request->sell_price,
                 'tax_percentage' => $request->input('tax_percentage', 0),
+                'mother_barcode' => Product::find($request->product_id)?->barcode, // Set mother barcode
                 'availability' => true,
                 'manufactured_date' => $request->manufactured_date,
                 'expiry_date' => $request->expiry_date,
@@ -212,67 +213,19 @@ class ProductBatchController extends Controller
                 'is_active' => true,
             ]);
 
-            // Generate individual barcodes for EACH unit (unless explicitly skipped)
-            $barcodes = [];
-            $skipBarcodes = $request->input('skip_barcode_generation', false);
-            
-            if (!$skipBarcodes) {
-                $barcodeType = $request->input('barcode_type', 'CODE128');
-                $quantity = $request->quantity;
-                
-            // Determine initial status based on store type
-            $store = Store::find($request->store_id);
-            $initialStatus = $store && $store->is_warehouse 
-                ? 'in_warehouse' 
-                : 'in_shop';                // Generate barcodes for all units
-                // First barcode is the primary one (associated with batch)
-                for ($i = 0; $i < $quantity; $i++) {
-                    $barcode = ProductBarcode::create([
-                        'product_id' => $request->product_id,
-                        'batch_id' => $batch->id,  // Link barcode to batch
-                        'type' => $barcodeType,
-                        'is_primary' => ($i === 0),  // First barcode is primary
-                        'is_active' => true,
-                        'generated_at' => now(),
-                        'current_store_id' => $request->store_id,  // Set initial location
-                        'current_status' => $initialStatus,  // Set initial status
-                        'location_updated_at' => now(),  // Track location set time
-                    ]);
-                    
-                    $barcodes[] = $barcode;
-                    
-                    // Associate primary barcode with batch
-                    if ($i === 0) {
-                        $batch->update(['barcode_id' => $barcode->id]);
-                    }
-                }
-            }
+            // Legacy individual barcode generation removed
+            $barcodesGenerated = 0;
 
             DB::commit();
 
             $response = [
                 'success' => true,
-                'message' => $skipBarcodes 
-                    ? 'Batch created successfully (barcodes skipped)' 
-                    : "Batch created successfully with {$request->quantity} individual barcodes",
+                'message' => 'Batch created successfully using Mother Barcode',
                 'data' => [
-                    'batch' => $this->formatBatchResponse($batch->fresh(['product', 'store', 'barcode']), true),
-                    'barcodes_generated' => count($barcodes),
-                    'primary_barcode' => $barcodes[0] ?? null,
+                    'batch' => $this->formatBatchResponse($batch->fresh(['product', 'store']), true),
+                    'mother_barcode' => $batch->mother_barcode,
                 ]
             ];
-
-            // Include all barcodes for small batches
-            if (count($barcodes) <= 20) {
-                $response['data']['all_barcodes'] = array_map(function($bc) {
-                    return [
-                        'id' => $bc->id,
-                        'barcode' => $bc->barcode,
-                        'type' => $bc->type,
-                        'is_primary' => $bc->is_primary,
-                    ];
-                }, $barcodes);
-            }
 
             return response()->json($response, 201);
 
@@ -619,11 +572,7 @@ class ProductBatchController extends Controller
             'manufactured_date' => $batch->manufactured_date ? date('Y-m-d', strtotime($batch->manufactured_date)) : null,
             'expiry_date' => $batch->expiry_date ? date('Y-m-d', strtotime($batch->expiry_date)) : null,
             'days_until_expiry' => $batch->getDaysUntilExpiry(),
-            'barcode' => $batch->barcode ? [
-                'id' => $batch->barcode->id,
-                'barcode' => $batch->barcode->barcode,
-                'type' => $batch->barcode->type,
-            ] : null,
+            'mother_barcode' => $batch->mother_barcode,
             'created_at' => $batch->created_at->format('Y-m-d H:i:s'),
         ];
 

@@ -14,6 +14,7 @@ class ProductBatch extends Model
     protected $fillable = [
         'product_id',
         'batch_number',
+        'mother_barcode',
         'quantity',
         'cost_price',
         'sell_price',
@@ -24,7 +25,6 @@ class ProductBatch extends Model
         'manufactured_date',
         'expiry_date',
         'store_id',
-        'barcode_id',
         'notes',
         'is_active',
     ];
@@ -123,24 +123,12 @@ class ProductBatch extends Model
         return $this->belongsTo(Store::class);
     }
 
-    public function barcode(): BelongsTo
+    /**
+     * Get the primary mother barcode for this batch (from the product)
+     */
+    public function getBarcodeAttribute()
     {
-        return $this->belongsTo(ProductBarcode::class, 'barcode_id');
-    }
-
-    public function barcodes(): \Illuminate\Database\Eloquent\Relations\HasMany
-    {
-        return $this->hasMany(ProductBarcode::class, 'batch_id');
-    }
-
-    public function primaryBarcode(): BelongsTo
-    {
-        return $this->barcode();
-    }
-
-    public function allBarcodes(): \Illuminate\Database\Eloquent\Relations\HasMany
-    {
-        return $this->barcodes();
+        return $this->product->barcode ?? null;
     }
 
     public function scopeActive($query)
@@ -226,7 +214,7 @@ class ProductBatch extends Model
 
     public static function findByBarcode($barcode)
     {
-        return static::whereHas('barcode', function ($query) use ($barcode) {
+        return static::whereHas('product', function ($query) use ($barcode) {
             $query->where('barcode', $barcode);
         })->first();
     }

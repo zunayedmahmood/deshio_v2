@@ -319,48 +319,70 @@ type BarcodeHistoryItem = {
 };
 
 type BarcodeHistoryData = {
-  barcode: string;
-  product: { id: number; name: string; sku: string | null };
-  current_location: any; // backend-dependent
-  total_movements: number;
-  history: BarcodeHistoryItem[];
+  barcode: {
+    barcode: string;
+    is_mother_barcode: boolean;
+    type: string;
+  };
+  product: {
+    id: number;
+    name: string;
+    sku: string | null;
+    description?: string;
+    brand?: string;
+  };
+  current_locations: Array<{
+    store_id: number;
+    store_name: string;
+    quantity: number;
+    batch_number: string;
+  }>;
+  batches: Array<{
+    id: number;
+    batch_number: string;
+    quantity: number;
+    cost_price: number | string;
+    sell_price: number | string;
+    store: { id: number; name: string } | null;
+  }>;
+  purchase_order?: any;
+  vendor?: any;
+  lifecycle?: any[];
+  activity_history: any[];
+  summary: {
+    total_dispatches: number;
+    total_sales: number;
+    total_returns: number;
+    total_defective: number;
+    has_purchase_order: boolean;
+  };
 };
 
 type BatchLookupData = {
   batch: {
     id: number;
     batch_number: string;
-    product: { id: number; name: string; sku: string | null };
-    original_quantity: number;
-    // some backends may include pricing:
-    cost_price?: string | number | null;
-    selling_price?: string | number | null;
+    quantity: number;
+    cost_price: number | string;
+    sell_price: number | string;
+    created_at: string;
   };
-  summary: {
-    total_units: number;
-    active: number;
-    available_for_sale: number;
-    sold: number;
-    defective: number;
-  };
-  status_breakdown: Array<{ status: string; count: number }>;
-  store_distribution: Array<{ store_id: number | null; store_name: string; count: number }>;
-  filters: { status?: string; store_id?: number; available_only?: boolean };
-  barcodes: Array<{
+  product: {
     id: number;
-    barcode: string;
-    current_store: { id: number; name: string } | null;
-    current_status: string;
-    status_label: string;
-    is_active: boolean;
-    is_defective: boolean;
-    is_available_for_sale: boolean;
-    location_updated_at: string;
-
-    // optional fields your backend may have:
-    metadata?: any;
-    meta?: any;
-  }>;
+    sku: string | null;
+    name: string;
+  };
+  store: {
+    id: number;
+    name: string;
+  } | null;
+  sales_records: any[];
+  dispatch_records: any[];
+  summary: {
+    current_stock: number;
+    total_sales: number;
+    total_dispatches: number;
+  };
 };
 
 type PrinterProduct = {
@@ -592,17 +614,6 @@ export default function LookupPage() {
   const [batchSearchLoading, setBatchSearchLoading] = useState(false);
   const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null);
 
-  // Batch → click barcode → show details + order info (modal)
-  const [batchBarcodeModalOpen, setBatchBarcodeModalOpen] = useState(false);
-  const [batchSelectedBarcode, setBatchSelectedBarcode] = useState<string | null>(null);
-  const [batchBarcodeLoading, setBatchBarcodeLoading] = useState(false);
-  const [batchBarcodeData, setBatchBarcodeData] = useState<BarcodeHistoryData | null>(null);
-  const [batchResolvedOrder, setBatchResolvedOrder] = useState<{
-    orderId?: number | null;
-    orderNumber?: string | null;
-    customer?: any;
-  } | null>(null);
-
   // -----------------------
   // Helpers
   // -----------------------
@@ -774,6 +785,178 @@ export default function LookupPage() {
         } as CustomerOrder;
       })
       .filter((o: any) => o?.id);
+  };
+
+  const getStatusBadge = (status?: string | null) => {
+    if (!status) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-300">
+          Unknown
+        </span>
+      );
+    }
+
+    const statusConfig: { [key: string]: { bg: string; text: string } } = {
+      paid: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-800 dark:text-green-300' },
+      partial: { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-800 dark:text-yellow-300' },
+      partially_paid: { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-800 dark:text-yellow-300' },
+      pending: { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-800 dark:text-orange-300' },
+      failed: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-800 dark:text-red-300' },
+      completed: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-800 dark:text-green-300' },
+    };
+
+    const key = status.toLowerCase();
+    const config = statusConfig[key] || statusConfig['pending'];
+
+    return (
+      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${config.bg} ${config.text}`}>
+        {status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
+      </span>
+    );
+  };
+
+  const toggleOrderDetails = (orderId: number) => {
+    setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
+  };
+
+  // ---------- Order + Barcode linking helpers ----------
+  const isOrderRef = (refType?: string | null) => (refType || '').toLowerCase().includes('order');
+
+  const isSoldLike = (h: any) => {
+    const t = String(h?.movement_type || '').toLowerCase();
+    const after = String(h?.status_after || '').toLowerCase();
+    return (
+      t.includes('sold') ||
+      t.includes('sale') ||
+      t.includes('sell') ||
+      t.includes('fulfilled') ||
+      t.includes('dispatch') ||
+      t.includes('delivered') ||
+      after.includes('sold')
+    );
+  };
+
+  // Backend is not consistent: some endpoints use metadata/meta, others use location_metadata.
+  const readMeta = (x: any) =>
+    x?.metadata ??
+    x?.meta ??
+    x?.location_metadata ??
+    x?.locationMetadata ??
+    x?.data ??
+    {};
+
+  const extractOrderIdLoose = (x: any): number | null => {
+    const meta = readMeta(x);
+    const raw = meta.order_id ?? x?.order_id ?? (isOrderRef(x?.reference_type) ? x?.reference_id : null);
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  };
+
+  const extractOrderNumberLoose = (x: any): string | null => {
+    const meta = readMeta(x);
+    const v =
+      x?.order_number ??
+      x?.orderNo ??
+      meta?.order_number ??
+      meta?.orderNo ??
+      meta?.orderNumber ??
+      meta?.order ??
+      null;
+    return typeof v === 'string' && v.trim() ? v.trim() : null;
+  };
+
+  const extractSoldViaLoose = (x: any): string | null => {
+    const meta = readMeta(x);
+    const v = meta?.sold_via ?? meta?.soldVia ?? null;
+    return typeof v === 'string' && v.trim() ? v.trim() : null;
+  };
+
+  const normalizeStatusKey = (s: any) =>
+    String(s || '')
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '_');
+
+  const statusLabelFromKey = (key: string) => {
+    const k = normalizeStatusKey(key);
+    const map: Record<string, string> = {
+      sold: 'Sold',
+      in_warehouse: 'In Warehouse',
+      inwarehouse: 'In Warehouse',
+      warehouse: 'In Warehouse',
+      available: 'Available',
+      available_for_sale: 'Available',
+      defective: 'Defective',
+      inactive: 'Inactive',
+      returned: 'Returned',
+      exchanged: 'Exchanged',
+    };
+    return map[k] || (key ? String(key) : 'Unknown Status');
+  };
+
+  const isSoldFromCurrentLocation = (loc: any, history?: any[]) => {
+    const key = normalizeStatusKey(loc?.current_status ?? loc?.status ?? loc?.status_key ?? loc?.status_label);
+    if (key === 'sold') return true;
+    const meta = readMeta(loc);
+    if (String(loc?.status_label || '').toLowerCase().includes('sold')) return true;
+    if (String(loc?.current_status || '').toLowerCase() === 'sold') return true;
+    if (extractSoldViaLoose(loc) === 'order') return true;
+    if (extractSoldViaLoose(loc) === 'pos') return true;
+    // sometimes sold means inactive + has sold meta
+    if (loc?.is_active === false && (meta?.order_number || meta?.order_id || meta?.sold_via)) {
+      // only treat as sold if meta hints order/pos
+      if (String(meta?.sold_via || '').toLowerCase().includes('order') || String(meta?.sold_via || '').toLowerCase().includes('pos')) {
+        return true;
+      }
+    }
+    // fallback: any history movement indicates sold
+    if (Array.isArray(history) && history.some((h) => isSoldLike(h))) return true;
+    return false;
+  };
+
+  const getCurrentStatusLabel = (loc: any, history?: any[]) => {
+    if (!loc) return 'Unknown Status';
+    // prefer sold detection
+    if (isSoldFromCurrentLocation(loc, history)) return 'Sold';
+
+    const label = loc?.status_label;
+    if (label) return String(label);
+
+    const key = loc?.current_status ?? loc?.status ?? loc?.status_key;
+    return statusLabelFromKey(String(key || 'Unknown Status'));
+  };
+
+  // ---------- Normalize backend Order -> CustomerOrder ----------
+  const normalizeOrderToCustomerOrder = (o: any): CustomerOrder => {
+    const items = Array.isArray(o?.items) ? o.items : [];
+    return {
+      id: o.id,
+      order_number: o.order_number,
+      order_date: o.order_date || o.created_at || new Date().toISOString(),
+      order_type: o.order_type || o.orderType || 'unknown',
+      order_type_label: o.order_type_label || o.orderTypeLabel || o.order_type || 'Unknown',
+      total_amount: String(o.total_amount ?? '0'),
+      paid_amount: String(o.paid_amount ?? '0'),
+      outstanding_amount: String(o.outstanding_amount ?? '0'),
+      payment_status: String(o.payment_status ?? 'pending'),
+      status: String(o.status ?? 'pending'),
+      store: o.store || { id: 0, name: '—' },
+      items: items.map((it: any) => {
+        const barcodes: string[] = Array.isArray(it.barcodes) ? it.barcodes : it.barcode ? [it.barcode] : [];
+        return {
+          id: it.id,
+          product_name: it.product_name,
+          product_sku: it.product_sku,
+          quantity: Number(it.quantity ?? 0),
+          unit_price: String(it.unit_price ?? '0'),
+          discount_amount: String(it.discount_amount ?? '0'),
+          total_amount: String(it.total_amount ?? '0'),
+          ...(barcodes.length ? { barcodes } : {}),
+        } as any;
+      }),
+      shipping_address: o.shipping_address,
+      notes: o.notes,
+    };
   };
 
   const getStatusBadge = (status?: string | null) => {
@@ -1315,76 +1498,6 @@ export default function LookupPage() {
   }, []);
 
   // -----------------------
-  // Enrich barcode history (and current_location) with order/customer data
-  // -----------------------
-  React.useEffect(() => {
-    const run = async () => {
-      if (!barcodeData) return;
-
-      // collect order IDs from:
-      // - history entries
-      // - current_location metadata
-      const idsFromHistory =
-        barcodeData.history?.map(extractOrderIdLoose).filter((x: any) => typeof x === 'number' && x) || [];
-
-      const currentLoc = barcodeData.current_location;
-      const idFromLoc = extractOrderIdLoose(currentLoc);
-
-      const ids = Array.from(new Set([...(idsFromHistory as number[]), ...(idFromLoc ? [idFromLoc] : [])]));
-
-      const missing = ids.filter((id) => !orderMetaCache[id]);
-      if (missing.length === 0) return;
-
-      setOrderMetaLoading(true);
-      try {
-        const results = await Promise.all(
-          missing.map(async (id) => {
-            // try to pick from history first
-            const fromHistory = (barcodeData.history || []).find((h: any) => Number(extractOrderIdLoose(h)) === id);
-
-            const historyOrderNumber = extractOrderNumberLoose(fromHistory) || extractOrderNumberLoose(currentLoc);
-            const historyCustomer =
-              fromHistory?.customer ||
-              readMeta(fromHistory)?.customer ||
-              readMeta(currentLoc)?.customer ||
-              currentLoc?.customer;
-
-            try {
-              const o: any = await orderService.getById(id, true);
-              return [
-                id,
-                {
-                  order_number: historyOrderNumber || o?.order_number || `#${id}`,
-                  customer: historyCustomer || o?.customer,
-                },
-              ] as const;
-            } catch {
-              return [
-                id,
-                {
-                  order_number: historyOrderNumber || `#${id}`,
-                  customer: historyCustomer || undefined,
-                },
-              ] as const;
-            }
-          })
-        );
-
-        setOrderMetaCache((prev) => {
-          const next = { ...prev };
-          for (const [id, meta] of results) next[id] = meta as any;
-          return next;
-        });
-      } finally {
-        setOrderMetaLoading(false);
-      }
-    };
-
-    run();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [barcodeData]);
-
-  // -----------------------
   // Customer handlers
   // -----------------------
   const handleSelectSuggestion = async (selectedCustomer: Customer) => {
@@ -1514,93 +1627,6 @@ export default function LookupPage() {
   // -----------------------
   // Barcode handlers
   // -----------------------
-  /**
-   * Enrich barcode history payload with batch cost/sell prices.
-   * Tracking endpoints often omit pricing, but batches API has it.
-   */
-  const enrichBarcodeHistoryWithBatchPrices = async (bd: any) => {
-    try {
-      const loc = bd?.current_location;
-      const batchId =
-        Number(loc?.batch?.id || loc?.batch_id || loc?.batchId || bd?.batch_id || bd?.batchId || null) || null;
-      if (!batchId) return bd;
-
-      // normalize keys if the backend sent sell_price instead of selling_price
-      if (loc?.batch) {
-        if (loc.batch.selling_price == null && loc.batch.sell_price != null) loc.batch.selling_price = loc.batch.sell_price;
-        if (loc.batch.cost_price == null && loc.batch.cost != null) loc.batch.cost_price = loc.batch.cost;
-      }
-
-      const existing = extractBatchPrices(loc?.batch || loc);
-      if (existing.cost != null || existing.sell != null) {
-        // Already have pricing (or partial). Keep it.
-        if (loc?.batch) {
-          if (loc.batch.cost_price == null && existing.cost != null) loc.batch.cost_price = existing.cost;
-          if (loc.batch.selling_price == null && existing.sell != null) loc.batch.selling_price = existing.sell;
-        }
-        return bd;
-      }
-
-      const res = await batchService.getBatch(batchId);
-      if (res?.success && res?.data) {
-        const b: any = res.data;
-        bd.current_location = bd.current_location || {};
-        bd.current_location.batch = bd.current_location.batch || {};
-        bd.current_location.batch.id = b.id;
-        bd.current_location.batch.batch_number = bd.current_location.batch.batch_number || b.batch_number;
-        bd.current_location.batch.cost_price = b.cost_price ?? bd.current_location.batch.cost_price;
-        bd.current_location.batch.selling_price = (b.sell_price ?? b.selling_price) ?? bd.current_location.batch.selling_price;
-      }
-    } catch {
-      // non-blocking
-    }
-    return bd;
-  };
-
-
-  const extractPurchaseOrderIdFromBarcode = (data: any): number | null => {
-    const tryParse = (v: any) => {
-      if (typeof v === 'number' && Number.isFinite(v)) return v;
-      if (typeof v === 'string' && v.trim() && !Number.isNaN(Number(v))) return Number(v);
-      return null;
-    };
-
-    // Most likely locations: batch fields
-    const batch = data?.current_location?.batch ?? data?.current_location?.productBatch ?? data?.batch ?? null;
-    const direct =
-      tryParse(batch?.purchase_order_id) ||
-      tryParse(batch?.purchaseOrderId) ||
-      tryParse(batch?.po_id) ||
-      tryParse(batch?.poId) ||
-      tryParse(batch?.purchase_order?.id) ||
-      tryParse(batch?.purchaseOrder?.id);
-
-    if (direct) return direct;
-
-    // Sometimes stored in history metadata
-    const hist: any[] = Array.isArray(data?.history) ? data.history : [];
-    for (const h of hist) {
-      const m =
-        tryParse(h?.purchase_order_id) ||
-        tryParse(h?.purchaseOrderId) ||
-        tryParse(h?.po_id) ||
-        tryParse(h?.poId) ||
-        tryParse(h?.metadata?.purchase_order_id) ||
-        tryParse(h?.metadata?.purchaseOrderId) ||
-        tryParse(h?.meta?.purchase_order_id) ||
-        tryParse(h?.meta?.purchaseOrderId);
-      if (m) return m;
-    }
-
-    // fallback: current_location metadata
-    const m2 =
-      tryParse(data?.current_location?.purchase_order_id) ||
-      tryParse(data?.current_location?.purchaseOrderId) ||
-      tryParse(data?.current_location?.metadata?.purchase_order_id) ||
-      tryParse(data?.current_location?.meta?.purchase_order_id);
-    return m2;
-  };
-
   const resolveBarcodePurchaseInfo = async (barcode: string, historyData?: any) => {
     setBarcodePurchaseLoading(true);
 
@@ -1677,17 +1703,13 @@ export default function LookupPage() {
       // continue to fallback path
     }
 
-    // Fallback 1: infer PO from barcode history, then fetch PO detail
-    if (!poId && historyData) {
-      poId = extractPurchaseOrderIdFromBarcode(historyData);
-    }
-
     // Fallback 2: infer PO from /batches/{id} when barcode history doesn't expose PO fields
     if (!poId && historyData) {
       try {
+        const loc = historyData?.current_locations?.[0] || historyData?.current_location;
         const batchId =
-          parseId(historyData?.current_location?.batch?.id) ||
-          parseId(historyData?.current_location?.batch_id) ||
+          parseId(loc?.batch?.id) ||
+          parseId(loc?.batch_id) ||
           parseId(historyData?.batch?.id) ||
           null;
 
@@ -1977,14 +1999,28 @@ export default function LookupPage() {
     closeBarcodeImagePreview();
 
     try {
-      const res = await barcodeTrackingService.getBarcodeHistory(code);
+      const res = await lookupService.getProductByBarcode(code);
       if (!res?.success) {
         setError('Barcode not found');
         return;
       }
-      const enriched = await enrichBarcodeHistoryWithBatchPrices(res.data as any);
-      setBarcodeData(enriched as any);
-      await resolveBarcodePurchaseInfo(code, enriched as any);
+      
+      const data = res.data;
+      setBarcodeData(data);
+      
+      // Extract purchase info for display
+      if (data.purchase_order || data.vendor) {
+        setBarcodePurchaseInfo({
+          poId: data.purchase_order?.id,
+          poNumber: data.purchase_order?.po_number,
+          vendorName: data.vendor?.company_name || data.vendor?.name
+        });
+      }
+
+      // Try several ways to find product image
+      let imageUrl = extractProductImageFromLookup(data);
+      setBarcodeProductImageUrl(imageUrl);
+
     } catch (err: any) {
       setError(err.message || 'Failed to fetch barcode history');
     } finally {
@@ -2026,143 +2062,17 @@ export default function LookupPage() {
     setBatchData(null);
 
     try {
-      const res = await barcodeTrackingService.getBatchBarcodes(finalBatchId);
+      const res = await lookupService.getBatch(finalBatchId);
       if (!res?.success) {
         setError('Batch not found');
         return;
       }
-      const data: any = res.data as any;
-
-      // Pricing is often missing from the barcode tracking batch endpoint.
-      // Fetch it from /batches/{id} and merge for display.
-      try {
-        const br = await batchService.getBatch(finalBatchId);
-        if (br?.success && br?.data) {
-          data.batch = data.batch || {};
-          data.batch.cost_price = (br.data as any).cost_price ?? data.batch.cost_price;
-          // batches API uses sell_price; UI expects selling_price
-          data.batch.selling_price = ((br.data as any).sell_price ?? (br.data as any).selling_price) ?? data.batch.selling_price;
-        }
-      } catch {
-        // non-blocking
-      }
-
-      setBatchData(data);
+      setBatchData(res.data);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch batch history');
     } finally {
       setBatchLoading(false);
     }
-  };
-
-  // -----------------------
-  // Batch row -> modal details (includes order info)
-  // -----------------------
-  const resolveOrderFromBarcodeData = async (bd: BarcodeHistoryData) => {
-    const loc = bd?.current_location;
-    const idFromLoc = extractOrderIdLoose(loc);
-    const noFromLoc = extractOrderNumberLoose(loc);
-    const fromHistorySold = (bd?.history || []).find((h: any) => isSoldLike(h) || isOrderRef(h.reference_type));
-
-    const idFromHistory = extractOrderIdLoose(fromHistorySold);
-    const noFromHistory = extractOrderNumberLoose(fromHistorySold);
-
-    const orderId = idFromLoc || idFromHistory || null;
-    const orderNo = noFromLoc || noFromHistory || null;
-
-    // best effort fetch customer/order_number if orderId exists
-    if (orderId) {
-      try {
-        const o: any = await orderService.getById(orderId, true);
-        return {
-          orderId,
-          orderNumber: orderNo || o?.order_number || `#${orderId}`,
-          customer: o?.customer || readMeta(fromHistorySold)?.customer || readMeta(loc)?.customer,
-        };
-      } catch {
-        return { orderId, orderNumber: orderNo || `#${orderId}`, customer: readMeta(loc)?.customer || readMeta(fromHistorySold)?.customer };
-      }
-    }
-
-    // no id: keep whatever order number exists
-    if (orderNo) return { orderId: null, orderNumber: orderNo, customer: readMeta(loc)?.customer || readMeta(fromHistorySold)?.customer };
-
-    return null;
-  };
-
-  const openBatchBarcodeModal = async (barcode: string) => {
-    setBatchSelectedBarcode(barcode);
-    setBatchBarcodeModalOpen(true);
-    setBatchBarcodeLoading(true);
-    setBatchBarcodeData(null);
-    setBatchResolvedOrder(null);
-    setError('');
-
-    try {
-      const res = await barcodeTrackingService.getBarcodeHistory(barcode);
-      if (!res?.success) {
-        setError('Barcode not found');
-        return;
-      }
-      const bd = await enrichBarcodeHistoryWithBatchPrices(res.data as any);
-      setBatchBarcodeData(bd);
-
-      const ord = await resolveOrderFromBarcodeData(bd);
-      setBatchResolvedOrder(ord);
-    } catch (e: any) {
-      setError(e?.message || 'Failed to load barcode details');
-    } finally {
-      setBatchBarcodeLoading(false);
-    }
-  };
-
-  // -----------------------
-  // Batch computed summary fix (frontend override)
-  // -----------------------
-  const computeBatchSummary = (bd: BatchLookupData) => {
-    const list = bd?.barcodes || [];
-    const sold = list.filter((b) => normalizeStatusKey(b.current_status) === 'sold' || String(b.status_label || '').toLowerCase().includes('sold')).length;
-    const defective = list.filter((b) => b.is_defective).length;
-    const available = list.filter((b) => b.is_available_for_sale && normalizeStatusKey(b.current_status) !== 'sold').length;
-    const active = list.filter((b) => b.is_active && normalizeStatusKey(b.current_status) !== 'sold').length;
-
-    return {
-      total_units: list.length,
-      active,
-      available_for_sale: available,
-      sold,
-      defective,
-    };
-  };
-
-  const isSoldBarcodeRow = (b: any) =>
-    normalizeStatusKey(b?.current_status) === 'sold' || String(b?.status_label || '').toLowerCase().includes('sold');
-
-  const getBatchRowStatusLabel = (b: any) => {
-    if (isSoldBarcodeRow(b)) return 'Sold';
-    const label = b?.status_label;
-    if (label) return label;
-    return statusLabelFromKey(b?.current_status);
-  };
-
-  const getStatusPill = (label: string) => {
-    const k = normalizeStatusKey(label);
-    if (k === 'sold') {
-      return <span className="text-[9px] px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">sold</span>;
-    }
-    if (k.includes('warehouse')) {
-      return <span className="text-[9px] px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">warehouse</span>;
-    }
-    if (k.includes('available')) {
-      return <span className="text-[9px] px-2 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">available</span>;
-    }
-    if (k.includes('defect')) {
-      return <span className="text-[9px] px-2 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">defective</span>;
-    }
-    if (k.includes('inactive')) {
-      return <span className="text-[9px] px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">inactive</span>;
-    }
-    return <span className="text-[9px] px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">{label || 'unknown'}</span>;
   };
 
   // Tab switch reset
@@ -2189,42 +2099,6 @@ export default function LookupPage() {
     }
   };
 
-  // -----------------------
-  // BARCODE: quick "sold/order info" section even if history is empty
-  // -----------------------
-  const getBarcodeSaleInfo = (bd: BarcodeHistoryData | null) => {
-    if (!bd) return null;
-    const loc = bd.current_location;
-    const sold = isSoldFromCurrentLocation(loc, bd.history);
-    if (!sold) return null;
-
-    const orderId = extractOrderIdLoose(loc) || extractOrderIdLoose((bd.history || []).find((h: any) => isSoldLike(h) || isOrderRef(h.reference_type)));
-    const orderNo = extractOrderNumberLoose(loc) || extractOrderNumberLoose((bd.history || []).find((h: any) => isSoldLike(h) || isOrderRef(h.reference_type)));
-    const soldVia = extractSoldViaLoose(loc) || extractSoldViaLoose((bd.history || []).find((h: any) => isSoldLike(h)));
-
-    return { orderId, orderNo, soldVia };
-  };
-
-  const prettySoldVia = (v?: string | null) => {
-    if (!v) return '';
-    const s = String(v).trim().toLowerCase();
-    const m: Record<string, string> = {
-      order: 'Order',
-      pos: 'POS',
-      counter: 'Counter',
-      ecommerce: 'E-commerce',
-      'e-commerce': 'E-commerce',
-      social_commerce: 'Social Commerce',
-      'social-commerce': 'Social Commerce',
-    };
-    if (m[s]) return m[s];
-    return s
-      .split('_')
-      .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : w))
-      .join(' ');
-  };
-
-  const barcodeSaleInfo = getBarcodeSaleInfo(barcodeData);
   const barcodePO: any =
     barcodeLookupData?.purchase_order ||
     (barcodeLookupData as any)?.purchaseOrder ||
@@ -2753,7 +2627,10 @@ export default function LookupPage() {
                               <span className="text-gray-500 text-[10px]">{barcodeData.product.sku ? `(${barcodeData.product.sku})` : ''}</span>
                             </p>
                             <p className="text-[10px] text-gray-600 dark:text-gray-400">
-                              Barcode: <span className="font-semibold">{barcodeData.barcode}</span>
+                              Barcode: <span className="font-semibold">{barcodeData.barcode.barcode}</span>
+                              <span className="ml-2 text-[9px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800">
+                                {barcodeData.barcode.is_mother_barcode ? 'Mother Barcode' : 'Unique Barcode'}
+                              </span>
                             </p>
                           </div>
                           <div className="flex items-start gap-2">
@@ -2789,50 +2666,25 @@ export default function LookupPage() {
                               );
                             })()}
                             <span className="text-[10px] px-2 py-1 rounded bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300">
-                              {barcodeData.total_movements} movements
+                              {barcodeData.summary.total_sales + barcodeData.summary.total_dispatches} movements recorded
                             </span>
                           </div>
                         </div>
 
-                        {/* Current location */}
-                        {barcodeData.current_location && (
-                          <div className="mt-3 grid grid-cols-1 md:grid-cols-4 gap-2">
-                            <div className="border border-gray-200 dark:border-gray-800 rounded p-2">
-                              <p className="text-[9px] text-gray-500 uppercase font-medium mb-1">Status</p>
-                              <p className="text-xs font-semibold text-black dark:text-white">
-                                {getCurrentStatusLabel(barcodeData.current_location, barcodeData.history)}
-                              </p>
-                            </div>
-                            <div className="border border-gray-200 dark:border-gray-800 rounded p-2">
-                              <p className="text-[9px] text-gray-500 uppercase font-medium mb-1">Current Store</p>
-                              <p className="text-xs text-black dark:text-white">{getStoreNameFromAny(barcodeData.current_location)}</p>
-                            </div>
-                            <div className="border border-gray-200 dark:border-gray-800 rounded p-2">
-                              <p className="text-[9px] text-gray-500 uppercase font-medium mb-1">Batch</p>
-                              <p className="text-xs text-black dark:text-white">{barcodeData.current_location.batch?.batch_number || '—'}</p>
-                            </div>
-
-                            {/* Batch pricing (best effort) */}
-                            <div className="border border-gray-200 dark:border-gray-800 rounded p-2">
-                              <p className="text-[9px] text-gray-500 uppercase font-medium mb-1">Batch Prices</p>
-                              <p className="text-[10px] text-black dark:text-white">
-                                Cost:{' '}
-                                <span className="font-semibold">
-                                  {(() => {
-                                    const p = extractBatchPrices(barcodeData.current_location.batch || barcodeData.current_location);
-                                    return p.cost != null ? formatCurrency(p.cost) : '—';
-                                  })()}
-                                </span>
-                              </p>
-                              <p className="text-[10px] text-black dark:text-white">
-                                Sell:{' '}
-                                <span className="font-semibold">
-                                  {(() => {
-                                    const p = extractBatchPrices(barcodeData.current_location.batch || barcodeData.current_location);
-                                    return p.sell != null ? formatCurrency(p.sell) : '—';
-                                  })()}
-                                </span>
-                              </p>
+                        {/* Current locations (Stock breakdown) */}
+                        {barcodeData.current_locations && barcodeData.current_locations.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-[9px] text-gray-500 uppercase font-medium mb-1.5">Current Stock Locations</p>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                              {barcodeData.current_locations.map((loc, idx) => (
+                                <div key={idx} className="border border-gray-200 dark:border-gray-800 rounded p-2 bg-white dark:bg-gray-900/10">
+                                  <div className="flex justify-between items-center mb-1">
+                                    <p className="text-xs font-semibold text-black dark:text-white">{loc.store_name}</p>
+                                    <span className="text-[10px] font-bold text-green-600 dark:text-green-400">{loc.quantity} units</span>
+                                  </div>
+                                  <p className="text-[9px] text-gray-500">Latest Batch: {loc.batch_number}</p>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         )}
@@ -2901,149 +2753,32 @@ export default function LookupPage() {
                                 </p>
                                 <p>
                                   Phone:{' '}
-                                  <span className="font-semibold">{barcodeVendor?.phone || '—'}</span>
-                                </p>
-                                <p>
-                                  Email:{' '}
-                                  <span className="font-semibold">{barcodeVendor?.email || '—'}</span>
-                                </p>
-                                <p>
-                                  Payment Terms:{' '}
-                                  <span className="font-semibold">{barcodeVendor?.payment_terms || barcodeVendor?.paymentTerms || '—'}</span>
-                                </p>
-                                <p>
-                                  Status:{' '}
-                                  <span className="font-semibold">{barcodeVendor?.status || (barcodeSummary?.has_vendor_info ? 'Linked' : '—')}</span>
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {(barcodePO || barcodeSummary?.has_purchase_order) && (
-                            <div className="mt-2 border border-gray-200 dark:border-gray-800 rounded p-2">
-                              <p className="text-[9px] text-gray-500 uppercase font-medium mb-1">PO Financials</p>
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[10px] text-black dark:text-white">
-                                <p>
-                                  Total:{' '}
-                                  <span className="font-semibold">{barcodePO?.total_amount != null ? formatCurrency(barcodePO.total_amount) : '—'}</span>
-                                </p>
-                                <p>
-                                  Paid:{' '}
-                                  <span className="font-semibold">{barcodePO?.paid_amount != null ? formatCurrency(barcodePO.paid_amount) : '—'}</span>
-                                </p>
-                                <p>
-                                  Outstanding:{' '}
-                                  <span className="font-semibold">
-                                    {barcodePO?.outstanding_amount != null ? formatCurrency(barcodePO.outstanding_amount) : '—'}
-                                  </span>
-                                </p>
-                              </div>
-                            </div>
-                          )}
-
-                          {(barcodePO?.item_details || barcodePO?.itemDetails) && (
-                            <div className="mt-2 border border-gray-200 dark:border-gray-800 rounded p-2">
-                              <p className="text-[9px] text-gray-500 uppercase font-medium mb-1">This Product In PO</p>
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[10px] text-black dark:text-white">
-                                <p>
-                                  Ordered:{' '}
-                                  <span className="font-semibold">
-                                    {(barcodePO?.item_details?.quantity_ordered ?? barcodePO?.itemDetails?.quantity_ordered ?? barcodePO?.itemDetails?.quantityOrdered) ?? '—'}
-                                  </span>
-                                </p>
-                                <p>
-                                  Received:{' '}
-                                  <span className="font-semibold">
-                                    {(barcodePO?.item_details?.quantity_received ?? barcodePO?.itemDetails?.quantity_received ?? barcodePO?.itemDetails?.quantityReceived) ?? '—'}
-                                  </span>
-                                </p>
-                                <p>
-                                  Receive Status:{' '}
-                                  <span className="font-semibold">
-                                    {barcodePO?.item_details?.receive_status || barcodePO?.itemDetails?.receive_status || barcodePO?.itemDetails?.receiveStatus || '—'}
-                                  </span>
-                                </p>
-                                <p>
-                                  Unit Cost:{' '}
-                                  <span className="font-semibold">
-                                    {(barcodePO?.item_details?.unit_cost ?? barcodePO?.itemDetails?.unit_cost ?? barcodePO?.itemDetails?.unitCost) != null
-                                      ? formatCurrency(barcodePO?.item_details?.unit_cost ?? barcodePO?.itemDetails?.unit_cost ?? barcodePO?.itemDetails?.unitCost)
-                                      : '—'}
-                                  </span>
-                                </p>
-                                <p>
-                                  Unit Sell:{' '}
-                                  <span className="font-semibold">
-                                    {(barcodePO?.item_details?.unit_sell_price ?? barcodePO?.itemDetails?.unit_sell_price ?? barcodePO?.itemDetails?.unitSellPrice) != null
-                                      ? formatCurrency(
-                                        barcodePO?.item_details?.unit_sell_price ?? barcodePO?.itemDetails?.unit_sell_price ?? barcodePO?.itemDetails?.unitSellPrice
-                                      )
-                                      : '—'}
-                                  </span>
-                                </p>
-                                <p>
-                                  Total Cost:{' '}
-                                  <span className="font-semibold">
-                                    {(barcodePO?.item_details?.total_cost ?? barcodePO?.itemDetails?.total_cost ?? barcodePO?.itemDetails?.totalCost) != null
-                                      ? formatCurrency(barcodePO?.item_details?.total_cost ?? barcodePO?.itemDetails?.total_cost ?? barcodePO?.itemDetails?.totalCost)
-                                      : '—'}
-                                  </span>
-                                </p>
-                              </div>
-                            </div>
-                          )}
-
-                          {!barcodePO && !barcodeVendor && !barcodeSummary?.has_purchase_order && !barcodeSummary?.has_vendor_info && !barcodePurchaseInfo && (
+                          {!barcodeData.purchase_order && !barcodeData.vendor && !barcodeData.summary?.has_purchase_order && (
                             <p className="mt-2 text-[10px] text-gray-500 dark:text-gray-400">
                               No purchase order/vendor info linked to this barcode.
                             </p>
                           )}
                         </div>
 
-                        {/* SOLD / ORDER INFO (works even if movement history is empty, if backend sends meta) */}
-                        {barcodeSaleInfo && (
+                        {/* SOLD / ORDER INFO */}
+                        {barcodeData.summary?.total_sales > 0 && (
                           <div className="mt-3 border border-gray-200 dark:border-gray-800 rounded p-2 bg-gray-50 dark:bg-gray-900/40">
-                            <div className="flex items-center justify-between gap-2 flex-wrap">
-                              <div>
-                                <p className="text-[9px] text-gray-500 uppercase font-medium mb-1">Sale / Order</p>
-                                <p className="text-xs font-semibold text-black dark:text-white">
-                                  Sold{barcodeSaleInfo.soldVia ? ` via ${prettySoldVia(barcodeSaleInfo.soldVia)}` : ''}
-                                </p>
-                                <p className="text-[10px] text-gray-600 dark:text-gray-400">
-                                  Order #:{' '}
-                                  <span className="font-semibold text-black dark:text-white">
-                                    {barcodeSaleInfo.orderNo || (barcodeSaleInfo.orderId ? `#${barcodeSaleInfo.orderId}` : '—')}
-                                  </span>
-                                </p>
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                {(barcodeSaleInfo.orderId || barcodeSaleInfo.orderNo) && (
-                                  <button
-                                    onClick={async () => {
-                                      setActiveTab('order');
-                                      if (barcodeSaleInfo.orderId) await openOrderById(barcodeSaleInfo.orderId);
-                                      else if (barcodeSaleInfo.orderNo) await openOrderByNumber(barcodeSaleInfo.orderNo);
-                                    }}
-                                    className="text-[10px] px-3 py-1.5 rounded bg-black dark:bg-white text-white dark:text-black hover:opacity-90"
-                                  >
-                                    Open Order
-                                  </button>
-                                )}
-                              </div>
-                            </div>
+                             <p className="text-[9px] text-gray-500 uppercase font-medium mb-1">Sales Summary</p>
+                             <p className="text-xs font-semibold text-black dark:text-white">
+                               Sold {barcodeData.summary.total_sales} unit(s) from this mother barcode.
+                               {barcodeData.summary.total_returns > 0 && <span className="ml-2 text-red-500 text-[10px]">({barcodeData.summary.total_returns} returned)</span>}
+                             </p>
                           </div>
                         )}
                       </div>
 
-                      {/* Movement History Table */}
+                       {/* Activity History Table */}
                       <div className="border border-gray-200 dark:border-gray-800 rounded-md overflow-hidden">
                         <div className="bg-gray-50 dark:bg-gray-900 px-3 py-2 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-                          <h2 className="text-xs font-semibold text-black dark:text-white uppercase tracking-wide">Barcode Movement History</h2>
+                          <h2 className="text-xs font-semibold text-black dark:text-white uppercase tracking-wide">Product Activity History</h2>
                           <div className="flex items-center gap-2">
-                            {orderMetaLoading && <span className="text-[10px] text-gray-500 dark:text-gray-400">loading order/customer…</span>}
                             <span className="text-[9px] px-2 py-0.5 bg-black dark:bg-white text-white dark:text-black rounded font-medium">
-                              {barcodeData.history?.length || 0}
+                              {barcodeData.activity_history?.length || 0}
                             </span>
                           </div>
                         </div>
@@ -3053,85 +2788,24 @@ export default function LookupPage() {
                             <thead className="bg-white dark:bg-black">
                               <tr className="border-b border-gray-200 dark:border-gray-800">
                                 <th className="px-2 py-2 text-left text-[9px] font-semibold text-gray-700 dark:text-gray-300 uppercase">Date</th>
-                                <th className="px-2 py-2 text-left text-[9px] font-semibold text-gray-700 dark:text-gray-300 uppercase">Type</th>
-                                <th className="px-2 py-2 text-left text-[9px] font-semibold text-gray-700 dark:text-gray-300 uppercase">From</th>
-                                <th className="px-2 py-2 text-left text-[9px] font-semibold text-gray-700 dark:text-gray-300 uppercase">To</th>
-                                <th className="px-2 py-2 text-left text-[9px] font-semibold text-gray-700 dark:text-gray-300 uppercase">Status</th>
-                                <th className="px-2 py-2 text-left text-[9px] font-semibold text-gray-700 dark:text-gray-300 uppercase">Order #</th>
-                                <th className="px-2 py-2 text-left text-[9px] font-semibold text-gray-700 dark:text-gray-300 uppercase">Customer</th>
+                                <th className="px-2 py-2 text-left text-[9px] font-semibold text-gray-700 dark:text-gray-300 uppercase">Event</th>
+                                <th className="px-2 py-2 text-left text-[9px] font-semibold text-gray-700 dark:text-gray-300 uppercase">Description</th>
                                 <th className="px-2 py-2 text-left text-[9px] font-semibold text-gray-700 dark:text-gray-300 uppercase">By</th>
-                                <th className="px-2 py-2 text-left text-[9px] font-semibold text-gray-700 dark:text-gray-300 uppercase">Ref</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                              {(barcodeData.history || []).map((h: any) => {
-                                const orderId = extractOrderIdLoose(h);
-                                const meta = orderId ? orderMetaCache[orderId] : null;
-
-                                const show = Boolean(orderId) && (isSoldLike(h) || isOrderRef(h.reference_type));
-                                const orderNoFromRow = extractOrderNumberLoose(h);
-
-                                return (
-                                  <tr key={h.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/40">
-                                    <td className="px-2 py-2 text-gray-700 dark:text-gray-300">{formatDate(h.date)}</td>
-                                    <td className="px-2 py-2 font-semibold text-black dark:text-white">{h.movement_type || '—'}</td>
-                                    <td className="px-2 py-2 text-gray-700 dark:text-gray-300">{h.from_store || '—'}</td>
-                                    <td className="px-2 py-2 text-gray-700 dark:text-gray-300">{h.to_store || '—'}</td>
-                                    <td className="px-2 py-2 text-gray-700 dark:text-gray-300">{(h.status_before || '—') + ' → ' + (h.status_after || '—')}</td>
-
-                                    {/* Order # */}
-                                    <td className="px-2 py-2">
-                                      {show && orderId ? (
-                                        <button
-                                          onClick={async () => {
-                                            setActiveTab('order');
-                                            await openOrderById(orderId);
-                                          }}
-                                          className="text-[10px] font-semibold text-black dark:text-white hover:underline"
-                                          title="Open order lookup"
-                                        >
-                                          {meta?.order_number || orderNoFromRow || `#${orderId}`}
-                                        </button>
-                                      ) : orderNoFromRow ? (
-                                        <button
-                                          onClick={async () => {
-                                            setActiveTab('order');
-                                            await openOrderByNumber(orderNoFromRow);
-                                          }}
-                                          className="text-[10px] font-semibold text-black dark:text-white hover:underline"
-                                        >
-                                          {orderNoFromRow}
-                                        </button>
-                                      ) : (
-                                        <span className="text-[10px] text-gray-500 dark:text-gray-400">—</span>
-                                      )}
-                                    </td>
-
-                                    {/* Customer */}
-                                    <td className="px-2 py-2">
-                                      {(show && meta?.customer) || readMeta(h)?.customer ? (
-                                        <span className="text-[10px] text-black dark:text-white">
-                                          <span className="font-semibold">{(meta?.customer || readMeta(h)?.customer)?.name || 'Customer'}</span>
-                                          {(meta?.customer || readMeta(h)?.customer)?.phone ? (
-                                            <span className="text-gray-500 dark:text-gray-400"> • {(meta?.customer || readMeta(h)?.customer)?.phone}</span>
-                                          ) : null}
-                                        </span>
-                                      ) : (
-                                        <span className="text-[10px] text-gray-500 dark:text-gray-400">—</span>
-                                      )}
-                                    </td>
-
-                                    <td className="px-2 py-2 text-gray-700 dark:text-gray-300">{h.performed_by || '—'}</td>
-                                    <td className="px-2 py-2 text-gray-700 dark:text-gray-300">
-                                      {h.reference_type ? `${h.reference_type}#${h.reference_id ?? ''}` : '—'}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                              {!barcodeData.history?.length && (
+                              {(barcodeData.activity_history || []).map((h: any) => (
+                                <tr key={h.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/40">
+                                  <td className="px-2 py-2 text-gray-700 dark:text-gray-300">{h.timestamp ? formatDate(h.timestamp) : h.human_time}</td>
+                                  <td className="px-2 py-2 font-semibold text-black dark:text-white uppercase text-[9px]">{h.event}</td>
+                                  <td className="px-2 py-2 text-gray-700 dark:text-gray-300 max-w-xs truncate">{h.description}</td>
+                                  <td className="px-2 py-2 text-gray-700 dark:text-gray-300">{h.performed_by?.name || '—'}</td>
+                                </tr>
+                              ))}
+                              {!barcodeData.activity_history?.length && (
                                 <tr>
-                                  <td colSpan={9} className="px-3 py-6 text-center text-xs text-gray-500 dark:text-gray-400">
-                                    No movement history found for this barcode. (If it’s sold but history is empty, the backend history endpoint is not returning movements — this UI still shows Sold + Order if metadata exists.)
+                                  <td colSpan={4} className="px-3 py-6 text-center text-xs text-gray-500 dark:text-gray-400">
+                                    No activity history found.
                                   </td>
                                 </tr>
                               )}
@@ -3139,6 +2813,8 @@ export default function LookupPage() {
                           </table>
                         </div>
                       </div>
+                    </div>
+                  )}
                     </div>
                   )}
                 </>
@@ -3244,118 +2920,6 @@ export default function LookupPage() {
                           </div>
                         </div>
 
-                        {/* Use computed summary to fix “sold shows inactive” mismatch */}
-                        {(() => {
-                          const computed = computeBatchSummary(batchData);
-                          return (
-                            <div className="mt-3 grid grid-cols-2 md:grid-cols-5 gap-2">
-                              <div className="border border-gray-200 dark:border-gray-800 rounded p-2">
-                                <p className="text-[9px] text-gray-500 uppercase font-medium mb-1">Total</p>
-                                <p className="text-xs font-semibold text-black dark:text-white">{computed.total_units}</p>
-                              </div>
-                              <div className="border border-gray-200 dark:border-gray-800 rounded p-2">
-                                <p className="text-[9px] text-gray-500 uppercase font-medium mb-1">Active</p>
-                                <p className="text-xs font-semibold text-black dark:text-white">{computed.active}</p>
-                              </div>
-                              <div className="border border-gray-200 dark:border-gray-800 rounded p-2">
-                                <p className="text-[9px] text-gray-500 uppercase font-medium mb-1">Available</p>
-                                <p className="text-xs font-semibold text-black dark:text-white">{computed.available_for_sale}</p>
-                              </div>
-                              <div className="border border-gray-200 dark:border-gray-800 rounded p-2">
-                                <p className="text-[9px] text-gray-500 uppercase font-medium mb-1">Sold</p>
-                                <p className="text-xs font-semibold text-black dark:text-white">{computed.sold}</p>
-                              </div>
-                              <div className="border border-gray-200 dark:border-gray-800 rounded p-2">
-                                <p className="text-[9px] text-gray-500 uppercase font-medium mb-1">Defective</p>
-                                <p className="text-xs font-semibold text-black dark:text-white">{computed.defective}</p>
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </div>
-
-
-                      {/* Print (BatchPrinter) */}
-                      <div className="mt-4">
-                        {(() => {
-                          const prices = extractBatchPrices(batchData.batch);
-
-                          const printerBatch: PrinterBatch = {
-                            id: batchData.batch.id,
-                            productId: batchData.batch.product.id,
-                            quantity: Number(
-                              (batchData.batch as any).quantity ??
-                              batchData.batch.original_quantity ??
-                              batchData.summary?.total_units ??
-                              0
-                            ),
-                            costPrice: Number(prices.cost ?? 0),
-                            sellingPrice: Number(prices.sell ?? 0),
-                            baseCode: (batchData.batch as any).base_code,
-                          };
-
-                          const printerProduct: PrinterProduct = {
-                            id: printerBatch.productId,
-                            name: batchData.batch.product.name ?? "Product",
-                          };
-
-                          const activeCodes = (batchData.barcodes || [])
-                            .filter((b) => b.is_active)
-                            .map((b) => b.barcode);
-
-                          return (
-                            <BatchPrinter batch={printerBatch} product={printerProduct} barcodes={activeCodes} />
-                          );
-                        })()}
-                      </div>
-
-                      {/* Barcodes Table */}
-                      <div className="border border-gray-200 dark:border-gray-800 rounded-md overflow-hidden">
-                        <div className="bg-gray-50 dark:bg-gray-900 px-3 py-2 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-                          <h2 className="text-xs font-semibold text-black dark:text-white uppercase tracking-wide">Batch Units (Barcodes)</h2>
-                          <span className="text-[9px] px-2 py-0.5 bg-black dark:bg-white text-white dark:text-black rounded font-medium">
-                            {batchData.barcodes.length}
-                          </span>
-                        </div>
-
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-[10px]">
-                            <thead className="bg-white dark:bg-black">
-                              <tr className="border-b border-gray-200 dark:border-gray-800">
-                                <th className="px-2 py-2 text-left text-[9px] font-semibold text-gray-700 dark:text-gray-300 uppercase">Barcode</th>
-                                <th className="px-2 py-2 text-left text-[9px] font-semibold text-gray-700 dark:text-gray-300 uppercase">Status</th>
-                                <th className="px-2 py-2 text-left text-[9px] font-semibold text-gray-700 dark:text-gray-300 uppercase">Store</th>
-                                <th className="px-2 py-2 text-left text-[9px] font-semibold text-gray-700 dark:text-gray-300 uppercase">Updated</th>
-                                <th className="px-2 py-2 text-left text-[9px] font-semibold text-gray-700 dark:text-gray-300 uppercase">Flags</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                              {batchData.barcodes.map((b) => {
-                                const sold = isSoldBarcodeRow(b);
-                                const statusLabel = getBatchRowStatusLabel(b);
-
-                                return (
-                                  <tr key={b.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/40">
-                                    <td className="px-2 py-2">
-                                      <button
-                                        onClick={() => openBatchBarcodeModal(b.barcode)}
-                                        className="text-black dark:text-white font-semibold hover:underline"
-                                        title="Open details (shows order if sold)"
-                                      >
-                                        {b.barcode}
-                                      </button>
-                                    </td>
-                                    <td className="px-2 py-2 text-gray-700 dark:text-gray-300">{statusLabel}</td>
-                                    <td className="px-2 py-2 text-gray-700 dark:text-gray-300">{b.current_store?.name || '—'}</td>
-                                    <td className="px-2 py-2 text-gray-700 dark:text-gray-300">{b.location_updated_at ? formatDate(b.location_updated_at) : '—'}</td>
-                                    <td className="px-2 py-2 text-gray-700 dark:text-gray-300">
-                                      <div className="flex gap-1 flex-wrap">
-                                        {/* show SOLD first if sold */}
-                                        {sold && getStatusPill('sold')}
-
-                                        {/* only show inactive if NOT sold */}
-                                        {!sold && !b.is_active && <span className="text-[9px] px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800">inactive</span>}
-
                                         {b.is_defective && (
                                           <span className="text-[9px] px-2 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">defective</span>
                                         )}
@@ -3383,169 +2947,8 @@ export default function LookupPage() {
                     </div>
                   )}
 
-                  {/* Batch Barcode Modal */}
-                  {batchBarcodeModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center">
-                      <div
-                        className="absolute inset-0 bg-black/40"
-                        onClick={() => {
-                          setBatchBarcodeModalOpen(false);
-                          setBatchSelectedBarcode(null);
-                          setBatchBarcodeData(null);
-                          setBatchResolvedOrder(null);
-                        }}
-                      />
-                      <div className="relative w-full max-w-2xl mx-4 bg-white dark:bg-black border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl overflow-hidden">
-                        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-                          <div>
-                            <p className="text-xs font-semibold text-black dark:text-white">Barcode Details</p>
-                            <p className="text-[10px] text-gray-600 dark:text-gray-400">{batchSelectedBarcode}</p>
-                          </div>
-                          <button
-                            onClick={() => {
-                              setBatchBarcodeModalOpen(false);
-                              setBatchSelectedBarcode(null);
-                              setBatchBarcodeData(null);
-                              setBatchResolvedOrder(null);
-                            }}
-                            className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:opacity-90"
-                          >
-                            Close
-                          </button>
-                        </div>
-
-                        <div className="p-4">
-                          {batchBarcodeLoading ? (
-                            <div className="text-center py-10">
-                              <div className="w-5 h-5 border-2 border-gray-300 dark:border-gray-700 border-t-black dark:border-t-white rounded-full animate-spin mx-auto"></div>
-                              <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">Loading…</p>
-                            </div>
-                          ) : batchBarcodeData ? (
-                            <div className="space-y-3">
-                              <div className="border border-gray-200 dark:border-gray-800 rounded p-3">
-                                <div className="flex items-start justify-between gap-3">
-                                  <div>
-                                    <p className="text-xs font-semibold text-black dark:text-white">
-                                      {batchBarcodeData.product?.name}{' '}
-                                      <span className="text-gray-500 text-[10px]">
-                                        {batchBarcodeData.product?.sku ? `(${batchBarcodeData.product.sku})` : ''}
-                                      </span>
-                                    </p>
-                                    <p className="text-[10px] text-gray-600 dark:text-gray-400">
-                                      Barcode: <span className="font-semibold text-black dark:text-white">{batchBarcodeData.barcode}</span>
-                                    </p>
-                                  </div>
-                                  <span className="text-[10px] px-2 py-1 rounded bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300">
-                                    {batchBarcodeData.total_movements} movements
-                                  </span>
-                                </div>
-
-                                {batchBarcodeData.current_location && (
-                                  <div className="mt-3 grid grid-cols-1 md:grid-cols-4 gap-2">
-                                    <div className="border border-gray-200 dark:border-gray-800 rounded p-2">
-                                      <p className="text-[9px] text-gray-500 uppercase font-medium mb-1">Status</p>
-                                      <p className="text-xs font-semibold text-black dark:text-white">
-                                        {getCurrentStatusLabel(batchBarcodeData.current_location, batchBarcodeData.history)}
-                                      </p>
-                                    </div>
-                                    <div className="border border-gray-200 dark:border-gray-800 rounded p-2">
-                                      <p className="text-[9px] text-gray-500 uppercase font-medium mb-1">Store</p>
-                                      <p className="text-xs text-black dark:text-white">
-                                        {batchBarcodeData.current_location.current_store?.name || '—'}
-                                      </p>
-                                    </div>
-                                    <div className="border border-gray-200 dark:border-gray-800 rounded p-2">
-                                      <p className="text-[9px] text-gray-500 uppercase font-medium mb-1">Batch</p>
-                                      <p className="text-xs text-black dark:text-white">
-                                        {batchBarcodeData.current_location.batch?.batch_number || '—'}
-                                      </p>
-                                    </div>
-                                    <div className="border border-gray-200 dark:border-gray-800 rounded p-2">
-                                      <p className="text-[9px] text-gray-500 uppercase font-medium mb-1">Batch Prices</p>
-                                      <p className="text-[10px] text-black dark:text-white">
-                                        Cost:{' '}
-                                        <span className="font-semibold">
-                                          {(() => {
-                                            const p = extractBatchPrices(batchBarcodeData.current_location.batch || batchBarcodeData.current_location);
-                                            return p.cost != null ? formatCurrency(p.cost) : '—';
-                                          })()}
-                                        </span>
-                                      </p>
-                                      <p className="text-[10px] text-black dark:text-white">
-                                        Sell:{' '}
-                                        <span className="font-semibold">
-                                          {(() => {
-                                            const p = extractBatchPrices(batchBarcodeData.current_location.batch || batchBarcodeData.current_location);
-                                            return p.sell != null ? formatCurrency(p.sell) : '—';
-                                          })()}
-                                        </span>
-                                      </p>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Order details if sold */}
-                              {batchResolvedOrder && (
-                                <div className="border border-gray-200 dark:border-gray-800 rounded p-3 bg-gray-50 dark:bg-gray-900/40">
-                                  <p className="text-[9px] text-gray-500 uppercase font-medium mb-1">Order Details</p>
-                                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                                    <div>
-                                      <p className="text-xs font-semibold text-black dark:text-white">
-                                        {batchResolvedOrder.orderNumber || (batchResolvedOrder.orderId ? `#${batchResolvedOrder.orderId}` : '—')}
-                                      </p>
-                                      {batchResolvedOrder.customer && (
-                                        <p className="text-[10px] text-gray-600 dark:text-gray-400">
-                                          {batchResolvedOrder.customer?.name || 'Customer'}
-                                          {batchResolvedOrder.customer?.phone ? ` • ${batchResolvedOrder.customer.phone}` : ''}
-                                        </p>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        onClick={() => {
-                                          setActiveTab('barcode');
-                                          setBarcodeInput(batchBarcodeData?.barcode || '');
-                                          setBarcodeData(batchBarcodeData);
-                                          setBatchBarcodeModalOpen(false);
-                                        }}
-                                        className="text-[10px] px-3 py-1.5 rounded bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:opacity-90"
-                                      >
-                                        Open in Barcode Tab
-                                      </button>
-
-                                      {(batchResolvedOrder.orderId || batchResolvedOrder.orderNumber) && (
-                                        <button
-                                          onClick={async () => {
-                                            setBatchBarcodeModalOpen(false);
-                                            setActiveTab('order');
-                                            if (batchResolvedOrder.orderId) await openOrderById(batchResolvedOrder.orderId);
-                                            else if (batchResolvedOrder.orderNumber) await openOrderByNumber(batchResolvedOrder.orderNumber);
-                                          }}
-                                          className="text-[10px] px-3 py-1.5 rounded bg-black dark:bg-white text-white dark:text-black hover:opacity-90"
-                                        >
-                                          Open Order
-                                        </button>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* small note if sold but not resolved */}
-                              {!batchResolvedOrder && isSoldFromCurrentLocation(batchBarcodeData?.current_location, batchBarcodeData?.history) && (
-                                <div className="text-[10px] text-gray-600 dark:text-gray-400">
-                                  This barcode looks **Sold**, but order reference wasn’t found in the history/metadata returned by the API.
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="text-center py-10 text-xs text-gray-600 dark:text-gray-400">No data.</div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
+            )}
+            {/* Return/Exchange Modals */}
                 </>
               )}
             </div>

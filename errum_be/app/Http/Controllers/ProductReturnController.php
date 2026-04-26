@@ -859,55 +859,25 @@ class ProductReturnController extends Controller
             $targetBatch->quantity += (int) $item['quantity'];
             $targetBatch->save();
 
-            $barcodeIds = collect($item['returned_barcode_ids'] ?? [])->filter()->values();
-            if ($barcodeIds->isEmpty()) {
-                $barcodes = ProductBarcode::where('product_id', $item['product_id'])
-                    ->where('batch_id', $item['product_batch_id'])
-                    ->whereIn('current_status', ['with_customer', 'sold'])
-                    ->limit((int) $item['quantity'])
-                    ->get();
-            } else {
-                $barcodes = ProductBarcode::whereIn('id', $barcodeIds)->get();
-            }
+            $targetBatch->quantity += (int) $item['quantity'];
+            $targetBatch->save();
 
-            foreach ($barcodes as $barcode) {
-                $barcode->updateLocation(
-                    $returnStore,
-                    'in_warehouse',
-                    [
-                        'return_id' => $return->id,
-                        'return_reason' => $return->return_reason,
-                        'returned_at' => now()->toISOString(),
-                        'cross_store_return' => (int) $originalBatch->store_id !== (int) $returnStore,
-                        'original_store_id' => $originalBatch->store_id,
-                    ],
-                    false
-                );
-
-                $barcode->is_active = true;
-                if ((int) $originalBatch->store_id !== (int) $returnStore) {
-                    $barcode->batch_id = $targetBatch->id;
-                }
-                $barcode->save();
-
-                ProductMovement::create([
-                    'product_id' => $item['product_id'],
-                    'product_batch_id' => $targetBatch->id,
-                    'product_barcode_id' => $barcode->id,
-                    'from_store_id' => (int) $originalBatch->store_id !== (int) $returnStore ? $originalBatch->store_id : null,
-                    'to_store_id' => $returnStore,
-                    'movement_type' => 'return',
-                    'quantity' => 1,
-                    'unit_cost' => $item['unit_price'] ?? 0,
-                    'total_cost' => $item['unit_price'] ?? 0,
-                    'reference_type' => 'return',
-                    'reference_id' => $return->id,
-                    'notes' => (int) $originalBatch->store_id !== (int) $returnStore
-                        ? "Cross-store return: {$return->return_number}" . ($isNewBatch ? ' (New batch created)' : '')
-                        : "Product return: {$return->return_number}",
-                    'performed_by' => $employee->id,
-                ]);
-            }
+            ProductMovement::create([
+                'product_id' => $item['product_id'],
+                'product_batch_id' => $targetBatch->id,
+                'from_store_id' => (int) $originalBatch->store_id !== (int) $returnStore ? $originalBatch->store_id : null,
+                'to_store_id' => $returnStore,
+                'movement_type' => 'return',
+                'quantity' => (int) $item['quantity'],
+                'unit_cost' => $item['unit_price'] ?? 0,
+                'total_cost' => ($item['unit_price'] ?? 0) * (int) $item['quantity'],
+                'reference_type' => 'return',
+                'reference_id' => $return->id,
+                'notes' => (int) $originalBatch->store_id !== (int) $returnStore
+                    ? "Cross-store return: {$return->return_number}" . ($isNewBatch ? ' (New batch created)' : '')
+                    : "Product return: {$return->return_number}",
+                'performed_by' => $employee->id,
+            ]);
         }
     }
 

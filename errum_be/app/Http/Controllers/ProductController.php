@@ -967,30 +967,16 @@ class ProductController extends Controller
                 ], 422);
             }
 
-            // 1. Delete product movements (linked via batches/barcodes)
             $movements = DB::table('product_movements')
                 ->whereIn('product_batch_id', function($query) use ($product) {
                     $query->select('id')
                         ->from('product_batches')
                         ->where('product_id', $product->id);
                 })
-                ->orWhereIn('product_barcode_id', function($query) use ($product) {
-                    $query->select('id')
-                        ->from('product_barcodes')
-                        ->where('product_id', $product->id);
-                })
                 ->delete();
             $deletionSummary['movements_deleted'] = $movements;
 
-            // 2. Delete dispatch item barcodes (pivot table)
-            $dispatchItemBarcodes = DB::table('product_dispatch_item_barcodes')
-                ->whereIn('product_barcode_id', function($query) use ($product) {
-                    $query->select('id')
-                        ->from('product_barcodes')
-                        ->where('product_id', $product->id);
-                })
-                ->delete();
-            $deletionSummary['dispatch_item_barcodes_deleted'] = $dispatchItemBarcodes;
+
 
             // 3. Delete defective products
             $defectiveProducts = DB::table('defective_products')
@@ -1049,14 +1035,14 @@ class ProductController extends Controller
                 ->delete();
             $deletionSummary['batches_deleted'] = $batches;
 
-            // 12. Delete product barcodes
-            $barcodes = DB::table('product_barcodes')
+            // 12. Delete product images
+            $images = DB::table('product_images')
                 ->where('product_id', $product->id)
                 ->count();
-            DB::table('product_barcodes')
+            DB::table('product_images')
                 ->where('product_id', $product->id)
                 ->delete();
-            $deletionSummary['barcodes_deleted'] = $barcodes;
+            $deletionSummary['images_deleted'] = $images;
 
             // 13. Delete product images
             $images = DB::table('product_images')

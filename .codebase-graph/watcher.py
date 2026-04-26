@@ -39,14 +39,14 @@ class GraphSyncHandler(FileSystemEventHandler):
             conn = sqlite3.connect(self.db_path)
             mtime = os.path.getmtime(abs_path)
             sha = sha256_file(abs_path)
-            conn.execute(\"\"\"
+            conn.execute("""
                 INSERT INTO file_hashes (file_path, mtime, sha256, last_indexed)
                 VALUES (?, ?, ?, datetime('now'))
                 ON CONFLICT(file_path) DO UPDATE SET
                     mtime = excluded.mtime,
                     sha256 = excluded.sha256,
                     last_indexed = excluded.last_indexed
-            \"\"\", (rel_path, mtime, sha))
+            """, (rel_path, mtime, sha))
             conn.commit()
             conn.close()
         except Exception as e:

@@ -6,7 +6,6 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductReturn;
 use App\Models\ProductBatch;
-use App\Models\ProductBarcode;
 use App\Models\ProductMovement;
 use App\Models\Product;
 use App\Models\Refund;
@@ -39,7 +38,6 @@ class ExchangeController extends Controller
             'removedProducts.*.unit_price' => 'required|numeric|min:0',
             'removedProducts.*.total_price' => 'required|numeric|min:0',
             'removedProducts.*.order_item_id' => 'nullable|exists:order_items,id',
-            'removedProducts.*.barcode_id' => 'nullable|exists:product_barcodes,id',
             'removedProducts.*.return_reason' => 'required|string',
             'removedProducts.*.quality_check_passed' => 'required|boolean',
             
@@ -50,7 +48,6 @@ class ExchangeController extends Controller
             'replacementProducts.*.unit_price' => 'required|numeric|min:0',
             'replacementProducts.*.total_price' => 'required|numeric|min:0',
             'replacementProducts.*.discount_amount' => 'nullable|numeric|min:0',
-            'replacementProducts.*.barcode' => 'nullable|string',
             
             'paymentRefund' => 'required|array',
             'paymentRefund.type' => 'required|in:surplus,refund,even',
@@ -95,7 +92,7 @@ class ExchangeController extends Controller
                     'refundable_amount' => $item['total_price'],
                     'return_reason' => $item['return_reason'],
                     'quality_check_passed' => $item['quality_check_passed'],
-                    'returned_barcode_ids' => isset($item['barcode_id']) ? [$item['barcode_id']] : [],
+                    'returned_barcode_ids' => [], // Unit-level barcodes deprecated
                 ];
             }
 
@@ -113,7 +110,7 @@ class ExchangeController extends Controller
                 'total_refund_amount' => $totalReturnValue,
                 'processing_fee' => 0,
                 'return_items' => $returnItems,
-                'quality_check_passed' => true, // Overall passed (items might differ)
+                'quality_check_passed' => true,
                 'processed_by' => $employee->id,
             ]);
 
@@ -131,7 +128,7 @@ class ExchangeController extends Controller
                 'order_number' => $orderNumber,
                 'customer_id' => $customer_id,
                 'store_id' => $storeId,
-                'order_type' => 'counter', // Primary for exchange
+                'order_type' => 'counter',
                 'status' => 'pending',
                 'subtotal' => 0,
                 'total_amount' => 0,
@@ -161,20 +158,6 @@ class ExchangeController extends Controller
                     throw new \Exception("Global stock reserved for {$product->name}");
                 }
 
-                // Handle Barcode
-                $barcodeId = null;
-                if (!empty($itemData['barcode'])) {
-                    $barcode = ProductBarcode::where('barcode', $itemData['barcode'])
-                        ->where('product_id', $product->id)
-                        ->where('batch_id', $batch->id)
-                        ->first();
-                    
-                    if (!$barcode) throw new \Exception("Barcode {$itemData['barcode']} not found");
-                    if (in_array($barcode->current_status, ['sold', 'with_customer'])) throw new \Exception("Barcode sold");
-                    
-                    $barcodeId = $barcode->id;
-                }
-
                 $quantity = $itemData['quantity'];
                 $unitPrice = $itemData['unit_price'];
                 $discount = $itemData['discount_amount'] ?? 0;
@@ -191,7 +174,7 @@ class ExchangeController extends Controller
                     'order_id' => $replacementOrder->id,
                     'product_id' => $product->id,
                     'product_batch_id' => $batch->id,
-                    'product_barcode_id' => $barcodeId,
+                    'product_barcode_id' => null, // Unit-level barcodes deprecated
                     'product_name' => $product->name,
                     'product_sku' => $product->sku,
                     'quantity' => $quantity,
@@ -202,19 +185,13 @@ class ExchangeController extends Controller
                     'total_amount' => $itemTotal,
                 ]);
 
-                // Stock deduction (Realtime for Counter sales)
+                // Stock deduction
                 $batch->removeStock($quantity);
                 if ($reservedRecord) {
                     $reservedRecord->decrement('reserved_inventory', $quantity);
                     $reservedRecord->refresh();
                     $reservedRecord->available_inventory = $reservedRecord->total_inventory - $reservedRecord->reserved_inventory;
                     $reservedRecord->save();
-                }
-
-                // Update barcode status
-                if ($barcodeId) {
-                    $barcode = ProductBarcode::find($barcodeId);
-                    $barcode->updateLocation(null, 'with_customer', ['order_id' => $replacementOrder->id]);
                 }
 
                 $subtotal += $itemSubtotal;
@@ -242,11 +219,8 @@ class ExchangeController extends Controller
             // --- 3. FINANCIAL SETTLEMENT ---
             $exchangeBalanceUsed = min($totalReturnValue, $totalAmount);
             
-            // 3a. Use "Exchange Balance" payment method
             $exchangeMethod = PaymentMethod::where('code', 'exchange_balance')->first();
             if (!$exchangeMethod) {
-                // Fallback or dynamic creation if needed, but per GEMINI.md, system should have it.
-                // For now, let's assume it exists or use 'other'
                 $exchangeMethod = PaymentMethod::where('code', 'other')->first();
             }
 
@@ -257,14 +231,14 @@ class ExchangeController extends Controller
                     $exchangeBalanceUsed,
                     [
                         'notes' => "Exchange Credit from Return #{$returnNumber}",
-                        'payment_type' => 'exchange_balance' // Handled by observer exclusion
+                        'payment_type' => 'exchange_balance'
                     ],
                     $employee
                 );
                 $payment->complete('EXC-' . $returnNumber, 'INTERNAL');
             }
 
-            // 3b. Handle Surplus (Customer pays extra)
+            // 3b. Handle Surplus
             if ($request->paymentRefund['type'] === 'surplus' && $request->paymentRefund['amount'] > 0) {
                 $surplusMethodCode = $request->paymentRefund['method'] ?? 'cash';
                 $surplusMethod = PaymentMethod::where('code', $surplusMethodCode)->first();
@@ -276,36 +250,33 @@ class ExchangeController extends Controller
                     (float)$request->paymentRefund['amount'],
                     [
                         'notes' => "Surplus payment for exchange",
-                        'payment_type' => 'exchange_surplus' // Silences OrderPaymentObserver for ledger
+                        'payment_type' => 'exchange_surplus'
                     ],
                     $employee
                 );
                 $payment->complete('EXC-SUR-' . $returnNumber, 'EXTERNAL');
             }
 
-            // 3c. Handle Refund (Store pays back)
+            // 3c. Handle Refund
             if ($request->paymentRefund['type'] === 'refund' && $request->paymentRefund['amount'] > 0) {
                 $refundMethodCode = $request->paymentRefund['method'] ?? 'cash';
                 
                 $refund = Refund::create([
                     'refund_number' => 'REF-EXC-' . date('Ymd') . '-' . Str::random(4),
                     'return_id' => $productReturn->id,
-                    'order_id' => null, // This refund is from the return value difference
+                    'order_id' => null,
                     'customer_id' => $customer_id,
-                    'refund_type' => 'exchange_refund', // Silences RefundObserver for ledger
+                    'refund_type' => 'exchange_refund',
                     'original_amount' => $totalReturnValue,
                     'refund_amount' => (float)$request->paymentRefund['amount'],
                     'refund_method' => $refundMethodCode,
-                    'status' => 'completed', // In-person exchange typically means immediate refund
+                    'status' => 'completed',
                     'processed_by' => $employee->id,
                     'approved_by' => $employee->id,
                     'completed_at' => now(),
                 ]);
-
-                // Note: Ledger entry for refund is handled by Transaction::createFromExchange below
             }
 
-            // Final Order Update
             $replacementOrder->refresh();
             $replacementOrder->updatePaymentStatus();
 
@@ -319,11 +290,10 @@ class ExchangeController extends Controller
             ]]);
             
             if ($request->paymentRefund['type'] !== 'surplus') {
-                 $productReturn->status = 'refunded'; // Fully utilized or refunded
+                 $productReturn->status = 'refunded';
             }
             $productReturn->save();
 
-            // Unified Exchange Journal
             Transaction::createFromExchange($productReturn, $replacementOrder);
 
             DB::commit();
@@ -387,16 +357,14 @@ class ExchangeController extends Controller
             $originalBatch = ProductBatch::find($item['product_batch_id']);
             if (!$originalBatch) continue;
 
-            // In lookup page exchange, we usually restore to the current store
             $targetBatch = null;
             if ((int) $originalBatch->store_id === (int) $returnStore) {
                 $targetBatch = $originalBatch;
             } else {
-                // Find or create batch at this store
                 $targetBatch = ProductBatch::firstOrCreate([
                     'product_id' => $item['product_id'],
                     'store_id' => $returnStore,
-                    'batch_number' => $originalBatch->batch_number, // Try same batch number
+                    'batch_number' => $originalBatch->batch_number,
                 ], [
                     'quantity' => 0,
                     'cost_price' => $originalBatch->cost_price,
@@ -409,44 +377,19 @@ class ExchangeController extends Controller
 
             $targetBatch->increment('quantity', (int) $item['quantity']);
 
-            // Barcodes
-            $barcodeIds = $item['returned_barcode_ids'] ?? [];
-            if (!empty($barcodeIds)) {
-                ProductBarcode::whereIn('id', $barcodeIds)->each(function ($barcode) use ($returnStore, $targetBatch, $return, $employee) {
-                    $barcode->updateLocation($returnStore, 'in_warehouse', ['return_id' => $return->id]);
-                    $barcode->batch_id = $targetBatch->id;
-                    $barcode->is_active = true;
-                    $barcode->current_status = 'in_warehouse';
-                    $barcode->save();
-
-                    ProductMovement::create([
-                        'product_id' => $barcode->product_id,
-                        'product_batch_id' => $targetBatch->id,
-                        'product_barcode_id' => $barcode->id,
-                        'to_store_id' => $returnStore,
-                        'movement_type' => 'return',
-                        'quantity' => 1,
-                        'unit_cost' => $barcode->batch->cost_price ?? 0,
-                        'reference_type' => 'return',
-                        'reference_id' => $return->id,
-                        'performed_by' => $employee->id,
-                    ]);
-                });
-            } else {
-                // Bulk return without specific barcodes
-                ProductMovement::create([
-                    'product_id' => $item['product_id'],
-                    'product_batch_id' => $targetBatch->id,
-                    'to_store_id' => $returnStore,
-                    'movement_type' => 'return',
-                    'quantity' => $item['quantity'],
-                    'unit_cost' => $originalBatch->cost_price,
-                    'total_cost' => $originalBatch->cost_price * $item['quantity'],
-                    'reference_type' => 'return',
-                    'reference_id' => $return->id,
-                    'performed_by' => $employee->id,
-                ]);
-            }
+            // Quantity-based movement tracking
+            ProductMovement::create([
+                'product_id' => $item['product_id'],
+                'product_batch_id' => $targetBatch->id,
+                'to_store_id' => $returnStore,
+                'movement_type' => 'return',
+                'quantity' => $item['quantity'],
+                'unit_cost' => $originalBatch->cost_price,
+                'total_cost' => $originalBatch->cost_price * $item['quantity'],
+                'reference_type' => 'return',
+                'reference_id' => $return->id,
+                'performed_by' => $employee->id,
+            ]);
         }
     }
 }

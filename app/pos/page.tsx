@@ -138,11 +138,9 @@ export default function POSPage() {
     return s;
   }, [cart]);
 
-  // Ref-based copy used to block ultra-fast duplicate scan events before React state re-renders
-  const scannedBarcodesRef = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    scannedBarcodesRef.current = new Set(scannedBarcodes);
-  }, [scannedBarcodes]);
+  // Re-renders might be needed but we don't need to block fast scans for mother barcodes.
+  const lastScannedTimeRef = useRef<number>(0);
+  const lastScannedBarcodeRef = useRef<string>('');
 
   // Products (for manual entry)
   const [products, setProducts] = useState<Product[]>([]);
@@ -428,31 +426,70 @@ export default function POSPage() {
    * Add scanned product to cart
    */
   const handleProductScanned = (scannedProduct: ScannedProduct) => {
-    // ✅ Prevent adding the same physical barcode more than once in a single sale
-    // (each barcode represents a unique item).
     const b = scannedProduct?.barcode ? String(scannedProduct.barcode) : '';
-    if (b && scannedBarcodesRef.current.has(b)) {
-      showToast(`⚠️ Already scanned: ${scannedProduct.barcode}`, 'error');
+    
+    // ✅ Optional: Prevent accidental double-triggers (e.g. within 300ms) for the EXACT SAME barcode
+    const now = Date.now();
+    if (b && b === lastScannedBarcodeRef.current && now - lastScannedTimeRef.current < 300) {
+      console.log('⚠️ Double-trigger blocked for:', b);
       return;
     }
-    if (b) scannedBarcodesRef.current.add(b);
+    lastScannedBarcodeRef.current = b;
+    lastScannedTimeRef.current = now;
 
-    const newItem: ExtendedCartItem = {
-      id: Date.now() + Math.random(),
-      productId: scannedProduct.productId,
-      productName: scannedProduct.productName,
-      batchId: scannedProduct.batchId,
-      batchNumber: scannedProduct.batchNumber,
-      qty: 1,
-      price: scannedProduct.price,
-      discount: 0,
-      amount: scannedProduct.price,
-      availableQty: scannedProduct.availableQty,
-      barcode: scannedProduct.barcode,
-    };
+    setCart((prev) => {
+      // Check if this product+batch is already in cart
+      const existingIdx = prev.findIndex(
+        (item) => 
+          item.productId === scannedProduct.productId && 
+          item.batchId === scannedProduct.batchId &&
+          !item.isDefective &&
+          !item.isService
+      );
 
-    setCart((prev) => [...prev, newItem]);
-    showToast(`✓ Added: ${scannedProduct.productName}`, 'success');
+      if (existingIdx >= 0) {
+        const item = prev[existingIdx];
+        if (item.qty < item.availableQty) {
+          const newCart = [...prev];
+          const newQty = item.qty + 1;
+          const baseAmount = item.price * newQty;
+          
+          // Maintain proportional discount if any
+          const discountValue = item.discount > 0 
+            ? (item.discount / item.qty) * newQty 
+            : 0;
+
+          newCart[existingIdx] = {
+            ...item,
+            qty: newQty,
+            amount: baseAmount - discountValue,
+            discount: discountValue,
+          };
+          showToast(`✓ Incremented: ${scannedProduct.productName} (now ${newQty})`, 'success');
+          return newCart;
+        } else {
+          showToast(`⚠️ Max available quantity (${item.availableQty}) reached for ${item.productName}`, 'error');
+          return prev;
+        }
+      }
+
+      // Add as new item
+      const newItem: ExtendedCartItem = {
+        id: Date.now() + Math.random(),
+        productId: scannedProduct.productId,
+        productName: scannedProduct.productName,
+        batchId: scannedProduct.batchId,
+        batchNumber: scannedProduct.batchNumber,
+        qty: 1,
+        price: scannedProduct.price,
+        discount: 0,
+        amount: scannedProduct.price,
+        availableQty: scannedProduct.availableQty,
+        barcode: scannedProduct.barcode,
+      };
+      showToast(`✓ Added: ${scannedProduct.productName}`, 'success');
+      return [...prev, newItem];
+    });
   };
 
   /**
@@ -507,11 +544,7 @@ export default function POSPage() {
   /**
    * Remove item from cart
    */
-  const removeFromCart = (id: number) => {
-    const itemToRemove = cart.find((item) => item.id === id);
-    if (itemToRemove?.barcode) {
-      scannedBarcodesRef.current.delete(String(itemToRemove.barcode));
-    }
+    // No longer need to manage a blocked barcodes set
     setCart((prev) => prev.filter((item) => item.id !== id));
     showToast('Item removed from cart', 'success');
   };

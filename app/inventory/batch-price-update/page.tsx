@@ -15,6 +15,7 @@ type ProductPick = {
   id: number;
   name: string;
   sku?: string;
+  barcode?: string;
 };
 
 type UpdateRow = {
@@ -84,6 +85,7 @@ export default function BatchPriceUpdatePage() {
           id: p.id,
           name: p.name,
           sku: p.sku,
+          barcode: p.barcode,
         }));
 
         setProducts(mapped);
@@ -155,7 +157,7 @@ export default function BatchPriceUpdatePage() {
         const list = (res?.data || []) as FullProduct[];
         const exact = list
           .filter((p) => String(p.sku || '').trim() === sku)
-          .map((p) => ({ id: p.id, name: p.name, sku: p.sku } as ProductPick));
+          .map((p) => ({ id: p.id, name: p.name, sku: p.sku, barcode: p.barcode } as ProductPick));
 
         setSkuGroupProducts(exact);
         setSelectedVariationIds(exact.map((p) => p.id)); // default: select all, user can uncheck
@@ -301,7 +303,8 @@ export default function BatchPriceUpdatePage() {
       batchId: u.batch_id,
       productName: selectedProduct.name,
       price: Number(String(u.new_price).replace(/[^\d.]/g, '')),
-      fallbackCode: u.batch_number || String(u.batch_id),
+      fallbackCode: selectedProduct.barcode || u.batch_number || String(u.batch_id),
+      qty: 1,
     }));
   }, [updates, selectedProduct]);
 

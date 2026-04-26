@@ -238,14 +238,6 @@ class PermissionsSeeder extends Seeder
                 'guard_name' => 'web',
                 'is_active' => true,
             ],
-            [
-                'title' => 'Manage Product Barcodes',
-                'slug' => 'products.manage_barcodes',
-                'description' => 'Generate and manage product barcodes',
-                'module' => 'products',
-                'guard_name' => 'web',
-                'is_active' => true,
-            ],
 
             // Product Batches
             [

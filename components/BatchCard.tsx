@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Barcode from 'react-barcode';
 import BatchPrinter from './BatchPrinter';
 import BatchEditModal from './BatchEditModal';
 import { Batch, UpdateBatchData } from '@/services/batchService';
-import { barcodeTrackingService } from '@/services/barcodeTrackingService';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface BatchCardProps {
@@ -14,56 +13,17 @@ interface BatchCardProps {
 
 export default function BatchCard({ batch, onDelete, onEdit }: BatchCardProps) {
   const [deleting, setDeleting] = useState(false);
-  const [barcodes, setBarcodes] = useState<string[]>([]);
-  const [loadingBarcodes, setLoadingBarcodes] = useState(true);
-  const [barcodeError, setBarcodeError] = useState<string | null>(null);
-  const [showAllBarcodes, setShowAllBarcodes] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const { isRole } = useAuth();
   const isAdmin = isRole(['admin', 'super-admin']);
 
-  // Fetch barcodes for THIS specific batch
-  useEffect(() => {
-    fetchBatchBarcodes();
-  }, [batch.id]);
-
-  const fetchBatchBarcodes = async () => {
-    try {
-      setLoadingBarcodes(true);
-      setBarcodeError(null);
-      
-      // Use the batch-specific endpoint
-      const response = await barcodeTrackingService.getBatchBarcodes(batch.id);
-      
-      if (response.success && response.data.barcodes) {
-        // Extract active barcode strings
-        const barcodeValues = response.data.barcodes
-          .filter(b => b.is_active)
-          .map(b => b.barcode);
-        
-        setBarcodes(barcodeValues);
-        console.log(`Loaded ${barcodeValues.length} barcodes for batch ${batch.id}`);
-      } else {
-        setBarcodeError('No barcodes found for this batch');
-        setBarcodes([]);
-      }
-    } catch (error: any) {
-      console.error('Error fetching batch barcodes:', error);
-      setBarcodeError(error.message || 'Failed to load barcodes');
-      setBarcodes([]);
-    } finally {
-      setLoadingBarcodes(false);
-    }
-  };
-
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this batch? This will also deactivate all associated barcodes.')) {
+    if (!confirm('Are you sure you want to delete this batch?')) {
       return;
     }
     
     try {
       setDeleting(true);
-      
       if (onDelete) {
         await onDelete(batch.id);
       }
@@ -82,11 +42,13 @@ export default function BatchCard({ batch, onDelete, onEdit }: BatchCardProps) {
 
   // Helper to parse Laravel formatted numbers (removes commas)
   const parseFormattedNumber = (value: string): number => {
-    return parseFloat(value.replace(/,/g, ''));
+    if (typeof value === 'number') return value;
+    if (!value) return 0;
+    return parseFloat(String(value).replace(/,/g, ''));
   };
 
-  // Primary barcode (first one or batch barcode)
-  const primaryBarcode = barcodes[0] || batch.barcode?.barcode || batch.batch_number;
+  // Mother barcode (from product or batch)
+  const motherBarcode = batch.product?.barcode || batch.barcode?.barcode || batch.batch_number;
 
   // Convert Laravel batch to legacy format for existing components
   const legacyBatch = {
@@ -95,12 +57,13 @@ export default function BatchCard({ batch, onDelete, onEdit }: BatchCardProps) {
     quantity: batch.quantity,
     costPrice: parseFormattedNumber(batch.cost_price),
     sellingPrice: parseFormattedNumber(batch.sell_price),
-    baseCode: primaryBarcode,
+    baseCode: motherBarcode,
   };
 
   const legacyProduct = {
     id: batch.product.id,
     name: batch.product.name,
+    barcode: motherBarcode,
   };
 
   return (
@@ -188,104 +151,37 @@ export default function BatchCard({ batch, onDelete, onEdit }: BatchCardProps) {
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs font-medium text-gray-700 dark:text-gray-300">
-              {loadingBarcodes ? 'Loading barcodes...' : `${barcodes.length} Barcode${barcodes.length !== 1 ? 's' : ''} Generated`}
+              Mother Barcode (Product Level)
             </div>
-            {barcodes.length > 1 && (
-              <button
-                onClick={() => setShowAllBarcodes(!showAllBarcodes)}
-                className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                {showAllBarcodes ? 'Show less' : 'Show all'}
-              </button>
-            )}
           </div>
 
-          {loadingBarcodes ? (
-            <div className="flex justify-center py-4 bg-gray-50 dark:bg-gray-700 rounded">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div>
-            </div>
-          ) : barcodeError ? (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-center">
-              <p className="text-xs text-red-800 dark:text-red-300">
-                {barcodeError}
-              </p>
-              <button
-                onClick={fetchBatchBarcodes}
-                className="mt-2 text-xs text-red-600 dark:text-red-400 hover:underline"
-              >
-                Retry
-              </button>
-            </div>
-          ) : barcodes.length === 0 ? (
-            <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-center">
-              <p className="text-xs text-yellow-800 dark:text-yellow-300">
-                No barcodes generated yet
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {/* Primary Barcode - Always Show */}
-              <div className="flex justify-center p-3 border-2 border-blue-200 dark:border-blue-800 rounded bg-blue-50 dark:bg-blue-950/30">
-                <div className="flex flex-col items-center">
-                  <div className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">
-                    Primary Barcode
-                  </div>
-                  <Barcode 
-                    value={primaryBarcode} 
-                    format="CODE128" 
-                    renderer="svg" 
-                    width={1.5} 
-                    height={45} 
-                    displayValue={true} 
-                    margin={4}
-                    fontSize={12}
-                  />
-                </div>
+          <div className="space-y-3">
+            {/* Primary Barcode - Always Show */}
+            <div className="flex justify-center p-3 border-2 border-blue-200 dark:border-blue-800 rounded bg-blue-50 dark:bg-blue-950/30">
+              <div className="flex flex-col items-center">
+                <Barcode 
+                  value={motherBarcode} 
+                  format="CODE128" 
+                  renderer="svg" 
+                  width={1.5} 
+                  height={45} 
+                  displayValue={true} 
+                  margin={4}
+                  fontSize={12}
+                />
               </div>
-
-              {/* Additional Barcodes - Show on expand */}
-              {showAllBarcodes && barcodes.length > 1 && (
-                <div className="space-y-2 max-h-96 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded p-2">
-                  <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-2 px-2">
-                    All Generated Barcodes ({barcodes.length})
-                  </div>
-                  {barcodes.map((barcode, index) => (
-                    <div key={index} className="flex justify-center p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                      <div className="flex flex-col items-center">
-                        <Barcode 
-                          value={barcode} 
-                          format="CODE128" 
-                          renderer="svg" 
-                          width={1.2} 
-                          height={35} 
-                          displayValue={true} 
-                          margin={2}
-                          fontSize={10}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Barcode Range Info */}
-              {!showAllBarcodes && barcodes.length > 1 && (
-                <div className="text-xs text-center text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded p-2">
-                  <span className="font-medium">{barcodes.length} barcodes</span> from{' '}
-                  <span className="font-mono">{barcodes[0]}</span>
-                  {' '}to{' '}
-                  <span className="font-mono">{barcodes[barcodes.length - 1]}</span>
-                </div>
-              )}
             </div>
-          )}
+            <div className="text-[10px] text-center text-gray-500 dark:text-gray-400 italic">
+              Scanning this barcode will deduct from the available quantity of this batch.
+            </div>
+          </div>
         </div>
 
-        {/* Print Button - Pass batch-specific barcodes */}
+        {/* Print Button - Pass Mother Barcode for printing */}
         <BatchPrinter 
           batch={legacyBatch} 
           product={legacyProduct} 
-          barcodes={barcodes} // Pass the fetched barcodes
+          barcodes={[motherBarcode]} 
         />
 
         {/* Batch Info */}
@@ -312,4 +208,6 @@ export default function BatchCard({ batch, onDelete, onEdit }: BatchCardProps) {
       />
     </>
   );
+}
+);
 }
