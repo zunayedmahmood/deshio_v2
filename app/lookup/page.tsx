@@ -383,6 +383,7 @@ type BatchLookupData = {
     total_sales: number;
     total_dispatches: number;
   };
+  barcodes?: any[];
 };
 
 type PrinterProduct = {
@@ -2890,6 +2891,7 @@ export default function LookupPage() {
                       </div>
                     </div>
                   </div>
+                    </div>
 
                   {batchData && (
                     <div className="space-y-3">
@@ -2925,6 +2927,37 @@ export default function LookupPage() {
                           </div>
                         </div>
 
+                      <div className="border border-gray-200 dark:border-gray-800 rounded-md overflow-hidden">
+                        <div className="bg-gray-50 dark:bg-gray-900 px-3 py-2 border-b border-gray-200 dark:border-gray-800">
+                          <h2 className="text-xs font-semibold text-black dark:text-white uppercase tracking-wide">Units in Batch</h2>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-[10px]">
+                            <thead className="bg-white dark:bg-black">
+                              <tr className="border-b border-gray-200 dark:border-gray-800">
+                                <th className="px-2 py-2 text-left text-[9px] font-semibold text-gray-700 dark:text-gray-300 uppercase">Unit / Barcode</th>
+                                <th className="px-2 py-2 text-left text-[9px] font-semibold text-gray-700 dark:text-gray-300 uppercase">Store</th>
+                                <th className="px-2 py-2 text-left text-[9px] font-semibold text-gray-700 dark:text-gray-300 uppercase">Status</th>
+                                <th className="px-2 py-2 text-left text-[9px] font-semibold text-gray-700 dark:text-gray-300 uppercase">Flags</th>
+                                <th className="px-2 py-2 text-right text-[9px] font-semibold text-gray-700 dark:text-gray-300 uppercase">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                              {((batchData as any).barcodes || []).map((b: any) => {
+                                const sold = b.status === 'sold' || b.order_number;
+                                return (
+                                  <tr key={b.id}>
+                                    <td className="px-2 py-2 font-medium text-black dark:text-white">{b.barcode || '—'}</td>
+                                    <td className="px-2 py-2 text-gray-600 dark:text-gray-400">{b.store?.name || '—'}</td>
+                                    <td className="px-2 py-2">
+                                      <span className={`text-[9px] px-2 py-0.5 rounded font-semibold uppercase ${
+                                        sold ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30' : 'bg-green-100 text-green-700 dark:bg-green-900/30'
+                                      }`}>
+                                        {sold ? 'Sold' : 'Stock'}
+                                      </span>
+                                    </td>
+                                    <td className="px-2 py-2">
+                                      <div className="flex flex-wrap gap-1">
                                         {b.is_defective && (
                                           <span className="text-[9px] px-2 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">defective</span>
                                         )}
@@ -2938,7 +2971,7 @@ export default function LookupPage() {
                                   </tr>
                                 );
                               })}
-                              {!batchData.barcodes.length && (
+                              {(!batchData.barcodes || !batchData.barcodes.length) && (
                                 <tr>
                                   <td colSpan={5} className="px-3 py-6 text-center text-xs text-gray-500 dark:text-gray-400">
                                     No units found for this batch.
@@ -2951,8 +2984,6 @@ export default function LookupPage() {
                       </div>
                     </div>
                   )}
-
-            )}
             {/* Return/Exchange Modals */}
                 </>
               )}
@@ -3005,6 +3036,7 @@ export default function LookupPage() {
           </main>
         </div>
       </div>
+    </div>
     </div>
   );
 }
