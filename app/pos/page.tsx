@@ -544,6 +544,7 @@ export default function POSPage() {
   /**
    * Remove item from cart
    */
+  const removeFromCart = (id: number) => {
     // No longer need to manage a blocked barcodes set
     setCart((prev) => prev.filter((item) => item.id !== id));
     showToast('Item removed from cart', 'success');

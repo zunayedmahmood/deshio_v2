@@ -2753,6 +2753,12 @@ export default function LookupPage() {
                                 </p>
                                 <p>
                                   Phone:{' '}
+                                  <span className="font-semibold">{barcodeVendor?.phone || barcodeVendor?.mobile || '—'}</span>
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                      
                           {!barcodeData.purchase_order && !barcodeData.vendor && !barcodeData.summary?.has_purchase_order && (
                             <p className="mt-2 text-[10px] text-gray-500 dark:text-gray-400">
                               No purchase order/vendor info linked to this barcode.
@@ -2815,8 +2821,7 @@ export default function LookupPage() {
                       </div>
                     </div>
                   )}
-                    </div>
-                  )}
+
                 </>
               )}
 

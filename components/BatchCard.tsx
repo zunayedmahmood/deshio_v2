@@ -209,5 +209,3 @@ export default function BatchCard({ batch, onDelete, onEdit }: BatchCardProps) {
     </>
   );
 }
-);
-}
