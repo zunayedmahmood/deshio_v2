@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Drop-in wrapper: always runs inside the codebase-graph venv.
+# Usage: .codebase-graph/cg-python your_script.py [args…]
+#        .codebase-graph/cg-python -c "import tree_sitter; print('ok')"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$SCRIPT_DIR/venv/bin/python3" "$@"

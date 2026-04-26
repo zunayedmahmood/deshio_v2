@@ -347,3 +347,35 @@ try to avoid direct animal Emojis or pictures. we will prefer geometrics shapes/
 This website should be highly optmised and built with mobile view as first priority while also catering to desktop view.
 
 I want you to make an md file with the full instructions for an AI model to make these changes.
+
+
+### graph skill:
+
+I want you to make me a skill library for AI model:
+This will be a graphifying codebase for better context for AI models (main goal),
+optimisation for token consumption (secondary concern)
+This will be solely for focused on this stack: Next, Tailwind and Laravel. (mono repo for entire codebase, or separate) (this means frontend and backend connections also need to be graphed)
+Our main hopes:
+->in initialising stage forcing to AI model to READ everything and mapping every relation and context in sqlite (locally in the folder).
+->then, live updating it as we make changes in the codebase.
+->this allows the AI model to know all the places it needs to change for each prompt.
+->we need that blast radius algorithm were all the dependent files are identified and changed when one file is changed.
+
+This is a model seed prompt:
+Design a skill library for Laravel/Next/Tailwind codebases using Tree-sitter based static analysis, Code Property Graphs, call graphs, control/data flow graphs, GraphRAG hybrid retrieval, incremental indexing, Louvain architecture clustering, reachability analysis for dead code detection, PageRank hotspot detection, subgraph retrieval, token-aware context minimization, SQLite graph storage, and agentic query planning with Cypher-like queries. Optimize for <100ms structural queries and minimal token usage.
+
+we want to use it like this:
+
+to begin with our project, we want commands to run like this:
+initialising: /codebase-graph init -b (for backend)   [and  else: f for frontend,  empty for Fullstack][recognises the stack and makes the graph  related files it will populate]
+other commands:  /codebase-graph [command] [options]
+basically,  we want to break the codebase reading  into seperate  parts.  
+for  backend, we  start with migrations and models, after that we run in this order:  controllers,  then (observers, providers, jobs and other stuff like  that)  then, routes and other stuff like that
+for frontend, we start with components, then pages.
+finally, we map  the  frontend api  calls with backend and  graphifying is done.
+
+then, for  each  and every  prompt  we run  " /codebase-graph read " this helps the ai model to  see  the graph   for  source of   truth on relation and connections.
+any change  to any file after  this should behind the   scene automatically updated in the graph.
+
+now make me the skill library (folder  of multiple folders, each with one SKILL.md)
+

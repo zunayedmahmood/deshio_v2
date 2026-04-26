@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Codebase Graph — Daily Workflow</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+        :root {
+            --bg: #0c0e14;
+            --surface: #13161f;
+            --surface2: #1a1e2a;
+            --border: #252a38;
+            --border-bright: #333a50;
+            --text: #d6dae8;
+            --muted: #6b7494;
+            --accent: #5b8dee;
+            --accent2: #e8733a;
+            --accent3: #4ec994;
+            --accent4: #c97be8;
+            --warn: #e8b43a;
+            --danger: #e85c5c;
+            --tag-bg: #1e2435;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Syne', sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            padding: 40px 32px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        /* ── HEADER ── */
+        .header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 48px;
+            gap: 24px;
+        }
+
+        .header-title {
+            flex: 1;
+        }
+
+        .header-title h1 {
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: #fff;
+            line-height: 1.1;
+        }
+
+        .header-title h1 span {
+            color: var(--accent);
+        }
+
+        .header-title p {
+            color: var(--muted);
+            margin-top: 8px;
+            font-size: 13px;
+            font-weight: 400;
+        }
+
+        .header-badge {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--muted);
+            white-space: nowrap;
+            text-align: right;
+        }
+
+        .header-badge strong {
+            color: var(--accent3);
+            display: block;
+            font-size: 12px;
+            margin-bottom: 2px;
+        }
+
+        /* ── SECTION ── */
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .section-num {
+            background: var(--accent);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .section-num.orange {
+            background: var(--accent2);
+        }
+
+        .section-num.green {
+            background: var(--accent3);
+            color: #0c0e14;
+        }
+
+        .section-num.purple {
+            background: var(--accent4);
+        }
+
+        .section-num.warn {
+            background: var(--warn);
+            color: #0c0e14;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.2px;
+        }
+
+        .section-sub {
+            font-size: 12px;
+            color: var(--muted);
+            font-weight: 400;
+            margin-left: 4px;
+        }
+
+        /* ── DIVIDER ── */
+        .divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 40px 0;
+        }
+
+        .divider-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin: 40px 0 24px;
+        }
+
+        .divider-label::before,
+        .divider-label::after {
+            content: '';
+            flex: 1;
+            border-top: 1px solid var(--border);
+        }
+
+        /* ── CARDS ── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 12px;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .card-grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .card.accent-left {
+            border-left: 3px solid var(--accent);
+        }
+
+        .card.accent-left.orange {
+            border-left-color: var(--accent2);
+        }
+
+        .card.accent-left.green {
+            border-left-color: var(--accent3);
+        }
+
+        .card.accent-left.purple {
+            border-left-color: var(--accent4);
+        }
+
+        .card.accent-left.warn {
+            border-left-color: var(--warn);
+        }
+
+        .card.accent-left.danger {
+            border-left-color: var(--danger);
+        }
+
+        .card-title {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
+
+        .card-title.blue {
+            color: var(--accent);
+        }
+
+        .card-title.orange {
+            color: var(--accent2);
+        }
+
+        .card-title.green {
+            color: var(--accent3);
+        }
+
+        .card-title.purple {
+            color: var(--accent4);
+        }
+
+        .card-title.warn {
+            color: var(--warn);
+        }
+
+        /* ── CODE ── */
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            background: var(--tag-bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 1px 6px;
+            color: var(--accent3);
+        }
+
+        pre {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px 16px;
+            overflow-x: auto;
+            line-height: 1.7;
+            color: var(--text);
+            margin: 10px 0;
+        }
+
+        pre .cmd {
+            color: var(--accent3);
+        }
+
+        pre .flag {
+            color: var(--accent);
+        }
+
+        pre .comment {
+            color: var(--muted);
+            font-style: italic;
+        }
+
+        pre .warn-txt {
+            color: var(--warn);
+        }
+
+        pre .danger-txt {
+            color: var(--danger);
+        }
+
+        pre .path {
+            color: var(--accent4);
+        }
+
+        /* ── STEPS ── */
+        .steps {
+            counter-reset: step;
+        }
+
+        .step {
+            display: flex;
+            gap: 14px;
+            margin-bottom: 10px;
+            align-items: flex-start;
+        }
+
+        .step-num {
+            counter-increment: step;
+            background: var(--surface2);
+            border: 1px solid var(--border-bright);
+            color: var(--muted);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .step-body {
+            flex: 1;
+        }
+
+        .step-body strong {
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .step-body p {
+            color: var(--text);
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        .step-body .note {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        /* ── FLOW ── */
+        .flow {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            flex-wrap: wrap;
+            margin: 12px 0;
+        }
+
+        .flow-item {
+            background: var(--surface2);
+            border: 1px solid var(--border-bright);
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text);
+            white-space: nowrap;
+        }
+
+        .flow-item.blue {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .flow-item.orange {
+            border-color: var(--accent2);
+            color: var(--accent2);
+        }
+
+        .flow-item.green {
+            border-color: var(--accent3);
+            color: var(--accent3);
+        }
+
+        .flow-arrow {
+            color: var(--muted);
+            font-size: 14px;
+            padding: 0 6px;
+        }
+
+        /* ── TAGS ── */
+        .tag {
+            display: inline-block;
+            background: var(--tag-bg);
+            border: 1px solid var(--border-bright);
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--muted);
+            margin: 2px 2px;
+        }
+
+        .tag.blue {
+            color: var(--accent);
+            border-color: rgba(91, 141, 238, 0.3);
+            background: rgba(91, 141, 238, 0.07);
+        }
+
+        .tag.green {
+            color: var(--accent3);
+            border-color: rgba(78, 201, 148, 0.3);
+            background: rgba(78, 201, 148, 0.07);
+        }
+
+        .tag.orange {
+            color: var(--accent2);
+            border-color: rgba(232, 115, 58, 0.3);
+            background: rgba(232, 115, 58, 0.07);
+        }
+
+        .tag.purple {
+            color: var(--accent4);
+            border-color: rgba(201, 123, 232, 0.3);
+            background: rgba(201, 123, 232, 0.07);
+        }
+
+        .tag.warn {
+            color: var(--warn);
+            border-color: rgba(232, 180, 58, 0.3);
+            background: rgba(232, 180, 58, 0.07);
+        }
+
+        .tag.danger {
+            color: var(--danger);
+            border-color: rgba(232, 92, 92, 0.3);
+            background: rgba(232, 92, 92, 0.07);
+        }
+
+        /* ── RULE LIST ── */
+        .rule-list {
+            list-style: none;
+        }
+
+        .rule-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+        }
+
+        .rule-list li:last-child {
+            border-bottom: none;
+        }
+
+        .rule-icon {
+            flex-shrink: 0;
+            width: 18px;
+            text-align: center;
+            margin-top: 1px;
+        }
+
+        /* ── TABLE ── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        th {
+            text-align: left;
+            padding: 8px 12px;
+            background: var(--surface2);
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            border-bottom: 1px solid var(--border-bright);
+        }
+
+        td {
+            padding: 9px 12px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+            color: var(--text);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        td code {
+            font-size: 11px;
+        }
+
+        .td-muted {
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        /* ── INLINE BADGE ── */
+        .badge {
+            display: inline-block;
+            padding: 2px 7px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .badge.once {
+            background: rgba(78, 201, 148, 0.15);
+            color: var(--accent3);
+        }
+
+        .badge.session {
+            background: rgba(91, 141, 238, 0.15);
+            color: var(--accent);
+        }
+
+        .badge.always {
+            background: rgba(232, 180, 58, 0.15);
+            color: var(--warn);
+        }
+
+        .badge.auto {
+            background: rgba(201, 123, 232, 0.15);
+            color: var(--accent4);
+        }
+
+        .badge.crit {
+            background: rgba(232, 92, 92, 0.15);
+            color: var(--danger);
+        }
+
+        /* ── CALLOUT ── */
+        .callout {
+            border-radius: 8px;
+            padding: 14px 16px;
+            margin: 10px 0;
+            font-size: 13px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .callout.info {
+            background: rgba(91, 141, 238, 0.08);
+            border: 1px solid rgba(91, 141, 238, 0.2);
+        }
+
+        .callout.warn {
+            background: rgba(232, 180, 58, 0.08);
+            border: 1px solid rgba(232, 180, 58, 0.2);
+        }
+
+        .callout.danger {
+            background: rgba(232, 92, 92, 0.08);
+            border: 1px solid rgba(232, 92, 92, 0.2);
+        }
+
+        .callout.success {
+            background: rgba(78, 201, 148, 0.08);
+            border: 1px solid rgba(78, 201, 148, 0.2);
+        }
+
+        .callout-icon {
+            flex-shrink: 0;
+        }
+
+        .callout-body p {
+            margin: 0;
+        }
+
+        .callout-body strong {
+            color: #fff;
+        }
+
+        /* ── FREQ TABLE ── */
+        .freq-row {
+            display: grid;
+            grid-template-columns: 200px 1fr 120px;
+            gap: 12px;
+            align-items: start;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .freq-row:last-child {
+            border-bottom: none;
+        }
+
+        .freq-cmd {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--accent3);
+        }
+
+        .freq-desc {
+            font-size: 12px;
+            color: var(--text);
+        }
+
+        .freq-when {
+            text-align: right;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <div class="header-title">
+            <h1>Codebase Graph<br><span>Daily Workflow</span></h1>
+            <p>Laravel + Next.js / Tailwind · Complete usage guide for every phase of work</p>
+        </div>
+        <div class="header-badge">
+            <strong>10 Skills · 1 Graph</strong>
+            .codebase-graph/graph.db<br>
+            Watched: .php · .ts · .tsx · .js · .jsx
+        </div>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════
+     PART 1 — FIRST TIME SETUP
+     ════════════════════════════════════════════ -->
+    <div class="divider-label">Part 1 — First-Time Setup · Run Once Per Project</div>
+
+    <div class="section">
+        <div class="section-label">
+            <div class="section-num green">1</div>
+            <span class="section-title">Install Dependencies <span class="section-sub">— one time, per
+                    machine</span></span>
+        </div>
+
+        <div class="card-grid">
+            <div class="card">
+                <div class="card-title blue">Python (backend parser + watcher)</div>
+                <pre><span class="cmd">pip install</span> tree-sitter watchdog</pre>
+                <p style="font-size:12px;color:var(--muted);margin-top:6px;">Powers Tree-sitter PHP/TS parsing and the
+                    live file watcher.</p>
+            </div>
+            <div class="card">
+                <div class="card-title orange">Node.js (alternative watcher)</div>
+                <pre><span class="cmd">npm install</span> chokidar</pre>
+                <p style="font-size:12px;color:var(--muted);margin-top:6px;">Only needed if you prefer a Node watcher
+                    over Python's watchdog. The graph logic is identical.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title green">Tree-sitter Grammars — Build Once Per Project</div>
+            <pre><span class="comment"># PHP grammar (Laravel backend)</span>
+<span class="cmd">Language.build_library</span>(<span class="path">'.codebase-graph/parsers/php.so'</span>, [<span class="path">'vendor/tree-sitter-php'</span>])
+
+<span class="comment"># TypeScript / TSX grammar (Next.js frontend)</span>
+<span class="cmd">Language.build_library</span>(<span class="path">'.codebase-graph/parsers/tsx.so'</span>, [<span class="path">'vendor/tree-sitter-typescript/tsx'</span>])</pre>
+            <p style="font-size:12px;color:var(--muted);margin-top:6px;">These are compiled once and cached in
+                <code>.codebase-graph/parsers/</code>. You don't rebuild them unless you update the grammar source.</p>
+        </div>
+    </div>
+
+
+    <div class="section">
+        <div class="section-label">
+            <div class="section-num green">2</div>
+            <span class="section-title">Run Init <span class="section-sub">— once per project (or after major
+                    restructures)</span></span>
+        </div>
+
+        <div class="card">
+            <div class="card-title green">Dry run first — always a good idea</div>
+            <pre><span class="cmd">/codebase-graph init</span> <span class="flag">--dry-run</span>   <span class="comment"># shows detected stack + plan, writes nothing</span></pre>
+        </div>
+
+        <div class="card-grid">
+            <div class="card accent-left green">
+                <div class="card-title green">Full-stack project</div>
+                <pre><span class="cmd">/codebase-graph init</span></pre>
+                <p style="font-size:12px;color:var(--muted);margin-top:6px;">Runs all 4 phases: backend → frontend → API
+                    bridge → clusters + PageRank. Takes 3–10s.</p>
+            </div>
+            <div class="card accent-left">
+                <div class="card-title blue">Backend or frontend only</div>
+                <pre><span class="cmd">/codebase-graph init</span> <span class="flag">-b</span>   <span class="comment"># Laravel only</span>
+<span class="cmd">/codebase-graph init</span> <span class="flag">-f</span>   <span class="comment"># Next.js only</span></pre>
+            </div>
+        </div>
+
+        <div class="callout warn">
+            <div class="callout-icon">⚠</div>
+            <div class="callout-body">
+                <p><strong>Phase order is mandatory and cannot be skipped.</strong> Each phase depends on the nodes from
+                    the previous one. Migrations → Models → Controllers → Routes → Components → Pages → Bridge →
+                    Clusters/PageRank.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title warn">When to re-run init</div>
+            <table>
+                <tr>
+                    <th>Situation</th>
+                    <th>Command</th>
+                </tr>
+                <tr>
+                    <td>Pulled massive refactor / rename (renamed dirs, restructured app)</td>
+                    <td><code>/codebase-graph init --reset</code></td>
+                </tr>
+                <tr>
+                    <td>Added a whole new module or domain (e.g. new payment system)</td>
+                    <td><code>/codebase-graph init --reset</code></td>
+                </tr>
+                <tr>
+                    <td>Graph seems wrong, clusters look off</td>
+                    <td><code>/codebase-graph init --reset</code></td>
+                </tr>
+                <tr>
+                    <td>Normal daily work, watcher running</td>
+                    <td class="td-muted">No init needed — watcher handles it</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════
+     PART 2 — STARTING EACH SESSION
+     ════════════════════════════════════════════ -->
+    <div class="divider-label">Part 2 — Starting Every Work Session · 2 Commands</div>
+
+    <div class="section">
+        <div class="section-label">
+            <div class="section-num">1</div>
+            <span class="section-title">Start the Watcher <span class="section-sub">— first thing you do when you open
+                    the project</span></span>
+        </div>
+
+        <div class="card-grid">
+            <div class="card accent-left">
+                <div class="card-title blue">Background (recommended)</div>
+                <pre><span class="cmd">/codebase-graph watch</span> <span class="flag">--daemon</span></pre>
+                <p style="font-size:12px;color:var(--muted);margin-top:6px;">Runs silently, writes PID to
+                    <code>.codebase-graph/watch.pid</code>. Forget about it for the rest of the session.</p>
+            </div>
+            <div class="card">
+                <div class="card-title">Other watcher commands</div>
+                <pre><span class="cmd">/codebase-graph watch</span> <span class="flag">--status</span>   <span class="comment"># is it running?</span>
+<span class="cmd">/codebase-graph watch</span> <span class="flag">--stop</span>     <span class="comment"># end of session</span>
+<span class="cmd">/codebase-graph watch</span>            <span class="comment"># foreground (debug)</span></pre>
+            </div>
+        </div>
+
+        <div class="callout danger">
+            <div class="callout-icon">🔴</div>
+            <div class="callout-body">
+                <p><strong>If the watcher is not running, the graph goes stale.</strong> Every read command will warn
+                    you. Every blast-radius report will be based on old data. Always check <code>--status</code> if
+                    something feels off.</p>
+            </div>
+        </div>
+
+        <p style="font-size:12px;color:var(--muted);margin-top:8px;">The watcher monitors <span class="tag">.php</span>
+            <span class="tag">.ts</span> <span class="tag">.tsx</span> <span class="tag">.js</span> <span
+                class="tag">.jsx</span> and ignores <span class="tag">vendor/</span> <span
+                class="tag">node_modules/</span> <span class="tag">.next/</span> <span
+                class="tag">.codebase-graph/</span>. On every file save it deletes stale nodes, re-parses the file,
+            re-inserts fresh nodes/edges, and re-maps API bridge for that file — all in a single atomic transaction.</p>
+    </div>
+
+
+    <div class="section">
+        <div class="section-label">
+            <div class="section-num">2</div>
+            <span class="section-title">Load Context <span class="section-sub">— before your first prompt of the
+                    session</span></span>
+        </div>
+
+        <div class="card">
+            <pre><span class="cmd">/codebase-graph read</span>   <span class="comment"># full architecture overview — your starting point</span></pre>
+            <p style="font-size:12px;color:var(--muted);margin-top:8px;">This loads the structured context block into
+                the AI's working memory: all clusters with their models/controllers/routes/frontend nodes, the top-20
+                PageRank hotspots, and graph stats (node count, bridge edges, dead candidates, watcher status). Use this
+                to orient yourself before starting work.</p>
+        </div>
+
+        <div class="card">
+            <div class="card-title blue">Focused alternatives — use when you already know where you're working</div>
+            <pre><span class="cmd">/codebase-graph read</span> <span class="flag">--file</span> <span class="path">app/Models/User.php</span>     <span class="comment"># subgraph around one file, depth 2 both directions</span>
+<span class="cmd">/codebase-graph read</span> <span class="flag">--query</span> "authentication"       <span class="comment"># search nodes by name/path/metadata</span>
+<span class="cmd">/codebase-graph read</span> <span class="flag">--cluster</span> 3                    <span class="comment"># everything in one architectural cluster</span>
+<span class="cmd">/codebase-graph read</span> <span class="flag">--hotspots</span>                      <span class="comment"># top-20 PageRank nodes only</span></pre>
+        </div>
+
+        <div class="callout info">
+            <div class="callout-icon">💡</div>
+            <div class="callout-body">
+                <p><strong>Which read to use when:</strong> Start with plain <code>/codebase-graph read</code> for
+                    orientation. Switch to <code>--file</code> once you know what you're touching. Use
+                    <code>--query</code> when you're exploring a domain you're unfamiliar with. Use
+                    <code>--cluster</code> when you're doing deep work in one subsystem all session.</p>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════
+     PART 3 — EVERY SINGLE CODE CHANGE
+     ════════════════════════════════════════════ -->
+    <div class="divider-label">Part 3 — Every Code Change · The Core Loop</div>
+
+    <div class="section">
+        <div class="section-label">
+            <div class="section-num orange">→</div>
+            <span class="section-title">The Mandatory 3-Step Loop <span class="section-sub">— every time you're about to
+                    modify a file</span></span>
+        </div>
+
+        <div class="card accent-left orange">
+            <div class="steps">
+                <div class="step">
+                    <div class="step-num"></div>
+                    <div class="step-body">
+                        <p><strong>Read context for the specific file you're about to touch</strong></p>
+                        <pre><span class="cmd">/codebase-graph read</span> <span class="flag">--file</span> <span class="path">app/Models/User.php</span></pre>
+                        <p class="note">This gives you the seed node in full detail + everything upstream and downstream
+                            at depth 2. Confirms what the file does, what it depends on, and what depends on it — before
+                            you touch anything.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-num"></div>
+                    <div class="step-body">
+                        <p><strong>Run blast radius to see the full impact</strong></p>
+                        <pre><span class="cmd">/codebase-graph blast-radius</span> <span class="flag">--file</span> <span class="path">app/Models/User.php</span></pre>
+                        <p class="note">Traverses outward up to depth 5. Produces a ranked list of every file that may
+                            break. Read it as a review checklist — not a to-do list. Not all affected files need to
+                            change; they need to be verified.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-num"></div>
+                    <div class="step-body">
+                        <p><strong>Make your change — the watcher handles the rest</strong></p>
+                        <p class="note">Save the file. The watcher detects the change, re-parses the file, updates
+                            nodes/edges in a single transaction, and re-maps API bridge calls for that file. The graph
+                            is live again within milliseconds.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="section">
+        <div class="section-label">
+            <div class="section-num orange">▸</div>
+            <span class="section-title">Blast Radius — Reading the Output</span>
+        </div>
+
+        <div class="card-grid">
+            <div class="card">
+                <div class="card-title danger">Risk levels</div>
+                <table>
+                    <tr>
+                        <th>Level</th>
+                        <th>Meaning</th>
+                    </tr>
+                    <tr>
+                        <td><span class="tag danger">CRITICAL</span></td>
+                        <td class="td-muted">The file you changed</td>
+                    </tr>
+                    <tr>
+                        <td><span class="tag danger">HIGH</span></td>
+                        <td class="td-muted">Depth 1 or edge weight ≥ 8</td>
+                    </tr>
+                    <tr>
+                        <td><span class="tag warn">MEDIUM</span></td>
+                        <td class="td-muted">Depth 2 or weight 5–7</td>
+                    </tr>
+                    <tr>
+                        <td><span class="tag">LOW</span></td>
+                        <td class="td-muted">Depth 3+ and weight &lt; 5</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="card">
+                <div class="card-title warn">Edge weights — what bleeds impact</div>
+                <table>
+                    <tr>
+                        <th>Weight</th>
+                        <th>Edge</th>
+                    </tr>
+                    <tr>
+                        <td><span class="tag danger">10</span></td>
+                        <td><code>BACKED_BY</code> <span class="td-muted">(model→migration)</span></td>
+                    </tr>
+                    <tr>
+                        <td><span class="tag danger">9</span></td>
+                        <td><code>HAS_MANY / BELONGS_TO</code></td>
+                    </tr>
+                    <tr>
+                        <td><span class="tag warn">8</span></td>
+                        <td><code>HANDLED_BY / CALLS_API</code></td>
+                    </tr>
+                    <tr>
+                        <td><span class="tag warn">7</span></td>
+                        <td><code>QUERIES</code></td>
+                    </tr>
+                    <tr>
+                        <td><span class="tag blue">6</span></td>
+                        <td><code>RENDERS</code></td>
+                    </tr>
+                    <tr>
+                        <td><span class="tag blue">5</span></td>
+                        <td><code>USES_HOOK</code></td>
+                    </tr>
+                    <tr>
+                        <td><span class="tag">4</span></td>
+                        <td><code>DEPENDS_ON</code></td>
+                    </tr>
+                    <tr>
+                        <td><span class="tag">3</span></td>
+                        <td><code>PROTECTED_BY / OBSERVED_BY</code></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Blast radius flags — when to use each</div>
+            <pre><span class="cmd">/codebase-graph blast-radius</span> <span class="flag">--file</span> <span class="path">X</span>                   <span class="comment"># standard — downstream only, depth 5</span>
+<span class="cmd">/codebase-graph blast-radius</span> <span class="flag">--file</span> <span class="path">X</span> <span class="flag">--method</span> store   <span class="comment"># one method only — much tighter scope</span>
+<span class="cmd">/codebase-graph blast-radius</span> <span class="flag">--file</span> <span class="path">X</span> <span class="flag">--direction both</span>  <span class="comment"># upstream too — use when investigating bugs</span>
+<span class="cmd">/codebase-graph blast-radius</span> <span class="flag">--file</span> <span class="path">X</span> <span class="flag">--depth</span> 3         <span class="comment"># shallower — for quick sanity checks</span></pre>
+        </div>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════
+     PART 4 — CHANGE TYPES
+     ════════════════════════════════════════════ -->
+    <div class="divider-label">Part 4 — Change-Type Playbooks</div>
+
+    <div class="section">
+        <div class="card-grid">
+
+            <div class="card accent-left danger">
+                <div class="card-title danger">Changing a Migration / Schema</div>
+                <p style="font-size:12px;margin-bottom:10px;">Highest possible blast radius. A schema change can ripple
+                    through model → controllers → routes → frontend.</p>
+                <pre style="font-size:11px;"><span class="cmd">read</span> <span class="flag">--file</span> <span class="path">database/migrations/…</span>
+<span class="cmd">blast-radius</span> <span class="flag">--file</span> <span class="path">database/migrations/…</span>
+<span class="comment"># Check the BACKED_BY model + all QUERIES controllers</span></pre>
+                <div class="callout danger" style="margin-top:10px;">
+                    <div class="callout-body">
+                        <p>After adding a column: also update <code>$fillable</code> / <code>$casts</code> on the model,
+                            any Resources that serialize it, and any frontend types that mirror the shape.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card accent-left">
+                <div class="card-title blue">Changing a Model</div>
+                <p style="font-size:12px;margin-bottom:10px;">Adding/removing relationships, scopes, or fillable fields.
+                </p>
+                <pre style="font-size:11px;"><span class="cmd">read</span> <span class="flag">--file</span> <span class="path">app/Models/User.php</span>
+<span class="cmd">blast-radius</span> <span class="flag">--file</span> <span class="path">app/Models/User.php</span>
+<span class="comment"># High-risk: any controller with QUERIES edge</span>
+<span class="comment"># Also check: Resources, Observers, Policies</span></pre>
+            </div>
+
+            <div class="card accent-left orange">
+                <div class="card-title orange">Changing a Controller Method</div>
+                <p style="font-size:12px;margin-bottom:10px;">Method-level blast radius keeps scope tight.</p>
+                <pre style="font-size:11px;"><span class="cmd">blast-radius</span> <span class="flag">--file</span> <span class="path">app/Http/Controllers/UserController.php</span> <span class="flag">--method</span> index
+<span class="comment"># Checks: route → frontend hook → components</span>
+<span class="comment"># If changing response shape, check UserResource too</span></pre>
+            </div>
+
+            <div class="card accent-left green">
+                <div class="card-title green">Changing a Frontend Component</div>
+                <p style="font-size:12px;margin-bottom:10px;">Usually bounded within the frontend cluster unless
+                    CALLS_API edge exists.</p>
+                <pre style="font-size:11px;"><span class="cmd">read</span> <span class="flag">--file</span> <span class="path">src/components/UserCard.tsx</span>
+<span class="cmd">blast-radius</span> <span class="flag">--file</span> <span class="path">src/components/UserCard.tsx</span>
+<span class="comment"># Look for RENDERS edges — parent components</span>
+<span class="comment"># If props change, find every RENDERS → UserCard</span></pre>
+            </div>
+
+            <div class="card accent-left purple">
+                <div class="card-title purple">Changing a Hook with API Calls</div>
+                <p style="font-size:12px;margin-bottom:10px;">Hooks with CALLS_API edges bridge into the backend graph.
+                </p>
+                <pre style="font-size:11px;"><span class="cmd">read</span> <span class="flag">--file</span> <span class="path">src/hooks/useUsers.ts</span>
+<span class="cmd">blast-radius</span> <span class="flag">--file</span> <span class="path">src/hooks/useUsers.ts</span> <span class="flag">--direction both</span>
+<span class="comment"># upstream: which backend route/controller it calls</span>
+<span class="comment"># downstream: which components use this hook</span></pre>
+            </div>
+
+            <div class="card accent-left warn">
+                <div class="card-title warn">Changing a Route File</div>
+                <p style="font-size:12px;margin-bottom:10px;">URI changes break the API bridge. Verb changes break REST
+                    contracts.</p>
+                <pre style="font-size:11px;"><span class="cmd">index-bridge</span> <span class="flag">--report</span>   <span class="comment"># after any route change</span>
+<span class="comment"># Check: any unmapped frontend calls = broken</span>
+<span class="comment"># Re-run index-bridge if watcher misses a batch</span></pre>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════
+     PART 5 — MULTI-PROMPT SESSIONS
+     ════════════════════════════════════════════ -->
+    <div class="divider-label">Part 5 — Long Sessions &amp; Token Management</div>
+
+    <div class="section">
+        <div class="section-label">
+            <div class="section-num purple">△</div>
+            <span class="section-title">Staying Efficient Across Multiple Prompts</span>
+        </div>
+
+        <div class="card">
+            <div class="card-title purple">Context budget strategy</div>
+            <table>
+                <tr>
+                    <th>Situation</th>
+                    <th>Command</th>
+                    <th>Tokens used</th>
+                </tr>
+                <tr>
+                    <td>Start of session, orientation</td>
+                    <td><code>/codebase-graph read</code></td>
+                    <td class="td-muted">~4 000 (default)</td>
+                </tr>
+                <tr>
+                    <td>Focused work on one subsystem</td>
+                    <td><code>/codebase-graph read --file X</code></td>
+                    <td class="td-muted">~1 500–2 500</td>
+                </tr>
+                <tr>
+                    <td>Deep multi-file session in one domain</td>
+                    <td><code>/codebase-graph read --cluster N</code></td>
+                    <td class="td-muted">~2 000–3 000</td>
+                </tr>
+                <tr>
+                    <td>Tight token budget</td>
+                    <td><code>/codebase-graph read --budget 1500</code></td>
+                    <td class="td-muted">≤ 1 500 hard cap</td>
+                </tr>
+                <tr>
+                    <td>Just want the hottest files</td>
+                    <td><code>/codebase-graph read --hotspots</code></td>
+                    <td class="td-muted">~300–500</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="card-grid">
+            <div class="card">
+                <div class="card-title purple">Multi-prompt: use incremental diff</div>
+                <p style="font-size:12px;color:var(--text);">On the second+ prompt in a session, the graph uses a
+                    <strong>context diff</strong> — only sending what changed since the last read. This saves 60–80% of
+                    tokens per prompt. You don't need to do anything; it's automatic.</p>
+                <pre style="margin-top:8px;font-size:11px;"><span class="comment">CONTEXT DELTA since last read:</span>
+<span class="cmd">+</span> UserProfile [component]  src/components/UserProfile.tsx
+<span class="cmd">+</span> useProfile [hook]        src/hooks/useProfile.ts
+<span class="warn-txt">-</span> OldDashboard [page]      removed (file deleted)
+<span class="comment">= 47 nodes unchanged</span></pre>
+            </div>
+            <div class="card">
+                <div class="card-title">When to re-read mid-session</div>
+                <ul class="rule-list">
+                    <li>
+                        <span class="rule-icon">↻</span>
+                        <span>You switched to a completely different domain (different cluster)</span>
+                    </li>
+                    <li>
+                        <span class="rule-icon">↻</span>
+                        <span>You just added a new file (watcher indexed it, but context hasn't refreshed)</span>
+                    </li>
+                    <li>
+                        <span class="rule-icon">↻</span>
+                        <span>You did a big rename and the graph now has new node names</span>
+                    </li>
+                    <li>
+                        <span class="rule-icon">↻</span>
+                        <span>The AI gave you a file path that doesn't match the graph — means stale context</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════
+     PART 6 — PARTIAL RE-INDEXING
+     ════════════════════════════════════════════ -->
+    <div class="divider-label">Part 6 — Partial Re-Indexing · When the Watcher Isn't Enough</div>
+
+    <div class="section">
+
+        <div class="callout info">
+            <div class="callout-icon">ℹ</div>
+            <div class="callout-body">
+                <p>The watcher handles <strong>individual file saves automatically</strong>. You only need partial
+                    re-index commands when you've made changes outside normal editing — bulk git operations, code
+                    generation, scaffolding, or after the watcher was off for a while.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Partial re-index commands</div>
+            <pre><span class="comment"># Backend — re-index just what changed</span>
+<span class="cmd">/codebase-graph index-backend</span> <span class="flag">--step</span> migrations     <span class="comment"># after running php artisan make:migration</span>
+<span class="cmd">/codebase-graph index-backend</span> <span class="flag">--step</span> models          <span class="comment"># after make:model</span>
+<span class="cmd">/codebase-graph index-backend</span> <span class="flag">--step</span> controllers     <span class="comment"># after make:controller</span>
+<span class="cmd">/codebase-graph index-backend</span> <span class="flag">--step</span> routes          <span class="comment"># after editing web.php / api.php</span>
+<span class="cmd">/codebase-graph index-backend</span>                        <span class="comment"># full backend re-index</span>
+
+<span class="comment"># Frontend — re-index just what changed</span>
+<span class="cmd">/codebase-graph index-frontend</span> <span class="flag">--step</span> components     <span class="comment"># after adding many components at once</span>
+<span class="cmd">/codebase-graph index-frontend</span> <span class="flag">--step</span> pages           <span class="comment"># after adding new pages</span>
+<span class="cmd">/codebase-graph index-frontend</span> <span class="flag">--step</span> hooks           <span class="comment"># after adding/renaming hooks</span>
+<span class="cmd">/codebase-graph index-frontend</span>                        <span class="comment"># full frontend re-index</span>
+
+<span class="comment"># API bridge — re-map after route or fetch changes</span>
+<span class="cmd">/codebase-graph index-bridge</span>                          <span class="comment"># re-map all frontend → backend calls</span>
+<span class="cmd">/codebase-graph index-bridge</span> <span class="flag">--report</span>               <span class="comment"># show unmapped calls + dead routes</span></pre>
+        </div>
+
+        <div class="card-grid">
+            <div class="card accent-left warn">
+                <div class="card-title warn">Partial re-index order matters</div>
+                <p style="font-size:12px;">If you re-index multiple steps, always follow the same phase order.
+                    <strong>Don't re-index controllers before models.</strong> Don't re-index pages before components.
+                    Don't re-run bridge before both backend and frontend are current.</p>
+            </div>
+            <div class="card accent-left orange">
+                <div class="card-title orange">After scaffolding (make:model -mcr)</div>
+                <p style="font-size:12px;">Laravel's artisan scaffolding creates migration + model + controller in one
+                    shot. Run:</p>
+                <pre style="font-size:11px;"><span class="cmd">index-backend</span> <span class="flag">--step</span> migrations
+<span class="cmd">index-backend</span> <span class="flag">--step</span> models
+<span class="cmd">index-backend</span> <span class="flag">--step</span> controllers
+<span class="cmd">index-backend</span> <span class="flag">--step</span> routes</pre>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════
+     PART 7 — INVESTIGATION & DEBUGGING
+     ════════════════════════════════════════════ -->
+    <div class="divider-label">Part 7 — Investigation &amp; Code Health</div>
+
+    <div class="section">
+        <div class="card-grid">
+            <div class="card">
+                <div class="card-title blue">Exploring an unfamiliar area</div>
+                <pre style="font-size:11px;"><span class="cmd">/codebase-graph read</span> <span class="flag">--query</span> "payment"
+<span class="comment"># Searches node names, file paths, metadata</span>
+<span class="comment"># Returns matching nodes + their cluster peers</span></pre>
+                <p style="font-size:12px;color:var(--muted);margin-top:6px;">Good for: "where does billing live?", "what
+                    handles file uploads?", "find everything auth-related".</p>
+            </div>
+            <div class="card">
+                <div class="card-title blue">Understanding an architectural domain</div>
+                <pre style="font-size:11px;"><span class="cmd">/codebase-graph read</span> <span class="flag">--hotspots</span>
+<span class="comment"># Shows top-20 nodes by PageRank</span>
+<span class="comment"># = the files touched by the most paths</span>
+<span class="comment"># = the files where bugs have widest impact</span></pre>
+            </div>
+        </div>
+
+        <div class="card-grid">
+            <div class="card">
+                <div class="card-title warn">Finding dead code candidates</div>
+                <pre style="font-size:11px;"><span class="cmd">/codebase-graph dead-code</span>
+<span class="comment"># Nodes with no inbound edges after bridge mapping</span>
+<span class="comment"># = routes with no frontend callers</span>
+<span class="comment"># = components never rendered</span>
+<span class="comment"># = controllers never routed to</span></pre>
+                <p style="font-size:12px;color:var(--muted);margin-top:6px;">Cross-check before deleting — some dead
+                    candidates are intentional (admin-only, CLI commands, etc.).</p>
+            </div>
+            <div class="card">
+                <div class="card-title">Graph health checks</div>
+                <pre style="font-size:11px;"><span class="cmd">/codebase-graph stats</span>
+<span class="comment"># Node/edge counts, cluster sizes, dead candidates</span>
+
+<span class="cmd">/codebase-graph clusters</span>
+<span class="comment"># All Louvain clusters with summaries</span>
+
+<span class="cmd">/codebase-graph verify</span>
+<span class="comment"># Integrity check: dangling edges, missing nodes</span>
+<span class="comment"># Run if graph output looks wrong</span></pre>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title orange">Tracing a full request path (backend ↔ frontend)</div>
+            <p style="font-size:13px;margin-bottom:10px;">To understand how a feature works end-to-end, use the graph
+                edge chain:</p>
+            <div class="flow">
+                <div class="flow-item green">Component</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item blue">Hook</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item orange">CALLS_API</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">Route</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">Controller</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item purple">Model</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">Migration</div>
+            </div>
+            <pre
+                style="margin-top:10px;font-size:11px;"><span class="cmd">/codebase-graph read</span> <span class="flag">--file</span> <span class="path">src/hooks/useUsers.ts</span>    <span class="comment"># start from the hook</span>
+<span class="cmd">/codebase-graph blast-radius</span> <span class="flag">--file</span> <span class="path">src/hooks/useUsers.ts</span> <span class="flag">--direction both</span></pre>
+        </div>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════
+     PART 8 — FREQUENCY REFERENCE
+     ════════════════════════════════════════════ -->
+    <div class="divider-label">Part 8 — Frequency Reference · How Often to Run What</div>
+
+    <div class="section">
+        <div class="card">
+            <div class="freq-row">
+                <div class="freq-cmd">/codebase-graph init</div>
+                <div class="freq-desc">First time on a project, or after a major structural refactor</div>
+                <div class="freq-when"><span class="badge once">once</span></div>
+            </div>
+            <div class="freq-row">
+                <div class="freq-cmd">Language.build_library</div>
+                <div class="freq-desc">Grammar compilation — once per project, re-run only if tree-sitter source updates
+                </div>
+                <div class="freq-when"><span class="badge once">once</span></div>
+            </div>
+            <div class="freq-row">
+                <div class="freq-cmd">/codebase-graph watch --daemon</div>
+                <div class="freq-desc">Start of every work session — leave running until you close the project</div>
+                <div class="freq-when"><span class="badge session">per session</span></div>
+            </div>
+            <div class="freq-row">
+                <div class="freq-cmd">/codebase-graph read</div>
+                <div class="freq-desc">First prompt of every session. Also when switching domains mid-session.</div>
+                <div class="freq-when"><span class="badge session">per session</span></div>
+            </div>
+            <div class="freq-row">
+                <div class="freq-cmd">/codebase-graph read --file X</div>
+                <div class="freq-desc">Before touching any specific file — every single time</div>
+                <div class="freq-when"><span class="badge always">every change</span></div>
+            </div>
+            <div class="freq-row">
+                <div class="freq-cmd">/codebase-graph blast-radius</div>
+                <div class="freq-desc">Before modifying any file — every single time, no exceptions</div>
+                <div class="freq-when"><span class="badge always">every change</span></div>
+            </div>
+            <div class="freq-row">
+                <div class="freq-cmd">File save (watcher)</div>
+                <div class="freq-desc">Graph updates automatically on every file save — no manual action needed</div>
+                <div class="freq-when"><span class="badge auto">automatic</span></div>
+            </div>
+            <div class="freq-row">
+                <div class="freq-cmd">/codebase-graph index-backend/frontend</div>
+                <div class="freq-desc">After bulk scaffolding, code generation, or after watcher was off during changes
+                </div>
+                <div class="freq-when"><span class="badge session">as needed</span></div>
+            </div>
+            <div class="freq-row">
+                <div class="freq-cmd">/codebase-graph index-bridge --report</div>
+                <div class="freq-desc">After any route changes to catch unmapped frontend calls and dead endpoints</div>
+                <div class="freq-when"><span class="badge session">after routes</span></div>
+            </div>
+            <div class="freq-row">
+                <div class="freq-cmd">/codebase-graph init --reset</div>
+                <div class="freq-desc">After major refactor (renamed dirs, restructured app) — wipes and rebuilds</div>
+                <div class="freq-when"><span class="badge crit">big refactors</span></div>
+            </div>
+            <div class="freq-row">
+                <div class="freq-cmd">/codebase-graph dead-code</div>
+                <div class="freq-desc">Periodic cleanup passes — not daily, but useful before major releases</div>
+                <div class="freq-when"><span class="badge session">periodic</span></div>
+            </div>
+            <div class="freq-row">
+                <div class="freq-cmd">/codebase-graph verify</div>
+                <div class="freq-desc">When graph output seems wrong or inconsistent — integrity check</div>
+                <div class="freq-when"><span class="badge session">on suspicion</span></div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════
+     PART 9 — GOLDEN RULES
+     ════════════════════════════════════════════ -->
+    <div class="divider-label">Part 9 — The Rules You Can't Break</div>
+
+    <div class="section">
+        <div class="card">
+            <ul class="rule-list">
+                <li>
+                    <span class="rule-icon" style="color:var(--danger);">1</span>
+                    <span><strong style="color:#fff;">Always run blast-radius before modifying a file.</strong> Without
+                        it you're flying blind. The graph exists for this — use it every time, even when the change
+                        "seems small".</span>
+                </li>
+                <li>
+                    <span class="rule-icon" style="color:var(--danger);">2</span>
+                    <span><strong style="color:#fff;">Always run read before every code-touching prompt.</strong> The
+                        graph is the source of truth, not training memory. File paths, class names, relationships —
+                        confirm everything from the graph.</span>
+                </li>
+                <li>
+                    <span class="rule-icon" style="color:var(--warn);">3</span>
+                    <span><strong style="color:#fff;">Migration changes are highest priority blast radius.</strong> A
+                        schema change can silently break model casts, controller queries, API resources, and frontend
+                        type assumptions. Always trace the full chain.</span>
+                </li>
+                <li>
+                    <span class="rule-icon" style="color:var(--warn);">4</span>
+                    <span><strong style="color:#fff;">The blast radius report is a review checklist, not a to-do
+                            list.</strong> Affected files don't all need to change — they need to be verified for
+                        compatibility with your change.</span>
+                </li>
+                <li>
+                    <span class="rule-icon" style="color:var(--accent);">5</span>
+                    <span><strong style="color:#fff;">Don't re-init when partial re-index is enough.</strong> Reserve
+                        <code>init --reset</code> for structural refactors. For normal work, the watcher handles
+                        everything. For scaffolding, use <code>index-backend --step</code>.</span>
+                </li>
+                <li>
+                    <span class="rule-icon" style="color:var(--accent);">6</span>
+                    <span><strong style="color:#fff;">If the watcher warning appears in read output, stop and fix
+                            it.</strong> Don't continue working with a stale graph — any blast-radius report will be
+                        wrong.</span>
+                </li>
+                <li>
+                    <span class="rule-icon" style="color:var(--accent3);">7</span>
+                    <span><strong style="color:#fff;">Use --file read for focused work, plain read for
+                            orientation.</strong> Don't blast 4000 tokens of full architecture context into every
+                        prompt. Match the read scope to what you're actually doing.</span>
+                </li>
+                <li>
+                    <span class="rule-icon" style="color:var(--accent3);">8</span>
+                    <span><strong style="color:#fff;">High-PageRank nodes = high-impact files.</strong> Before touching
+                        a node with high PageRank, expect a wide blast radius. Extra caution, extra review.</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+</body>
+
+</html>
