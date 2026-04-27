@@ -2891,7 +2891,6 @@ export default function LookupPage() {
                       </div>
                     </div>
                   </div>
-                    </div>
 
                   {batchData && (
                     <div className="space-y-3">
@@ -2926,6 +2925,7 @@ export default function LookupPage() {
                             </div>
                           </div>
                         </div>
+                      </div>
 
                       <div className="border border-gray-200 dark:border-gray-800 rounded-md overflow-hidden">
                         <div className="bg-gray-50 dark:bg-gray-900 px-3 py-2 border-b border-gray-200 dark:border-gray-800">
@@ -3036,7 +3036,6 @@ export default function LookupPage() {
           </main>
         </div>
       </div>
-    </div>
     </div>
   );
 }
