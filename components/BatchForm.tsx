@@ -205,8 +205,8 @@ export default function BatchForm({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div className="text-sm text-blue-800 dark:text-blue-300">
-            <strong>Note:</strong> Individual barcodes will be automatically generated for each unit (up to 100 items). 
-            For larger quantities, a primary barcode will be created.
+            <strong>Note:</strong> This batch will use the <strong>Mother Barcode</strong> assigned to the product. 
+            All units in this batch will share the same barcode for simplified inventory management.
           </div>
         </div>
       </div>

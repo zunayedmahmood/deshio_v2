@@ -4,6 +4,7 @@ export interface Product {
   id: number;
   name: string;
   sku?: string;
+  barcode?: string;
 }
 
 export interface Store {
@@ -35,6 +36,7 @@ export interface Batch {
   expiry_date: string | null;
   days_until_expiry: number | null;
   barcode: Barcode | null;
+  mother_barcode: string | null;
   created_at: string;
   notes?: string;
   movement_count?: number;

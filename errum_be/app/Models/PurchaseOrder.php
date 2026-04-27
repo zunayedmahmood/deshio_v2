@@ -255,44 +255,13 @@ class PurchaseOrder extends Model
                     'product_id' => $item->product_id,
                     'batch_number' => $itemData['batch_number'] ?? $this->po_number . '-' . $item->id,
                     'quantity' => $quantityReceived,
+                    'mother_barcode' => $item->product->barcode, // Set mother barcode from product
                     'cost_price' => $item->unit_cost,
                     'sell_price' => $item->unit_sell_price,
                     'store_id' => $this->store_id,
                     'manufactured_date' => $itemData['manufactured_date'] ?? null,
                     'expiry_date' => $itemData['expiry_date'] ?? null,
                 ]);
-
-                // Generate barcodes for each unit in the batch
-                $store = $this->store;
-                $initialStatus = $store && $store->is_warehouse ? 'in_warehouse' : 'in_shop';
-                
-                $generatedBarcodes = [];
-                for ($i = 0; $i < $quantityReceived; $i++) {
-                    $barcode = ProductBarcode::create([
-                        'product_id' => $item->product_id,
-                        'batch_id' => $batch->id,
-                        'type' => 'CODE128',
-                        'is_primary' => ($i === 0), // First barcode is primary
-                        'is_active' => true,
-                        'generated_at' => now(),
-                        'current_store_id' => $this->store_id,
-                        'current_status' => $initialStatus,
-                        'location_updated_at' => now(),
-                        'location_metadata' => [
-                            'source' => 'purchase_order',
-                            'po_number' => $this->po_number,
-                            'received_date' => now()->format('Y-m-d H:i:s'),
-                        ],
-                    ]);
-                    
-                    $generatedBarcodes[] = $barcode;
-                }
-                
-                // Set primary barcode for batch
-                if (!empty($generatedBarcodes)) {
-                    $batch->barcode_id = $generatedBarcodes[0]->id;
-                    $batch->save();
-                }
 
                 // Update item
                 $item->product_batch_id = $batch->id;
@@ -310,8 +279,8 @@ class PurchaseOrder extends Model
                 }
                 $item->save();
                 
-                // Log barcode generation
-                \Log::info("Generated {$quantityReceived} barcodes for PO {$this->po_number}, Batch {$batch->batch_number}");
+                // Log receiving
+                \Log::info("Received {$quantityReceived} units for PO {$this->po_number}, Batch {$batch->batch_number} using Mother Barcode");
             }
 
             // Update PO status

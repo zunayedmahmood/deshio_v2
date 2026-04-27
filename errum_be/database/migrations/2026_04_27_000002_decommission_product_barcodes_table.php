@@ -47,11 +47,22 @@ return new class extends Migration
             });
         }
 
+        // Product Dispatch Items (Missing in previous version)
+        if (Schema::hasColumn('product_dispatch_items', 'product_barcode_id')) {
+            Schema::table('product_dispatch_items', function (Blueprint $table) {
+                $table->dropForeign(['product_barcode_id']);
+                $table->dropColumn('product_barcode_id');
+            });
+        }
+
         // 2. Drop the pivot table for dispatch scanning
         Schema::dropIfExists('product_dispatch_item_barcodes');
 
-        // 3. Finally drop the main product_barcodes table
-        Schema::dropIfExists('product_barcodes');
+        // 3. Final step: Decommission the main product_barcodes table
+        // We're keeping the table for now to avoid integrity constraint violations
+        // from any missed dependencies, as per user suggestion. 
+        // Logic-wise, it is no longer used by the application.
+        // Schema::dropIfExists('product_barcodes');
     }
 
     /**

@@ -47,8 +47,8 @@ export default function BatchCard({ batch, onDelete, onEdit }: BatchCardProps) {
     return parseFloat(String(value).replace(/,/g, ''));
   };
 
-  // Mother barcode (from product or batch)
-  const motherBarcode = batch.product?.barcode || batch.barcode?.barcode || batch.batch_number;
+  // Mother barcode (from batch, fallback to product or batch number)
+  const motherBarcode = batch.mother_barcode || batch.product?.barcode || batch.batch_number;
 
   // Convert Laravel batch to legacy format for existing components
   const legacyBatch = {

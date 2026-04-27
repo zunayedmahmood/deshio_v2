@@ -411,6 +411,7 @@ class LookupController extends Controller
         $batchInfo = [
             'id' => $batch->id,
             'batch_number' => $batch->batch_number,
+            'mother_barcode' => $batch->mother_barcode,
             'quantity' => $batch->quantity,
             'cost_price' => $batch->cost_price,
             'sell_price' => $batch->sell_price,

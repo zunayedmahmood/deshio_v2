@@ -433,3 +433,12 @@ stores have a property "online store" or something like that.
 
 when a social-commerce order is placed, the first store with "online store" true will be assigned to it.
 however, if it can't find something like that, leave it as is, and store-assignment page will handle it.
+
+
+### making skill library:
+
+this is our skill library that you made after this prompt:
+
+
+we faced this issue:
+the ai model doesn't always use 

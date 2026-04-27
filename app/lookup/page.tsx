@@ -2730,6 +2730,9 @@ export default function LookupPage() {
                               Batch: {batchData.batch.batch_number} <span className="text-gray-500 text-[10px]"> (ID: {batchData.batch.id})</span>
                             </p>
                             <p className="text-[10px] text-gray-600 dark:text-gray-400">
+                              Mother Barcode: <span className="font-bold text-blue-600 dark:text-blue-400">{(batchData.batch as any).mother_barcode || '—'}</span>
+                            </p>
+                            <p className="text-[10px] text-gray-600 dark:text-gray-400">
                               Product: <span className="font-semibold">{batchData.batch.product.name}</span>{' '}
                               {batchData.batch.product.sku ? `(${batchData.batch.product.sku})` : ''}
                             </p>
@@ -2800,13 +2803,47 @@ export default function LookupPage() {
                                   </tr>
                                 );
                               })}
-                              {(!batchData.barcodes || !batchData.barcodes.length) && (
-                                <tr>
-                                  <td colSpan={5} className="px-3 py-6 text-center text-xs text-gray-500 dark:text-gray-400">
-                                    No units found for this batch.
-                                  </td>
-                                </tr>
-                              )}
+                               {(!batchData.barcodes || !batchData.barcodes.length) && (
+                                  (batchData.batch as any).mother_barcode ? (
+                                    <tr>
+                                      <td className="px-2 py-2 font-medium text-black dark:text-white">{(batchData.batch as any).mother_barcode}</td>
+                                      <td className="px-2 py-2 text-gray-600 dark:text-gray-400">{batchData.store?.name || '—'}</td>
+                                      <td className="px-2 py-2">
+                                        <span className="text-[9px] px-2 py-0.5 rounded font-semibold uppercase bg-green-100 text-green-700 dark:bg-green-900/30">
+                                          Stock ({batchData.batch.quantity} units)
+                                        </span>
+                                      </td>
+                                      <td className="px-2 py-2">
+                                        <div className="flex flex-wrap gap-1">
+                                          <span className="text-[9px] px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">mother barcode</span>
+                                        </div>
+                                      </td>
+                                      <td className="px-2 py-2 text-right">
+                                        <BatchPrinter 
+                                          batch={{
+                                            id: batchData.batch.id,
+                                            productId: batchData.product.id,
+                                            quantity: batchData.batch.quantity,
+                                            costPrice: safeNum(batchData.batch.cost_price),
+                                            sellingPrice: safeNum(batchData.batch.sell_price),
+                                            baseCode: (batchData.batch as any).mother_barcode
+                                          }}
+                                          product={{
+                                            id: batchData.product.id,
+                                            name: batchData.product.name,
+                                            barcode: (batchData.batch as any).mother_barcode
+                                          }}
+                                        />
+                                      </td>
+                                    </tr>
+                                  ) : (
+                                    <tr>
+                                      <td colSpan={5} className="px-3 py-6 text-center text-xs text-gray-500 dark:text-gray-400">
+                                        No units found for this batch.
+                                      </td>
+                                    </tr>
+                                  )
+                                )}
                             </tbody>
                           </table>
                         </div>

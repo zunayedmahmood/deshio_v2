@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Product;
-use App\Models\ProductBarcode;
 use App\Models\ProductBatch;
 use Illuminate\Support\Facades\DB;
 
@@ -16,12 +15,13 @@ class MotherBarcodeSeeder extends Seeder
         $count = 0;
 
         foreach ($products as $product) {
-            // Try to get existing primary barcode
-            $primaryBarcode = ProductBarcode::where('product_id', $product->id)
+            // Try to get existing primary barcode using DB table directly
+            $primaryBarcode = DB::table('product_barcodes')
+                ->where('product_id', $product->id)
                 ->where('is_primary', true)
                 ->first();
             
-            $barcodeValue = $primaryBarcode ? $primaryBarcode->barcode : ProductBarcode::generateUniqueBarcode();
+            $barcodeValue = $primaryBarcode ? $primaryBarcode->barcode : Product::generateUniqueBarcode();
 
             // Update product
             $product->update(['barcode' => $barcodeValue]);
@@ -33,6 +33,6 @@ class MotherBarcodeSeeder extends Seeder
             $count++;
         }
 
-        $this->command->info(\"Generated mother barcodes for {$count} products.\");
+        $this->command->info("Generated mother barcodes for {$count} products.");
     }
 }

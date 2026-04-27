@@ -219,6 +219,7 @@ export default function PurchaseOrdersPage() {
       const price = toNumber(it?.unit_sell_price ?? pb?.sell_price ?? (isRole(['online-moderator']) ? 0 : it?.unit_cost) ?? 0);
 
       const fallbackCode =
+        pb?.mother_barcode ||
         it?.product?.barcode ||
         pb?.product?.barcode ||
         pb?.barcode?.barcode ||
