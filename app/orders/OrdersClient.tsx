@@ -1739,7 +1739,7 @@ export default function OrdersDashboard() {
   };
 
   const handleReturnSubmit = async (returnData: {
-    selectedProducts: Array<{ order_item_id: number; quantity: number; product_barcode_id?: number }>;
+    selectedProducts: Array<{ order_item_id: number; quantity: number }>;
     refundMethods: { cash: number; card: number; bkash: number; nagad: number; total: number };
     returnReason:
     | 'defective_product'
@@ -1768,7 +1768,6 @@ export default function OrdersDashboard() {
         items: returnData.selectedProducts.map((item) => ({
           order_item_id: item.order_item_id,
           quantity: item.quantity,
-          product_barcode_id: item.product_barcode_id,
         })),
         customer_notes: returnData.customerNotes || 'Return initiated from Orders dashboard',
       };
@@ -1820,7 +1819,7 @@ export default function OrdersDashboard() {
   };
 
   const handleExchangeSubmit = async (exchangeData: {
-    removedProducts: Array<{ order_item_id: number; quantity: number; product_barcode_id?: number }>;
+    removedProducts: Array<{ order_item_id: number; quantity: number }>;
     replacementProducts: Array<{
       product_id: number;
       batch_id: number;

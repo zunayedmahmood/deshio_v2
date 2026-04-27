@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\ProductBatch;
 use App\Models\ReservedProduct;
-use App\Models\ProductBarcode;
 use App\Models\Store;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -435,18 +434,8 @@ class OrderManagementController extends Controller
             $isDeducted = in_array($oldStatus, $deductedStatuses);
 
             foreach ($order->items as $item) {
-                // a. Handle Barcodes
-                if ($item->product_barcode_id) {
-                    $barcode = ProductBarcode::find($item->product_barcode_id);
-                    if ($barcode) {
-                        // Reset barcode status to be available again in the shop
-                        $barcode->update([
-                            'is_active' => true,
-                            'current_status' => 'in_shop',
-                            'location_updated_at' => now(),
-                        ]);
-                    }
-                }
+                // No longer resetting individual barcodes in mother barcode system
+
 
                 // b. Restore Physical Stock if it was deducted
                 if ($isDeducted) {
@@ -471,7 +460,7 @@ class OrderManagementController extends Controller
 
                 // Clear barcode/batch assignments from order item
                 $item->update([
-                    'product_barcode_id' => null,
+                    'mother_barcode' => null,
                     'product_batch_id' => null,
                 ]);
             }

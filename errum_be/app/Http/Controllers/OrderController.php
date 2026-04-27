@@ -4,12 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\Customer;
 use App\Models\Product;
 use App\Models\ProductBatch;
-use App\Models\Store;
 use App\Models\Employee;
-use App\Models\PaymentMethod;
+use App\Models\Store;
+use App\Models\Customer;
 use App\Models\Transaction;
 use App\Models\ReservedProduct;
 use App\Traits\DatabaseAgnosticSearch;
@@ -1725,8 +1724,8 @@ class OrderController extends Controller
         $validator = Validator::make($request->all(), [
             'fulfillments' => 'required|array|min:1',
             'fulfillments.*.order_item_id' => 'required|exists:order_items,id',
-            'fulfillments.*.barcodes' => 'required|array|min:1',
-            'fulfillments.*.barcodes.*' => 'required|string|exists:products,barcode',
+            'fulfillments.*.mother_barcode' => 'required|string',
+            'fulfillments.*.quantity' => 'required|integer|min:1',
         ]);
 
         if ($validator->fails()) {
@@ -1744,123 +1743,43 @@ class OrderController extends Controller
 
             foreach ($request->fulfillments as $fulfillment) {
                 $orderItem = OrderItem::where('order_id', $order->id)
+                    ->with('product')
                     ->find($fulfillment['order_item_id']);
 
                 if (!$orderItem) {
                     throw new \Exception("Order item {$fulfillment['order_item_id']} not found in this order");
                 }
 
-                $barcodes = $fulfillment['barcodes'];
+                $scannedBarcode = $fulfillment['mother_barcode'];
+                $scannedQty = (int) $fulfillment['quantity'];
                 
-                // Validate quantity matches
-                if (count($barcodes) !== $orderItem->quantity) {
-                    throw new \Exception("Item '{$orderItem->product_name}' requires {$orderItem->quantity} barcode(s), but " . count($barcodes) . " provided");
+                // Validate mother barcode matches either the product barcode or the batch barcode
+                $isValidBarcode = ($scannedBarcode === $orderItem->product->barcode) || 
+                                 ($orderItem->batch && $scannedBarcode === $orderItem->batch->mother_barcode);
+
+                if (!$isValidBarcode) {
+                    throw new \Exception("Barcode {$scannedBarcode} does not match product '{$orderItem->product_name}' (Expected: {$orderItem->product->barcode})");
                 }
 
-                // Validate all barcodes
-                $barcodeModels = [];
-                foreach ($barcodes as $barcodeValue) {
-                    // Start query for barcode
-                    $barcodeQuery = \App\Models\ProductBarcode::where('barcode', $barcodeValue)
-                        ->where('product_id', $orderItem->product_id);
-
-                    // Try to find the barcode
-                    $barcode = (clone $barcodeQuery)->where('batch_id', $orderItem->product_batch_id)->first();
-                    
-                    // If not found in specified batch, try finding it in ANY batch for this product
-                    if (!$barcode) {
-                        $barcode = $barcodeQuery->first();
-                    }
-
-                    if (!$barcode) {
-                        throw new \Exception("Barcode {$barcodeValue} not found for product {$orderItem->product_name}");
-                    }
-
-                    // Check if barcode is already sold
-                    if (in_array($barcode->current_status, ['sold', 'with_customer'])) {
-                        throw new \Exception("Barcode {$barcodeValue} has already been sold");
-                    }
-
-                    if ($barcode->is_defective) {
-                        throw new \Exception("Barcode {$barcodeValue} is marked as defective");
-                    }
-
-                    // Verify barcode belongs to correct store
-                    if ($barcode->batch && $barcode->batch->store_id != $order->store_id) {
-                        throw new \Exception("Barcode {$barcodeValue} belongs to Store " . ($barcode->batch->store_id ?? 'Unknown') . ". This order must be fulfilled from Store " . $order->store_id);
-                    }
-
-                    $barcodeModels[] = $barcode;
+                // Validate quantity matches order item quantity
+                if ($scannedQty !== $orderItem->quantity) {
+                    throw new \Exception("Item '{$orderItem->product_name}' requires {$orderItem->quantity} units, but {$scannedQty} provided");
                 }
+                
+                $orderItem->update([
+                    'mother_barcode' => $scannedBarcode
+                ]);
 
-                // For single quantity items, assign the barcode and its batch directly
-                if ($orderItem->quantity == 1) {
-                    $orderItem->update([
-                        'product_barcode_id' => $barcodeModels[0]->id,
-                        'product_batch_id' => $barcodeModels[0]->batch_id // Sync batch ID with physical unit
-                    ]);
-                    
-                    $fulfilledItems[] = [
-                        'item_id' => $orderItem->id,
-                        'product_name' => $orderItem->product_name,
-                        'barcodes' => [$barcodeModels[0]->barcode]
-                    ];
-                } else {
-                    // For multiple quantity items, we need to split into individual items
-                    // This maintains proper barcode tracking
-                    $originalQuantity = $orderItem->quantity;
-                    $unitPrice = $orderItem->unit_price;
-                    $discountPerUnit = $orderItem->discount_amount / $originalQuantity;
-                    $taxPerUnit = $orderItem->tax_amount / $originalQuantity;
-                    $cogsPerUnit = ($orderItem->cogs ?? 0) / $originalQuantity;
-
-                    // Update first item with first barcode and its batch
-                    $orderItem->update([
-                        'quantity' => 1,
-                        'product_barcode_id' => $barcodeModels[0]->id,
-                        'product_batch_id' => $barcodeModels[0]->batch_id, // Sync batch ID
-                        'discount_amount' => round($discountPerUnit, 2),
-                        'tax_amount' => round($taxPerUnit, 2),
-                        'cogs' => round($cogsPerUnit, 2),
-                        'total_amount' => round($unitPrice - $discountPerUnit + $taxPerUnit, 2),
-                    ]);
-
-                    $fulfilledBarcodes = [$barcodeModels[0]->barcode];
-
-                    // Create new items for remaining barcodes
-                    for ($i = 1; $i < count($barcodeModels); $i++) {
-                        OrderItem::create([
-                            'order_id' => $order->id,
-                            'product_id' => $orderItem->product_id,
-                            'product_batch_id' => $barcodeModels[$i]->batch_id, // Use actual batch ID of the barcode
-                            'product_barcode_id' => $barcodeModels[$i]->id,
-                            'product_name' => $orderItem->product_name,
-                            'product_sku' => $orderItem->product_sku,
-                            'quantity' => 1,
-                            'unit_price' => $unitPrice,
-                            'discount_amount' => round($discountPerUnit, 2),
-                            'tax_amount' => round($taxPerUnit, 2),
-                            'cogs' => round($cogsPerUnit, 2),
-                            'total_amount' => round($unitPrice - $discountPerUnit + $taxPerUnit, 2),
-                        ]);
-
-                        $fulfilledBarcodes[] = $barcodeModels[$i]->barcode;
-                    }
-
-                    $fulfilledItems[] = [
-                        'item_id' => $orderItem->id,
-                        'product_name' => $orderItem->product_name,
-                        'original_quantity' => $originalQuantity,
-                        'barcodes' => $fulfilledBarcodes
-                    ];
-                }
+                $fulfilledItems[] = [
+                    'item_id' => $orderItem->id,
+                    'product_name' => $orderItem->product_name,
+                    'quantity' => $scannedQty,
+                    'mother_barcode' => $scannedBarcode
+                ];
             }
 
             // Mark order as fulfilled
             $order->fulfill($employee);
-
-            // Recalculate totals (in case of splitting)
-            $order->calculateTotals();
 
             DB::commit();
 
@@ -1871,12 +1790,11 @@ class OrderController extends Controller
                     'order_number' => $order->order_number,
                     'fulfillment_status' => $order->fulfillment_status,
                     'fulfilled_at' => $order->fulfilled_at->format('Y-m-d H:i:s'),
-                    'fulfilled_by' => $order->fulfilledBy->name,
+                    'fulfilled_by' => $order->fulfilledBy->name ?? 'System',
                     'fulfilled_items' => $fulfilledItems,
                     'next_step' => 'Create shipment for delivery',
                 ]
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([

@@ -70,30 +70,6 @@ class ProductDispatchItem extends Model
         return $this->belongsTo(ProductBatch::class, 'product_batch_id');
     }
 
-    /**
-     * NEW: Relationship to specific barcode/unit being dispatched
-     */
-    public function barcode(): BelongsTo
-    {
-        return $this->belongsTo(ProductBarcode::class, 'product_barcode_id');
-    }
-
-    /**
-     * Relationship to scanned barcodes for this dispatch item
-     */
-    public function scannedBarcodes()
-    {
-        return $this->belongsToMany(
-            ProductBarcode::class,
-            'product_dispatch_item_barcodes',
-            'product_dispatch_item_id',
-            'product_barcode_id'
-        )
-        ->using(ProductDispatchItemBarcode::class)
-        ->withPivot(['scanned_at', 'scanned_by'])
-        ->withTimestamps();
-    }
-
     public function product()
     {
         return $this->batch->product();

@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\ProductBarcode;
+use App\Models\Product;
 use App\Models\ProductBatch;
 use App\Models\Employee;
 use App\Models\ReservedProduct;
@@ -50,10 +50,6 @@ class StoreFulfillmentController extends Controller
                 ->with([
                     'customer',
                     'items.product.images',
-                    'items.product.barcodes' => function($query) use ($employee) {
-                        $query->where('current_store_id', $employee->store_id)
-                              ->where('current_status', 'in_shop');
-                    },
                 ])
                 ->orderBy('created_at', 'asc')
                 ->paginate($perPage);
@@ -62,7 +58,7 @@ class StoreFulfillmentController extends Controller
             foreach ($orders as $order) {
                 $totalItems = $order->items->count();
                 $fulfilledItems = $order->items->filter(function($item) {
-                    return !is_null($item->product_barcode_id);
+                    return !is_null($item->mother_barcode);
                 })->count();
 
                 $order->fulfillment_progress = [
@@ -75,8 +71,8 @@ class StoreFulfillmentController extends Controller
 
                 // Add item scan status
                 $order->items->each(function($item) {
-                    $item->scan_status = $item->product_barcode_id ? 'scanned' : 'pending';
-                    $item->available_barcodes_count = $item->product->barcodes->count();
+                    $item->scan_status = ($item->mother_barcode) ? 'scanned' : 'pending';
+                    $item->available_barcodes_count = 1; // Mother barcode system
                 });
             }
 
@@ -132,24 +128,20 @@ class StoreFulfillmentController extends Controller
                 ->with([
                     'customer',
                     'items.product.images',
-                    'items.product.barcodes' => function($query) use ($employee) {
-                        $query->where('current_store_id', $employee->store_id)
-                              ->where('current_status', 'in_shop');
-                    },
-                    'items.barcode', // Already scanned barcode
+                    'items.batch', // Already scanned batch
                 ])
                 ->firstOrFail();
 
             // Add fulfillment details for each item
             $order->items->each(function($item) use ($employee) {
-                $item->scan_status = $item->product_barcode_id ? 'scanned' : 'pending';
-                $item->scanned_barcode = $item->barcode;
-                $item->available_barcodes = $item->product->barcodes;
-                $item->available_count = $item->product->barcodes->count();
+                $item->scan_status = ($item->mother_barcode) ? 'scanned' : 'pending';
+                $item->scanned_barcode = $item->mother_barcode;
+                $item->available_barcodes = [$item->product->barcode];
+                $item->available_count = 1;
             });
 
             $totalItems = $order->items->count();
-            $fulfilledItems = $order->items->filter(fn($item) => !is_null($item->product_barcode_id))->count();
+            $fulfilledItems = $order->items->filter(fn($item) => !is_null($item->mother_barcode))->count();
 
             return response()->json([
                 'success' => true,
@@ -208,38 +200,48 @@ class StoreFulfillmentController extends Controller
                 ->firstOrFail();
 
             // Check if item already scanned
-            if ($orderItem->product_barcode_id) {
+            if ($orderItem->mother_barcode) {
                 return response()->json([
                     'success' => false,
                     'message' => 'This order item has already been scanned',
                     'data' => [
-                        'scanned_barcode' => $orderItem->barcode->barcode ?? null,
+                        'scanned_barcode' => $orderItem->mother_barcode,
                     ],
                 ], 400);
             }
 
-            // 1. Find and validate barcode
-            $barcode = ProductBarcode::where('barcode', $request->barcode)
-                ->where('current_store_id', $employee->store_id)
-                ->where('current_status', 'in_shop')
-                ->with(['product', 'batch'])
-                ->first();
-
-            if (!$barcode) {
+            // 1. Find product by mother barcode and check store availability via batches
+            $product = Product::where('barcode', $request->barcode)->first();
+            
+            if (!$product) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Barcode not found or not available in this store',
+                    'message' => 'Barcode not found in system',
+                ], 404);
+            }
+
+            $availableBatch = ProductBatch::where('product_id', $product->id)
+                ->where('store_id', $employee->store_id)
+                ->where('availability', true)
+                ->where('quantity', '>', 0)
+                ->orderBy('created_at', 'asc')
+                ->first();
+
+            if (!$availableBatch) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Product not available in this store',
                 ], 404);
             }
 
             // 2. Validate barcode belongs to the correct product
-            if ($barcode->product_id !== $orderItem->product_id) {
+            if ($product->id !== $orderItem->product_id) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Scanned barcode does not match the order item product',
                     'data' => [
                         'expected_product' => $orderItem->product->name,
-                        'scanned_product' => $barcode->product->name,
+                        'scanned_product' => $product->name,
                     ],
                 ], 400);
             }
@@ -254,16 +256,16 @@ class StoreFulfillmentController extends Controller
                 // 3. PHYSICAL STOCK DEDUCTION REMOVED
                 // Stock will be deducted centralizing in OrderController@complete
                 // Reservations are also released in OrderController@complete to ensure available_stock sync
-                Log::info('Barcode scanned, stock deduction deferred to completion', [
+                Log::info('Mother barcode scanned, stock deduction deferred to completion', [
                     'order_id' => $order->id,
-                    'product_id' => $barcode->product_id,
-                    'barcode' => $barcode->barcode,
+                    'product_id' => $product->id,
+                    'barcode' => $request->barcode,
                 ]);
 
-                // 5. Update order item with scanned barcode and its batch
+                // 5. Update order item with mother barcode and the first available batch
                 $orderItem->update([
-                    'product_barcode_id' => $barcode->id,
-                    'product_batch_id' => $barcode->batch_id, // Sync with the actual physical batch
+                    'mother_barcode' => $request->barcode,
+                    'product_batch_id' => $availableBatch->id,
                 ]);
 
                 // Update order status to picking if this is first scan
@@ -272,7 +274,7 @@ class StoreFulfillmentController extends Controller
                 }
 
                 // Check if all items are scanned
-                $allItemsScanned = $order->items()->whereNull('product_barcode_id')->count() === 0;
+                $allItemsScanned = $order->items()->whereNull('mother_barcode')->count() === 0;
                 
                 if ($allItemsScanned) {
                     $order->update([
@@ -285,10 +287,10 @@ class StoreFulfillmentController extends Controller
                 DB::commit();
 
                 // Reload relationships
-                $orderItem->load('barcode', 'batch');
+                $orderItem->load('batch');
                 $order->load('items');
 
-                $fulfilledItems = $order->items->filter(fn($item) => !is_null($item->product_barcode_id))->count();
+                $fulfilledItems = $order->items->filter(fn($item) => !is_null($item->mother_barcode))->count();
                 $totalItems = $order->items->count();
 
                 return response()->json([
@@ -296,7 +298,7 @@ class StoreFulfillmentController extends Controller
                     'message' => 'Barcode scanned successfully',
                     'data' => [
                         'order_item' => $orderItem,
-                        'scanned_barcode' => $barcode,
+                        'scanned_barcode' => $request->barcode,
                         'order_status' => $order->status,
                         'fulfillment_progress' => [
                             'fulfilled_items' => $fulfilledItems,
@@ -337,7 +339,7 @@ class StoreFulfillmentController extends Controller
 
             DB::beginTransaction();
             try {
-                $unscannedItems = $order->items()->whereNull('product_barcode_id')->get();
+                $unscannedItems = $order->items()->whereNull('mother_barcode')->get();
 
                 // Stock deduction and reservation release moved to OrderController@complete
                 Log::info("Order status update to ready_for_shipment, deduction deferred to completion", [

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\Category;
-use App\Models\ProductBarcode;
 use App\Models\ReservedProduct;
 use App\Traits\DatabaseAgnosticSearch;
 use Illuminate\Http\Request;
@@ -437,7 +436,7 @@ class EcommerceCatalogController extends Controller
     {
         try {
             // Find product by ID
-            $product = Product::with(['images', 'category', 'barcodes', 'batches' => function ($q) {
+            $product = Product::with(['images', 'category', 'batches' => function ($q) {
                     $q->orderBy('sell_price', 'asc');
                 }])
                 ->where('is_archived', false)
@@ -1045,15 +1044,15 @@ class EcommerceCatalogController extends Controller
     public function findStockByBarcode(Request $request, $barcode)
     {
         try {
-            // 1. Find the barcode record
-            $barcodeRecord = ProductBarcode::where('barcode', $barcode)
+            // 1. Find the batch by mother_barcode
+            $batchRecord = ProductBatch::where('mother_barcode', $barcode)
                 ->where('is_active', true)
                 ->first();
 
-            if (!$barcodeRecord) {
+            if (!$batchRecord) {
                 return response()->json([
                     'success' => false,
-                    'message' => "Barcode {$barcode} not found or inactive.",
+                    'message' => "Mother Barcode {$barcode} not found or inactive.",
                 ], 404);
             }
 
@@ -1065,7 +1064,7 @@ class EcommerceCatalogController extends Controller
                     $q->where('is_active', true);
                 }
             ])
-            ->where('id', $barcodeRecord->product_id)
+            ->where('id', $batchRecord->product_id)
             ->where('is_archived', false)
             ->first();
 

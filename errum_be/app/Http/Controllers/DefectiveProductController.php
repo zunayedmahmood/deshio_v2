@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\DefectiveProduct;
-use App\Models\ProductBarcode;
 use App\Models\Product;
 use App\Models\Order;
 use App\Models\Vendor;

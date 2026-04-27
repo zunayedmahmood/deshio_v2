@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\ProductBatch;
-use App\Models\ProductBarcode;
 use App\Models\Store;
 use App\Traits\DatabaseAgnosticSearch;
 use Illuminate\Http\Request;
@@ -22,7 +21,7 @@ class ProductBatchController extends Controller
      */
     public function index(Request $request)
     {
-        $query = ProductBatch::with(['product', 'store', 'barcode']);
+        $query = ProductBatch::with(['product', 'store']);
 
         // Filter by product
         if ($request->filled('product_id')) {
@@ -56,11 +55,9 @@ class ProductBatchController extends Controller
             }
         }
 
-        // Filter by barcode
+        // Filter by barcode (Mother Barcode)
         if ($request->filled('barcode')) {
-            $query->whereHas('barcode', function ($q) use ($request) {
-                $q->where('barcode', $request->barcode);
-            });
+            $query->where('mother_barcode', $request->barcode);
         }
 
         // Filter expiring soon
@@ -122,8 +119,7 @@ class ProductBatchController extends Controller
         $batch = ProductBatch::with([
             'product.category',
             'product.vendor',
-            'store',
-            'barcode'
+            'store'
         ])->find($id);
 
         if (!$batch) {
@@ -287,7 +283,7 @@ class ProductBatchController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Batch updated successfully',
-            'data' => $this->formatBatchResponse($batch->fresh(['product', 'store', 'barcode']), true)
+            'data' => $this->formatBatchResponse($batch->fresh(['product', 'store']), true)
         ]);
     }
 
@@ -351,7 +347,7 @@ class ProductBatchController extends Controller
             'success' => true,
             'message' => 'Stock adjusted successfully',
             'data' => [
-                'batch' => $this->formatBatchResponse($batch->fresh(['product', 'store', 'barcode']), true),
+                'batch' => $this->formatBatchResponse($batch->fresh(['product', 'store']), true),
                 'old_quantity' => $oldQuantity,
                 'new_quantity' => $newQuantity,
                 'adjustment' => $request->adjustment
@@ -369,7 +365,7 @@ class ProductBatchController extends Controller
         $threshold = $request->input('threshold', 10);
         $storeId = $request->input('store_id');
 
-        $query = ProductBatch::with(['product', 'store', 'barcode'])
+        $query = ProductBatch::with(['product', 'store'])
             ->where('quantity', '<=', $threshold)
             ->where('quantity', '>', 0)
             ->where('is_active', true);
@@ -402,7 +398,7 @@ class ProductBatchController extends Controller
         $days = $request->input('days', 30);
         $storeId = $request->input('store_id');
 
-        $query = ProductBatch::with(['product', 'store', 'barcode'])
+        $query = ProductBatch::with(['product', 'store'])
             ->expiringSoon($days)
             ->where('is_active', true);
 
@@ -433,7 +429,7 @@ class ProductBatchController extends Controller
     {
         $storeId = $request->input('store_id');
 
-        $query = ProductBatch::with(['product', 'store', 'barcode'])
+        $query = ProductBatch::with(['product', 'store'])
             ->expired()
             ->where('is_active', true);
 

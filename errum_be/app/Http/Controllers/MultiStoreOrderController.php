@@ -533,7 +533,7 @@ class MultiStoreOrderController extends Controller
                         'product_sku' => $item->product_sku,
                         'quantity' => $item->quantity,
                         'batch_assigned' => $item->product_batch_id !== null,
-                        'barcode_assigned' => $item->product_barcode_id !== null,
+                        'barcode_assigned' => $item->mother_barcode !== null,
                     ])->toArray(),
                     'items_count' => $items->count(),
                     'is_partial_fulfillment' => $order->items->count() > $items->count(),

@@ -45,7 +45,7 @@ class DefectiveProductObserver
                 'event'               => 'write_off',
                 'defective_product_id'=> $defectiveProduct->id,
                 'product_id'          => $defectiveProduct->product_id,
-                'product_barcode_id'  => $defectiveProduct->product_barcode_id,
+                'mother_barcode'      => $defectiveProduct->mother_barcode,
                 'severity'            => $defectiveProduct->severity,
                 'defect_type'         => $defectiveProduct->defect_type,
                 'original_price'      => $lossAmount,

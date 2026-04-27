@@ -394,18 +394,15 @@ class Shipment extends Model
             return collect();
         }
 
-        return ProductBarcode::whereIn('barcode', $this->package_barcodes)
-                            ->with('product')
-                            ->get()
-                            ->pluck('product')
-                            ->unique('id');
+        return Product::whereIn('barcode', $this->package_barcodes)
+                            ->get();
     }
 
     public function scanPackageBarcode($barcode)
     {
-        $productBarcode = ProductBarcode::where('barcode', $barcode)->first();
+        $product = Product::where('barcode', $barcode)->first();
 
-        if (!$productBarcode) {
+        if (!$product) {
             return [
                 'found' => false,
                 'message' => 'Barcode not found in system'
@@ -418,16 +415,14 @@ class Shipment extends Model
                 'found' => true,
                 'in_shipment' => false,
                 'message' => 'Barcode found but not in this shipment',
-                'product' => $productBarcode->product,
-                'current_location' => $productBarcode->getCurrentLocation()
+                'product' => $product,
             ];
         }
 
         return [
             'found' => true,
             'in_shipment' => true,
-            'product' => $productBarcode->product,
-            'current_location' => $productBarcode->getCurrentLocation(),
+            'product' => $product,
             'shipment_status' => $this->status
         ];
     }
@@ -657,11 +652,15 @@ class Shipment extends Model
             'country' => $customer->country ?? 'Bangladesh',
         ];
 
-        // Collect package barcodes from order items
+        // Collect mother barcodes from order items
         $packageBarcodes = [];
         foreach ($order->items as $item) {
-            if ($item->batch && $item->batch->barcode) {
-                $packageBarcodes[] = $item->batch->barcode->barcode;
+            if ($item->mother_barcode) {
+                // Add mother barcode once for each unit? Or just once per product?
+                // Usually once per product/item unless we want to track total quantity scanned.
+                $packageBarcodes[] = $item->mother_barcode;
+            } elseif ($item->product && $item->product->barcode) {
+                $packageBarcodes[] = $item->product->barcode;
             }
         }
 

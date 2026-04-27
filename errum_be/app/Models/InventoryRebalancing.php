@@ -215,7 +215,6 @@ class InventoryRebalancing extends Model
         // Record the movement
         ProductMovement::recordMovement([
             'product_batch_id' => $this->source_batch_id,
-            'product_barcode_id' => $this->sourceBatch->barcode_id,
             'from_store_id' => $this->source_store_id,
             'to_store_id' => $this->destination_store_id,
             'movement_type' => 'transfer',
@@ -251,7 +250,6 @@ class InventoryRebalancing extends Model
             'manufactured_date' => $sourceBatch->manufactured_date,
             'expiry_date' => $sourceBatch->expiry_date,
             'store_id' => $this->destination_store_id,
-            'barcode_id' => $sourceBatch->barcode_id,
             'notes' => 'Rebalanced from store ' . $this->source_store_id,
             'is_active' => true,
         ]);

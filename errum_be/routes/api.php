@@ -1,48 +1,79 @@
 <?php
 
-use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AccountingReportController;
+use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\AdCampaignController;
+use App\Http\Controllers\AdCampaignReportController;
+use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BusinessAnalyticsController;
+use App\Http\Controllers\BusinessHistoryController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\CashSheetController;
+use App\Http\Controllers\CategoriesController;
+use App\Http\Controllers\CollectionController;
+use App\Http\Controllers\ContactMessageController;
+use App\Http\Controllers\CustomerAddressController;
+use App\Http\Controllers\CustomerAuthController;
+use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\CustomerProfileController;
+use App\Http\Controllers\DailyBranchReportController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DefectiveProductController;
+use App\Http\Controllers\EcommerceCatalogController;
+use App\Http\Controllers\EcommerceOrderController;
+use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\EmployeePanelController;
+use App\Http\Controllers\ExchangeController;
+use App\Http\Controllers\ExpenseCategoryController;
+use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\FieldController;
+use App\Http\Controllers\GuestCheckoutController;
+use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\InventoryRebalancingController;
+use App\Http\Controllers\LookupController;
+use App\Http\Controllers\MultiStoreOrderController;
+use App\Http\Controllers\MultiStoreShipmentController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\OrderManagementController;
 use App\Http\Controllers\OrderPaymentController;
+use App\Http\Controllers\PathaoStoreController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PayrollController;
+use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\PreOrderController;
+use App\Http\Controllers\PriceController;
+use App\Http\Controllers\ProductBatchController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductDispatchController;
+use App\Http\Controllers\ProductImageController;
+use App\Http\Controllers\ProductReturnController;
+use App\Http\Controllers\ProductSearchController;
+use App\Http\Controllers\ProductVariantController;
+use App\Http\Controllers\PromotionController;
+use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\RecycleBinController;
+use App\Http\Controllers\RefundController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReportingController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SalesTargetController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ServiceOrderController;
-use App\Http\Controllers\PurchaseOrderController;
-use App\Http\Controllers\VendorPaymentController;
-use App\Http\Controllers\ProductController;
-use App\Http\Controllers\ProductSearchController;
-use App\Http\Controllers\ReportingController;
-use App\Http\Controllers\ContactMessageController;
-use App\Http\Controllers\ActivityLogController;
-use App\Http\Controllers\ProductImageController;
-use App\Http\Controllers\ProductBatchController;
-use App\Http\Controllers\InventoryRebalancingController;
-use App\Http\Controllers\FieldController;
-use App\Http\Controllers\RecycleBinController;
-use App\Http\Controllers\CustomerController;
-use App\Http\Controllers\ExpenseController;
-use App\Http\Controllers\ExpenseCategoryController;
-use App\Http\Controllers\RoleController;
-use App\Http\Controllers\PermissionController;
-use App\Http\Controllers\ReportController;
-use App\Http\Controllers\AccountController;
-use App\Http\Controllers\TransactionController;
-use App\Http\Controllers\PromotionController;
-use App\Http\Controllers\ProductVariantController;
-use App\Http\Controllers\CollectionController;
-use App\Http\Controllers\PriceController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\BusinessAnalyticsController;
+use App\Http\Controllers\ShipmentController;
+use App\Http\Controllers\SslcommerzController;
 use App\Http\Controllers\StockIntelligenceController;
+use App\Http\Controllers\StoreController;
+use App\Http\Controllers\StoreFulfillmentController;
+use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\VendorController;
+use App\Http\Controllers\VendorPaymentController;
+use App\Http\Controllers\WishlistController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 
-
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\EmployeeController;
-use App\Http\Controllers\VendorController;
-use App\Http\Controllers\StoreController;
-use App\Http\Controllers\CategoriesController;
-use App\Http\Controllers\SslcommerzController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -63,8 +94,8 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 // Phone-based checkout for simplified customer experience
 // ============================================
 
-Route::post('/guest-checkout', [\App\Http\Controllers\GuestCheckoutController::class, 'checkout']);
-Route::post('/guest-orders/by-phone', [\App\Http\Controllers\GuestCheckoutController::class, 'getOrdersByPhone']);
+Route::post('/guest-checkout', [GuestCheckoutController::class, 'checkout']);
+Route::post('/guest-orders/by-phone', [GuestCheckoutController::class, 'getOrdersByPhone']);
 
 // ============================================
 // PUBLIC CUSTOMER REGISTRATION
@@ -80,20 +111,20 @@ Route::post('/customer-registration', [CustomerController::class, 'publicRegistr
 
 // Customer Auth Routes (Public)
 Route::prefix('customer-auth')->group(function () {
-    Route::post('/register', [\App\Http\Controllers\CustomerAuthController::class, 'register']);
-    Route::post('/login', [\App\Http\Controllers\CustomerAuthController::class, 'login']);
-    Route::post('/password/reset-request', [\App\Http\Controllers\CustomerAuthController::class, 'sendPasswordResetEmail']);
-    Route::post('/password/reset', [\App\Http\Controllers\CustomerAuthController::class, 'resetPassword']);
-    Route::post('/email/verify', [\App\Http\Controllers\CustomerAuthController::class, 'verifyEmail']);
-    Route::post('/email/resend', [\App\Http\Controllers\CustomerAuthController::class, 'resendEmailVerification']);
+    Route::post('/register', [CustomerAuthController::class, 'register']);
+    Route::post('/login', [CustomerAuthController::class, 'login']);
+    Route::post('/password/reset-request', [CustomerAuthController::class, 'sendPasswordResetEmail']);
+    Route::post('/password/reset', [CustomerAuthController::class, 'resetPassword']);
+    Route::post('/email/verify', [CustomerAuthController::class, 'verifyEmail']);
+    Route::post('/email/resend', [CustomerAuthController::class, 'resendEmailVerification']);
 });
 
 // Protected Customer Routes
 Route::middleware('auth:customer')->prefix('customer-auth')->group(function () {
-    Route::post('/logout', [\App\Http\Controllers\CustomerAuthController::class, 'logout']);
-    Route::post('/refresh', [\App\Http\Controllers\CustomerAuthController::class, 'refresh']);
-    Route::get('/me', [\App\Http\Controllers\CustomerAuthController::class, 'me']);
-    Route::post('/password/change', [\App\Http\Controllers\CustomerAuthController::class, 'changePassword']);
+    Route::post('/logout', [CustomerAuthController::class, 'logout']);
+    Route::post('/refresh', [CustomerAuthController::class, 'refresh']);
+    Route::get('/me', [CustomerAuthController::class, 'me']);
+    Route::post('/password/change', [CustomerAuthController::class, 'changePassword']);
 });
 
 // ============================================
@@ -102,16 +133,16 @@ Route::middleware('auth:customer')->prefix('customer-auth')->group(function () {
 // ============================================
 
 Route::middleware('auth:customer')->prefix('cart')->group(function () {
-    Route::get('/', [\App\Http\Controllers\CartController::class, 'index']);
-    Route::post('/add', [\App\Http\Controllers\CartController::class, 'addToCart']);
-    Route::put('/update/{cartItemId}', [\App\Http\Controllers\CartController::class, 'updateQuantity']);
-    Route::delete('/remove/{cartItemId}', [\App\Http\Controllers\CartController::class, 'removeFromCart']);
-    Route::delete('/clear', [\App\Http\Controllers\CartController::class, 'clearCart']);
-    Route::post('/save-for-later/{cartItemId}', [\App\Http\Controllers\CartController::class, 'saveForLater']);
-    Route::post('/move-to-cart/{cartItemId}', [\App\Http\Controllers\CartController::class, 'moveToCart']);
-    Route::get('/saved-items', [\App\Http\Controllers\CartController::class, 'getSavedItems']);
-    Route::get('/summary', [\App\Http\Controllers\CartController::class, 'getCartSummary']);
-    Route::post('/validate', [\App\Http\Controllers\CartController::class, 'validateCart']);
+    Route::get('/', [CartController::class, 'index']);
+    Route::post('/add', [CartController::class, 'addToCart']);
+    Route::put('/update/{cartItemId}', [CartController::class, 'updateQuantity']);
+    Route::delete('/remove/{cartItemId}', [CartController::class, 'removeFromCart']);
+    Route::delete('/clear', [CartController::class, 'clearCart']);
+    Route::post('/save-for-later/{cartItemId}', [CartController::class, 'saveForLater']);
+    Route::post('/move-to-cart/{cartItemId}', [CartController::class, 'moveToCart']);
+    Route::get('/saved-items', [CartController::class, 'getSavedItems']);
+    Route::get('/summary', [CartController::class, 'getCartSummary']);
+    Route::post('/validate', [CartController::class, 'validateCart']);
 });
 
 // ============================================
@@ -120,14 +151,14 @@ Route::middleware('auth:customer')->prefix('cart')->group(function () {
 // ============================================
 
 Route::middleware('auth:customer')->prefix('wishlist')->group(function () {
-    Route::get('/', [\App\Http\Controllers\WishlistController::class, 'index']);
-    Route::post('/add', [\App\Http\Controllers\WishlistController::class, 'addToWishlist']);
-    Route::delete('/remove/{wishlistItemId}', [\App\Http\Controllers\WishlistController::class, 'removeFromWishlist']);
-    Route::post('/move-to-cart/{wishlistItemId}', [\App\Http\Controllers\WishlistController::class, 'moveToCart']);
-    Route::delete('/clear', [\App\Http\Controllers\WishlistController::class, 'clearWishlist']);
-    Route::get('/stats', [\App\Http\Controllers\WishlistController::class, 'getWishlistStats']);
-    Route::post('/manage-name', [\App\Http\Controllers\WishlistController::class, 'manageWishlistName']);
-    Route::post('/move-all-to-cart', [\App\Http\Controllers\WishlistController::class, 'moveAllToCart']);
+    Route::get('/', [WishlistController::class, 'index']);
+    Route::post('/add', [WishlistController::class, 'addToWishlist']);
+    Route::delete('/remove/{wishlistItemId}', [WishlistController::class, 'removeFromWishlist']);
+    Route::post('/move-to-cart/{wishlistItemId}', [WishlistController::class, 'moveToCart']);
+    Route::delete('/clear', [WishlistController::class, 'clearWishlist']);
+    Route::get('/stats', [WishlistController::class, 'getWishlistStats']);
+    Route::post('/manage-name', [WishlistController::class, 'manageWishlistName']);
+    Route::post('/move-all-to-cart', [WishlistController::class, 'moveAllToCart']);
 });
 
 // ============================================
@@ -148,15 +179,15 @@ Route::prefix('promotions')->group(function () {
 // ============================================
 
 Route::prefix('catalog')->group(function () {
-    Route::get('/products', [\App\Http\Controllers\EcommerceCatalogController::class, 'getProducts']);
-    Route::get('/products/{identifier}', [\App\Http\Controllers\EcommerceCatalogController::class, 'getProduct']);
-    Route::get('/categories', [\App\Http\Controllers\EcommerceCatalogController::class, 'getCategories']);
-    Route::get('/featured-products', [\App\Http\Controllers\EcommerceCatalogController::class, 'getFeaturedProducts']);
-    Route::get('/new-arrivals', [\App\Http\Controllers\EcommerceCatalogController::class, 'getNewArrivals']);
-    Route::get('/suggested-products', [\App\Http\Controllers\EcommerceCatalogController::class, 'getSuggestedProducts']);
-    Route::get('/search', [\App\Http\Controllers\EcommerceCatalogController::class, 'searchProducts']);
-    Route::get('/price-range', [\App\Http\Controllers\EcommerceCatalogController::class, 'getPriceRange']);
-    Route::get('/find-stock/{barcode}', [\App\Http\Controllers\EcommerceCatalogController::class, 'findStockByBarcode']);
+    Route::get('/products', [EcommerceCatalogController::class, 'getProducts']);
+    Route::get('/products/{identifier}', [EcommerceCatalogController::class, 'getProduct']);
+    Route::get('/categories', [EcommerceCatalogController::class, 'getCategories']);
+    Route::get('/featured-products', [EcommerceCatalogController::class, 'getFeaturedProducts']);
+    Route::get('/new-arrivals', [EcommerceCatalogController::class, 'getNewArrivals']);
+    Route::get('/suggested-products', [EcommerceCatalogController::class, 'getSuggestedProducts']);
+    Route::get('/search', [EcommerceCatalogController::class, 'searchProducts']);
+    Route::get('/price-range', [EcommerceCatalogController::class, 'getPriceRange']);
+    Route::get('/find-stock/{barcode}', [EcommerceCatalogController::class, 'findStockByBarcode']);
 
     // Global inventory overview across all stores (Public)
     Route::prefix('inventory')->group(function () {
@@ -178,13 +209,13 @@ Route::prefix('catalog')->group(function () {
 // ============================================
 
 Route::middleware('auth:customer')->prefix('profile')->group(function () {
-    Route::get('/', [\App\Http\Controllers\CustomerProfileController::class, 'getProfile']);
-    Route::put('/update', [\App\Http\Controllers\CustomerProfileController::class, 'updateProfile']);
-    Route::get('/orders', [\App\Http\Controllers\CustomerProfileController::class, 'getOrderHistory']);
-    Route::put('/communication-preferences', [\App\Http\Controllers\CustomerProfileController::class, 'updateCommunicationPreferences']);
-    Route::put('/shopping-preferences', [\App\Http\Controllers\CustomerProfileController::class, 'updateShoppingPreferences']);
-    Route::get('/stats', [\App\Http\Controllers\CustomerProfileController::class, 'getCustomerStats']);
-    Route::post('/deactivate', [\App\Http\Controllers\CustomerProfileController::class, 'deactivateAccount']);
+    Route::get('/', [CustomerProfileController::class, 'getProfile']);
+    Route::put('/update', [CustomerProfileController::class, 'updateProfile']);
+    Route::get('/orders', [CustomerProfileController::class, 'getOrderHistory']);
+    Route::put('/communication-preferences', [CustomerProfileController::class, 'updateCommunicationPreferences']);
+    Route::put('/shopping-preferences', [CustomerProfileController::class, 'updateShoppingPreferences']);
+    Route::get('/stats', [CustomerProfileController::class, 'getCustomerStats']);
+    Route::post('/deactivate', [CustomerProfileController::class, 'deactivateAccount']);
 });
 
 // ============================================
@@ -210,25 +241,25 @@ Route::controller(SslcommerzController::class)
 Route::middleware('auth:customer')->prefix('customer')->group(function () {
     Route::prefix('addresses')->group(function () {
         // List all addresses for customer
-        Route::get('/', [\App\Http\Controllers\CustomerAddressController::class, 'index']);
+        Route::get('/', [CustomerAddressController::class, 'index']);
         
         // Create new address
-        Route::post('/', [\App\Http\Controllers\CustomerAddressController::class, 'store']);
+        Route::post('/', [CustomerAddressController::class, 'store']);
         
         // Get default addresses
-        Route::get('/default/shipping', [\App\Http\Controllers\CustomerAddressController::class, 'getDefaultShipping']);
-        Route::get('/default/billing', [\App\Http\Controllers\CustomerAddressController::class, 'getDefaultBilling']);
+        Route::get('/default/shipping', [CustomerAddressController::class, 'getDefaultShipping']);
+        Route::get('/default/billing', [CustomerAddressController::class, 'getDefaultBilling']);
         
         // Validate address
-        Route::post('/validate', [\App\Http\Controllers\CustomerAddressController::class, 'validateAddress']);
+        Route::post('/validate', [CustomerAddressController::class, 'validateAddress']);
         
         // Individual address operations
         Route::prefix('{id}')->group(function () {
-            Route::get('/', [\App\Http\Controllers\CustomerAddressController::class, 'show']);
-            Route::put('/', [\App\Http\Controllers\CustomerAddressController::class, 'update']);
-            Route::delete('/', [\App\Http\Controllers\CustomerAddressController::class, 'destroy']);
-            Route::patch('/set-default-shipping', [\App\Http\Controllers\CustomerAddressController::class, 'setDefaultShipping']);
-            Route::patch('/set-default-billing', [\App\Http\Controllers\CustomerAddressController::class, 'setDefaultBilling']);
+            Route::get('/', [CustomerAddressController::class, 'show']);
+            Route::put('/', [CustomerAddressController::class, 'update']);
+            Route::delete('/', [CustomerAddressController::class, 'destroy']);
+            Route::patch('/set-default-shipping', [CustomerAddressController::class, 'setDefaultShipping']);
+            Route::patch('/set-default-billing', [CustomerAddressController::class, 'setDefaultBilling']);
         });
     });
 });
@@ -237,30 +268,30 @@ Route::middleware('auth:customer')->prefix('customer')->group(function () {
 Route::middleware('auth:customer')->prefix('customer')->group(function () {
     Route::prefix('orders')->group(function () {
         // Create order from cart
-        Route::post('/create-from-cart', [\App\Http\Controllers\EcommerceOrderController::class, 'createFromCart']);
+        Route::post('/create-from-cart', [EcommerceOrderController::class, 'createFromCart']);
         
         // List customer orders with filters
-        Route::get('/', [\App\Http\Controllers\EcommerceOrderController::class, 'index']);
+        Route::get('/', [EcommerceOrderController::class, 'index']);
         
         // Update order (limited fields)
-        Route::put('/{orderNumber}', [\App\Http\Controllers\EcommerceOrderController::class, 'update']);
-        Route::patch('/{orderNumber}', [\App\Http\Controllers\EcommerceOrderController::class, 'update']);
+        Route::put('/{orderNumber}', [EcommerceOrderController::class, 'update']);
+        Route::patch('/{orderNumber}', [EcommerceOrderController::class, 'update']);
         
         // Cancel order
-        Route::post('/{orderNumber}/cancel', [\App\Http\Controllers\EcommerceOrderController::class, 'cancel']);
+        Route::post('/{orderNumber}/cancel', [EcommerceOrderController::class, 'cancel']);
         
         // Get order statistics
-        Route::get('/stats/summary', [\App\Http\Controllers\EcommerceOrderController::class, 'statistics']);
+        Route::get('/stats/summary', [EcommerceOrderController::class, 'statistics']);
     });
 });
 
 // E-commerce Order Management (Customer) - Public Access
 Route::prefix('customer/orders')->group(function () {
     // Get order details (Public for guest tracking/confirmation)
-    Route::get('/{orderNumber}', [\App\Http\Controllers\EcommerceOrderController::class, 'show']);
+    Route::get('/{orderNumber}', [EcommerceOrderController::class, 'show']);
     
     // Track order (Public for guest tracking)
-    Route::get('/{orderNumber}/track', [\App\Http\Controllers\EcommerceOrderController::class, 'track']);
+    Route::get('/{orderNumber}/track', [EcommerceOrderController::class, 'track']);
 });
 
 // Public API for payment methods (no auth required for POS/Social Commerce)
@@ -285,71 +316,71 @@ Route::middleware('auth:api')->group(function () {
     
     Route::prefix('pre-orders')->group(function () {
         // List all pre-orders with filters
-        Route::get('/', [\App\Http\Controllers\PreOrderController::class, 'index']);
+        Route::get('/', [PreOrderController::class, 'index']);
         
         // Get pre-orders ready to fulfill (stock available)
-        Route::get('/ready-to-fulfill', [\App\Http\Controllers\PreOrderController::class, 'getReadyToFulfill']);
+        Route::get('/ready-to-fulfill', [PreOrderController::class, 'getReadyToFulfill']);
         
         // Get pre-order statistics
-        Route::get('/statistics', [\App\Http\Controllers\PreOrderController::class, 'getStatistics']);
+        Route::get('/statistics', [PreOrderController::class, 'getStatistics']);
         
         // Get trending pre-order products
-        Route::get('/trending-products', [\App\Http\Controllers\PreOrderController::class, 'getTrendingProducts']);
+        Route::get('/trending-products', [PreOrderController::class, 'getTrendingProducts']);
         
         // Get specific pre-order details
-        Route::get('/{id}', [\App\Http\Controllers\PreOrderController::class, 'show']);
+        Route::get('/{id}', [PreOrderController::class, 'show']);
         
         // Mark pre-order as stock available
-        Route::post('/{id}/mark-stock-available', [\App\Http\Controllers\PreOrderController::class, 'markStockAvailable']);
+        Route::post('/{id}/mark-stock-available', [PreOrderController::class, 'markStockAvailable']);
     });
 
     // Multi-Store Order Management (NEW) - Handle orders across multiple stores
     Route::prefix('multi-store-orders')->group(function () {
         // Get orders that need multi-store fulfillment
-        Route::get('/requiring-multi-store', [\App\Http\Controllers\MultiStoreOrderController::class, 'getOrdersRequiringMultiStore']);
+        Route::get('/requiring-multi-store', [MultiStoreOrderController::class, 'getOrdersRequiringMultiStore']);
         
         // Get item-level store availability for an order
-        Route::get('/{orderId}/item-availability', [\App\Http\Controllers\MultiStoreOrderController::class, 'getItemStoreAvailability']);
+        Route::get('/{orderId}/item-availability', [MultiStoreOrderController::class, 'getItemStoreAvailability']);
         
         // Auto-assign items to stores based on inventory
-        Route::post('/{orderId}/auto-assign', [\App\Http\Controllers\MultiStoreOrderController::class, 'autoAssignStores']);
+        Route::post('/{orderId}/auto-assign', [MultiStoreOrderController::class, 'autoAssignStores']);
         
         // Manually assign specific items to specific stores
-        Route::post('/{orderId}/assign-items', [\App\Http\Controllers\MultiStoreOrderController::class, 'assignItemStores']);
+        Route::post('/{orderId}/assign-items', [MultiStoreOrderController::class, 'assignItemStores']);
         
         // Get fulfillment tasks for a specific store
-        Route::get('/stores/{storeId}/fulfillment-tasks', [\App\Http\Controllers\MultiStoreOrderController::class, 'getStoreFulfillmentTasks']);
+        Route::get('/stores/{storeId}/fulfillment-tasks', [MultiStoreOrderController::class, 'getStoreFulfillmentTasks']);
     });
 
     // Multi-Store Shipment Management (NEW) - Handle Pathao shipments for multi-store orders
     Route::prefix('multi-store-shipments')->group(function () {
         // Create Pathao shipments for multi-store order (creates one shipment per store)
-        Route::post('/orders/{orderId}/create-shipments', [\App\Http\Controllers\MultiStoreShipmentController::class, 'createMultiStoreShipments']);
+        Route::post('/orders/{orderId}/create-shipments', [MultiStoreShipmentController::class, 'createMultiStoreShipments']);
         
         // Get all shipments for an order
-        Route::get('/orders/{orderId}/shipments', [\App\Http\Controllers\MultiStoreShipmentController::class, 'getOrderShipments']);
+        Route::get('/orders/{orderId}/shipments', [MultiStoreShipmentController::class, 'getOrderShipments']);
         
         // Track all shipments for an order
-        Route::get('/orders/{orderId}/track-all', [\App\Http\Controllers\MultiStoreShipmentController::class, 'trackAllShipments']);
+        Route::get('/orders/{orderId}/track-all', [MultiStoreShipmentController::class, 'trackAllShipments']);
     });
 
     // Order Management (Employee) - Inventory & Assignment
     Route::prefix('order-management')->group(function () {
         // Get orders pending store assignment
-        Route::get('/pending-assignment', [\App\Http\Controllers\OrderManagementController::class, 'getPendingAssignmentOrders']);
+        Route::get('/pending-assignment', [OrderManagementController::class, 'getPendingAssignmentOrders']);
         
         // Get available stores for an order based on inventory
-        Route::get('/orders/{orderId}/available-stores', [\App\Http\Controllers\OrderManagementController::class, 'getAvailableStores']);
+        Route::get('/orders/{orderId}/available-stores', [OrderManagementController::class, 'getAvailableStores']);
         
         // Assign order to a specific store
-        Route::post('/orders/{orderId}/assign-store', [\App\Http\Controllers\OrderManagementController::class, 'assignOrderToStore']);
+        Route::post('/orders/{orderId}/assign-store', [OrderManagementController::class, 'assignOrderToStore']);
 
         // Revert order assignment back to pending_assignment
-        Route::post('/orders/{orderId}/revert-assignment', [\App\Http\Controllers\OrderManagementController::class, 'revertAssignment']);
+        Route::post('/orders/{orderId}/revert-assignment', [OrderManagementController::class, 'revertAssignment']);
         
         // Mark order as delivered manually
-        Route::post('/orders/{orderId}/mark-as-delivered', [\App\Http\Controllers\OrderManagementController::class, 'markAsDelivered']);
-        Route::post('/orders/bulk-mark-as-delivered', [\App\Http\Controllers\OrderManagementController::class, 'bulkMarkAsDelivered']);
+        Route::post('/orders/{orderId}/mark-as-delivered', [OrderManagementController::class, 'markAsDelivered']);
+        Route::post('/orders/bulk-mark-as-delivered', [OrderManagementController::class, 'bulkMarkAsDelivered']);
     });
     
     Route::prefix('inventory')->group(function () {
@@ -361,16 +392,16 @@ Route::middleware('auth:api')->group(function () {
     // Store Fulfillment (Store Employee) - Dashboard & Barcode Scanning
     Route::prefix('store/fulfillment')->group(function () {
         // Get orders assigned to employee's store
-        Route::get('/orders/assigned', [\App\Http\Controllers\StoreFulfillmentController::class, 'getAssignedOrders']);
+        Route::get('/orders/assigned', [StoreFulfillmentController::class, 'getAssignedOrders']);
         
         // Get specific order details for fulfillment
-        Route::get('/orders/{orderId}', [\App\Http\Controllers\StoreFulfillmentController::class, 'getOrderDetails']);
+        Route::get('/orders/{orderId}', [StoreFulfillmentController::class, 'getOrderDetails']);
         
         // Scan barcode to fulfill order item
-        Route::post('/orders/{orderId}/scan-barcode', [\App\Http\Controllers\StoreFulfillmentController::class, 'scanBarcode']);
+        Route::post('/orders/{orderId}/scan-barcode', [StoreFulfillmentController::class, 'scanBarcode']);
         
         // Mark order as ready for shipment
-        Route::post('/orders/{orderId}/ready-for-shipment', [\App\Http\Controllers\StoreFulfillmentController::class, 'markReadyForShipment']);
+        Route::post('/orders/{orderId}/ready-for-shipment', [StoreFulfillmentController::class, 'markReadyForShipment']);
     });
 
     // Employee management routes
@@ -425,62 +456,62 @@ Route::middleware('auth:api')->group(function () {
     Route::prefix('hrm')->group(function () {
         // Attendance & Policy (Manager/Admin)
         Route::prefix('attendance')->group(function () {
-            Route::post('/policy', [\App\Http\Controllers\AttendanceController::class, 'upsertStorePolicy']);
-            Route::get('/policy/{storeId}', [\App\Http\Controllers\AttendanceController::class, 'getStorePolicy']);
+            Route::post('/policy', [AttendanceController::class, 'upsertStorePolicy']);
+            Route::get('/policy/{storeId}', [AttendanceController::class, 'getStorePolicy']);
             
-            Route::post('/holidays', [\App\Http\Controllers\AttendanceController::class, 'declareHoliday']);
-            Route::get('/holidays', [\App\Http\Controllers\AttendanceController::class, 'listHolidays']);
+            Route::post('/holidays', [AttendanceController::class, 'declareHoliday']);
+            Route::get('/holidays', [AttendanceController::class, 'listHolidays']);
             
             
-            Route::get('/schedules', [\App\Http\Controllers\AttendanceController::class, 'getSchedules']); // added
-            Route::post('/schedules', [\App\Http\Controllers\AttendanceController::class, 'assignSchedule']);
+            Route::get('/schedules', [AttendanceController::class, 'getSchedules']); // added
+            Route::post('/schedules', [AttendanceController::class, 'assignSchedule']);
             
-            Route::post('/mark', [\App\Http\Controllers\AttendanceController::class, 'markAttendance']);
-            Route::put('/{id}', [\App\Http\Controllers\AttendanceController::class, 'updateAttendance']);
-            Route::get('/history/{id}', [\App\Http\Controllers\AttendanceController::class, 'getAttendanceHistory']);
+            Route::post('/mark', [AttendanceController::class, 'markAttendance']);
+            Route::put('/{id}', [AttendanceController::class, 'updateAttendance']);
+            Route::get('/history/{id}', [AttendanceController::class, 'getAttendanceHistory']);
             
-            Route::get('/report/range', [\App\Http\Controllers\AttendanceController::class, 'getRangeReport']);
-            Route::get('/report/day', [\App\Http\Controllers\AttendanceController::class, 'getDayReport']);
-            Route::get('/report/today', [\App\Http\Controllers\AttendanceController::class, 'getTodayReport']);
-            Route::get('/report/present-today', [\App\Http\Controllers\AttendanceController::class, 'getPresentToday']);
+            Route::get('/report/range', [AttendanceController::class, 'getRangeReport']);
+            Route::get('/report/day', [AttendanceController::class, 'getDayReport']);
+            Route::get('/report/today', [AttendanceController::class, 'getTodayReport']);
+            Route::get('/report/present-today', [AttendanceController::class, 'getPresentToday']);
             
             // Overtime
-            Route::post('/overtime', [\App\Http\Controllers\AttendanceController::class, 'markOvertime']);
-            Route::put('/overtime/{id}', [\App\Http\Controllers\AttendanceController::class, 'updateOvertime']);
-            Route::get('/overtime/history/{id}', [\App\Http\Controllers\AttendanceController::class, 'getOvertimeHistory']);
-            Route::get('/overtime/report', [\App\Http\Controllers\AttendanceController::class, 'getEmployeeOvertimeReport']);
+            Route::post('/overtime', [AttendanceController::class, 'markOvertime']);
+            Route::put('/overtime/{id}', [AttendanceController::class, 'updateOvertime']);
+            Route::get('/overtime/history/{id}', [AttendanceController::class, 'getOvertimeHistory']);
+            Route::get('/overtime/report', [AttendanceController::class, 'getEmployeeOvertimeReport']);
             // Rewards & Fines
-            Route::post('/rewards-fines', [\App\Http\Controllers\AttendanceController::class, 'createRewardFine']);
-            Route::put('/rewards-fines/{id}', [\App\Http\Controllers\AttendanceController::class, 'updateRewardFine']);
-            Route::delete('/rewards-fines/{id}', [\App\Http\Controllers\AttendanceController::class, 'deleteRewardFine']);
-            Route::get('/rewards-fines/report', [\App\Http\Controllers\AttendanceController::class, 'getEmployeeRewardFineReport']);
-            Route::get('/rewards-fines/cumulated', [\App\Http\Controllers\AttendanceController::class, 'getCumulatedRewardFine']);
-            Route::get('/rewards-fines/history/{id}', [\App\Http\Controllers\AttendanceController::class, 'getRewardFineHistory']);
-            Route::post('/rewards-fines/apply', [\App\Http\Controllers\AttendanceController::class, 'applyRewardFineToSalary']);
+            Route::post('/rewards-fines', [AttendanceController::class, 'createRewardFine']);
+            Route::put('/rewards-fines/{id}', [AttendanceController::class, 'updateRewardFine']);
+            Route::delete('/rewards-fines/{id}', [AttendanceController::class, 'deleteRewardFine']);
+            Route::get('/rewards-fines/report', [AttendanceController::class, 'getEmployeeRewardFineReport']);
+            Route::get('/rewards-fines/cumulated', [AttendanceController::class, 'getCumulatedRewardFine']);
+            Route::get('/rewards-fines/history/{id}', [AttendanceController::class, 'getRewardFineHistory']);
+            Route::post('/rewards-fines/apply', [AttendanceController::class, 'applyRewardFineToSalary']);
         });
 
         // Sales Target Management (Manager/Admin)
         Route::prefix('sales-targets')->group(function () {
-            Route::get('/', [\App\Http\Controllers\SalesTargetController::class, 'index']);
-            Route::post('/', [\App\Http\Controllers\SalesTargetController::class, 'setTarget']);
-            Route::post('/copy-last-month', [\App\Http\Controllers\SalesTargetController::class, 'copyLastMonthTargets']);
-            Route::get('/performance', [\App\Http\Controllers\SalesTargetController::class, 'getDailyPerformance']);
-            Route::get('/report', [\App\Http\Controllers\SalesTargetController::class, 'getTargetReport']);
-            Route::get('/history/{employeeId}', [\App\Http\Controllers\SalesTargetController::class, 'getTargetHistory']);
+            Route::get('/', [SalesTargetController::class, 'index']);
+            Route::post('/', [SalesTargetController::class, 'setTarget']);
+            Route::post('/copy-last-month', [SalesTargetController::class, 'copyLastMonthTargets']);
+            Route::get('/performance', [SalesTargetController::class, 'getDailyPerformance']);
+            Route::get('/report', [SalesTargetController::class, 'getTargetReport']);
+            Route::get('/history/{employeeId}', [SalesTargetController::class, 'getTargetHistory']);
         });
 
         // Payroll Management
         Route::prefix('payroll')->group(function () {
-            Route::get('/sheet', [\App\Http\Controllers\PayrollController::class, 'getMonthlySalarySheet']);
-            Route::post('/pay', [\App\Http\Controllers\PayrollController::class, 'payMonthlySalary']);
+            Route::get('/sheet', [PayrollController::class, 'getMonthlySalarySheet']);
+            Route::post('/pay', [PayrollController::class, 'payMonthlySalary']);
         });
 
         // Employee Self-Service Panel
         Route::prefix('my')->group(function () {
-            Route::get('/attendance', [\App\Http\Controllers\EmployeePanelController::class, 'getMyAttendance']);
-            Route::get('/overtime', [\App\Http\Controllers\EmployeePanelController::class, 'getMyOvertime']);
-            Route::get('/rewards-fines', [\App\Http\Controllers\EmployeePanelController::class, 'getMyRewardsFines']);
-            Route::get('/performance', [\App\Http\Controllers\EmployeePanelController::class, 'getMyPerformance']);
+            Route::get('/attendance', [EmployeePanelController::class, 'getMyAttendance']);
+            Route::get('/overtime', [EmployeePanelController::class, 'getMyOvertime']);
+            Route::get('/rewards-fines', [EmployeePanelController::class, 'getMyRewardsFines']);
+            Route::get('/performance', [EmployeePanelController::class, 'getMyPerformance']);
             // My Payroll (if needed separately)
         });
     });
@@ -832,21 +863,21 @@ Route::middleware('auth:api')->group(function () {
 
     Route::prefix('cash-sheet')->group(function () {
         // GET  /api/cash-sheet?month=2026-04          → full monthly sheet
-        Route::get('/', [\App\Http\Controllers\CashSheetController::class, 'index']);
+        Route::get('/', [CashSheetController::class, 'index']);
         // GET  /api/cash-sheet/entries?date=2026-04-14 → raw entries for a date (detail panel)
-        Route::get('/entries', [\App\Http\Controllers\CashSheetController::class, 'entries']);
+        Route::get('/entries', [CashSheetController::class, 'entries']);
 
         // Branch cost entries (branch managers)
-        Route::post('/branch-cost', [\App\Http\Controllers\CashSheetController::class, 'storeBranchCost']);
-        Route::delete('/branch-cost/{id}', [\App\Http\Controllers\CashSheetController::class, 'destroyBranchCost']);
+        Route::post('/branch-cost', [CashSheetController::class, 'storeBranchCost']);
+        Route::delete('/branch-cost/{id}', [CashSheetController::class, 'destroyBranchCost']);
 
         // Admin entries (salary set-aside, cash→bank, sslzc, pathao)
-        Route::post('/admin', [\App\Http\Controllers\CashSheetController::class, 'storeAdmin']);
-        Route::delete('/admin/{id}', [\App\Http\Controllers\CashSheetController::class, 'destroyAdmin']);
+        Route::post('/admin', [CashSheetController::class, 'storeAdmin']);
+        Route::delete('/admin/{id}', [CashSheetController::class, 'destroyAdmin']);
 
         // Owner entries (investments + costs)
-        Route::post('/owner', [\App\Http\Controllers\CashSheetController::class, 'storeOwner']);
-        Route::delete('/owner/{id}', [\App\Http\Controllers\CashSheetController::class, 'destroyOwner']);
+        Route::post('/owner', [CashSheetController::class, 'storeOwner']);
+        Route::delete('/owner/{id}', [CashSheetController::class, 'destroyOwner']);
     });
 
     // ============================================
@@ -864,8 +895,8 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/sales/slow-moving', [ReportController::class, 'slowMoving']);
         Route::get('/sales/profit-margins', [ReportController::class, 'profitMargins']);
         
-        Route::get('/daily-branch-json', [\App\Http\Controllers\DailyBranchReportController::class, 'json']);
-    Route::get('/daily-branch', [\App\Http\Controllers\DailyBranchReportController::class, 'download']);
+        Route::get('/daily-branch-json', [DailyBranchReportController::class, 'json']);
+    Route::get('/daily-branch', [DailyBranchReportController::class, 'download']);
 
         
         // Staff Reports
@@ -889,25 +920,25 @@ Route::middleware('auth:api')->group(function () {
     
     Route::prefix('accounting')->group(function () {
         // Textbook-style T-Account (Debit/Credit Ledger)
-        Route::get('/t-account/{accountId}', [\App\Http\Controllers\AccountingReportController::class, 'getTAccount']);
+        Route::get('/t-account/{accountId}', [AccountingReportController::class, 'getTAccount']);
         
         // Trial Balance
-        Route::get('/trial-balance', [\App\Http\Controllers\AccountingReportController::class, 'getTrialBalance']);
+        Route::get('/trial-balance', [AccountingReportController::class, 'getTrialBalance']);
         
         // Income Statement (Profit & Loss)
-        Route::get('/income-statement', [\App\Http\Controllers\AccountingReportController::class, 'getIncomeStatement']);
+        Route::get('/income-statement', [AccountingReportController::class, 'getIncomeStatement']);
         
         // Balance Sheet
-        Route::get('/balance-sheet', [\App\Http\Controllers\AccountingReportController::class, 'getBalanceSheet']);
+        Route::get('/balance-sheet', [AccountingReportController::class, 'getBalanceSheet']);
         
         // Cash Flow Statement
-        Route::get('/cash-flow-statement', [\App\Http\Controllers\AccountingReportController::class, 'getCashFlowStatement']);
+        Route::get('/cash-flow-statement', [AccountingReportController::class, 'getCashFlowStatement']);
         
         // Cost Sheet
-        Route::get('/cost-sheet', [\App\Http\Controllers\AccountingReportController::class, 'getCostSheet']);
+        Route::get('/cost-sheet', [AccountingReportController::class, 'getCostSheet']);
         
         // Journal Entries
-        Route::get('/journal-entries', [\App\Http\Controllers\AccountingReportController::class, 'getJournalEntries']);
+        Route::get('/journal-entries', [AccountingReportController::class, 'getJournalEntries']);
     });
 
     // ============================================
@@ -1194,19 +1225,19 @@ Route::middleware('auth:api')->group(function () {
     
     Route::prefix('pathao')->group(function () {
         // Location lookup (cities/zones/areas)
-        Route::get('/cities', [\App\Http\Controllers\PathaoStoreController::class, 'getCities']);
-        Route::get('/cities/{cityId}/zones', [\App\Http\Controllers\PathaoStoreController::class, 'getZones']);
-        Route::get('/zones/{zoneId}/areas', [\App\Http\Controllers\PathaoStoreController::class, 'getAreas']);
+        Route::get('/cities', [PathaoStoreController::class, 'getCities']);
+        Route::get('/cities/{cityId}/zones', [PathaoStoreController::class, 'getZones']);
+        Route::get('/zones/{zoneId}/areas', [PathaoStoreController::class, 'getAreas']);
         
         // Order Pathao status lookup
-        Route::get('/orders/lookup/{orderNumber}', [\App\Http\Controllers\PathaoStoreController::class, 'checkOrderPathaoStatus']);
-        Route::post('/orders/lookup/bulk', [\App\Http\Controllers\PathaoStoreController::class, 'bulkCheckOrderPathaoStatus']);
+        Route::get('/orders/lookup/{orderNumber}', [PathaoStoreController::class, 'checkOrderPathaoStatus']);
+        Route::post('/orders/lookup/bulk', [PathaoStoreController::class, 'bulkCheckOrderPathaoStatus']);
         
         // Store registration with Pathao
         Route::prefix('stores')->group(function () {
-            Route::post('/{storeId}/register', [\App\Http\Controllers\PathaoStoreController::class, 'registerStore']);
-            Route::patch('/{storeId}/config', [\App\Http\Controllers\PathaoStoreController::class, 'updateStoreConfig']);
-            Route::get('/{storeId}/status', [\App\Http\Controllers\PathaoStoreController::class, 'getStoreStatus']);
+            Route::post('/{storeId}/register', [PathaoStoreController::class, 'registerStore']);
+            Route::patch('/{storeId}/config', [PathaoStoreController::class, 'updateStoreConfig']);
+            Route::get('/{storeId}/status', [PathaoStoreController::class, 'getStoreStatus']);
         });
     });
 
@@ -1478,27 +1509,27 @@ Route::middleware('auth:api')->group(function () {
     // Defective Product Management Routes
     Route::prefix('defective-products')->group(function () {
         // List and statistics
-        Route::get('/', [\App\Http\Controllers\DefectiveProductController::class, 'index']);
-        Route::get('/available-for-sale', [\App\Http\Controllers\DefectiveProductController::class, 'getAvailableForSale']);
-        Route::get('/statistics', [\App\Http\Controllers\DefectiveProductController::class, 'statistics']);
+        Route::get('/', [DefectiveProductController::class, 'index']);
+        Route::get('/available-for-sale', [DefectiveProductController::class, 'getAvailableForSale']);
+        Route::get('/statistics', [DefectiveProductController::class, 'statistics']);
         
         // Mark product as defective and scan barcode
-        Route::post('/mark-defective', [\App\Http\Controllers\DefectiveProductController::class, 'markAsDefective']);
-        Route::post('/scan', [\App\Http\Controllers\DefectiveProductController::class, 'scanBarcode']);
+        Route::post('/mark-defective', [DefectiveProductController::class, 'markAsDefective']);
+        Route::post('/scan', [DefectiveProductController::class, 'scanBarcode']);
         
         // Individual defective product operations
         Route::prefix('{id}')->group(function () {
-            Route::get('/', [\App\Http\Controllers\DefectiveProductController::class, 'show']);
-            Route::post('/inspect', [\App\Http\Controllers\DefectiveProductController::class, 'inspect']);
-            Route::post('/make-available', [\App\Http\Controllers\DefectiveProductController::class, 'makeAvailableForSale']);
-            Route::post('/sell', [\App\Http\Controllers\DefectiveProductController::class, 'sell']);
-            Route::post('/dispose', [\App\Http\Controllers\DefectiveProductController::class, 'dispose']);
-            Route::post('/return-to-vendor', [\App\Http\Controllers\DefectiveProductController::class, 'returnToVendor']);
+            Route::get('/', [DefectiveProductController::class, 'show']);
+            Route::post('/inspect', [DefectiveProductController::class, 'inspect']);
+            Route::post('/make-available', [DefectiveProductController::class, 'makeAvailableForSale']);
+            Route::post('/sell', [DefectiveProductController::class, 'sell']);
+            Route::post('/dispose', [DefectiveProductController::class, 'dispose']);
+            Route::post('/return-to-vendor', [DefectiveProductController::class, 'returnToVendor']);
             
             // Image management routes
-            Route::post('/images', [\App\Http\Controllers\DefectiveProductController::class, 'uploadImages']);
-            Route::get('/images', [\App\Http\Controllers\DefectiveProductController::class, 'getImages']);
-            Route::delete('/images', [\App\Http\Controllers\DefectiveProductController::class, 'deleteImage']);
+            Route::post('/images', [DefectiveProductController::class, 'uploadImages']);
+            Route::get('/images', [DefectiveProductController::class, 'getImages']);
+            Route::delete('/images', [DefectiveProductController::class, 'deleteImage']);
         });
     });
 
@@ -1558,13 +1589,13 @@ Route::middleware('auth:api')->group(function () {
     // ============================================
     
     Route::prefix('contact-messages')->group(function () {
-        Route::get('/', [\App\Http\Controllers\ContactMessageController::class, 'index']);
-        Route::get('/statistics', [\App\Http\Controllers\ContactMessageController::class, 'getStatistics']);
-        Route::get('/by-phone', [\App\Http\Controllers\ContactMessageController::class, 'getByPhone']);
-        Route::post('/bulk-update-status', [\App\Http\Controllers\ContactMessageController::class, 'bulkUpdateStatus']);
-        Route::get('/{id}', [\App\Http\Controllers\ContactMessageController::class, 'show']);
-        Route::put('/{id}', [\App\Http\Controllers\ContactMessageController::class, 'update']);
-        Route::delete('/{id}', [\App\Http\Controllers\ContactMessageController::class, 'destroy']);
+        Route::get('/', [ContactMessageController::class, 'index']);
+        Route::get('/statistics', [ContactMessageController::class, 'getStatistics']);
+        Route::get('/by-phone', [ContactMessageController::class, 'getByPhone']);
+        Route::post('/bulk-update-status', [ContactMessageController::class, 'bulkUpdateStatus']);
+        Route::get('/{id}', [ContactMessageController::class, 'show']);
+        Route::put('/{id}', [ContactMessageController::class, 'update']);
+        Route::delete('/{id}', [ContactMessageController::class, 'destroy']);
     });
 
     // ============================================
@@ -1602,23 +1633,23 @@ Route::middleware('auth:api')->group(function () {
     
     Route::prefix('business-history')->group(function () {
         // Product Dispatch History
-        Route::get('/product-dispatches', [\App\Http\Controllers\BusinessHistoryController::class, 'getProductDispatchHistory']);
+        Route::get('/product-dispatches', [BusinessHistoryController::class, 'getProductDispatchHistory']);
         
         // Order History (comprehensive - includes order, items, customer)
-        Route::get('/orders', [\App\Http\Controllers\BusinessHistoryController::class, 'getOrderHistory']);
-        Route::get('/orders/{orderId}/comprehensive', [\App\Http\Controllers\BusinessHistoryController::class, 'getOrderComprehensiveHistory']);
+        Route::get('/orders', [BusinessHistoryController::class, 'getOrderHistory']);
+        Route::get('/orders/{orderId}/comprehensive', [BusinessHistoryController::class, 'getOrderComprehensiveHistory']);
         
         // Purchase Order History
-        Route::get('/purchase-orders', [\App\Http\Controllers\BusinessHistoryController::class, 'getPurchaseOrderHistory']);
+        Route::get('/purchase-orders', [BusinessHistoryController::class, 'getPurchaseOrderHistory']);
         
         // Store Assignment History
-        Route::get('/store-assignments', [\App\Http\Controllers\BusinessHistoryController::class, 'getStoreAssignmentHistory']);
+        Route::get('/store-assignments', [BusinessHistoryController::class, 'getStoreAssignmentHistory']);
         
         // Product History (including defective product marking)
-        Route::get('/products', [\App\Http\Controllers\BusinessHistoryController::class, 'getProductHistory']);
+        Route::get('/products', [BusinessHistoryController::class, 'getProductHistory']);
         
         // Statistics
-        Route::get('/statistics', [\App\Http\Controllers\BusinessHistoryController::class, 'getHistoryStatistics']);
+        Route::get('/statistics', [BusinessHistoryController::class, 'getHistoryStatistics']);
     });
 
     // ============================================
@@ -1628,13 +1659,13 @@ Route::middleware('auth:api')->group(function () {
     
     Route::prefix('lookup')->group(function () {
         // Product Lookup - Complete lifecycle by barcode
-        Route::get('/product', [\App\Http\Controllers\LookupController::class, 'productLookup']);
+        Route::get('/product', [LookupController::class, 'productLookup']);
         
         // Order Lookup - Complete order details with barcodes
-        Route::get('/order/{orderId}', [\App\Http\Controllers\LookupController::class, 'orderLookup']);
+        Route::get('/order/{orderId}', [LookupController::class, 'orderLookup']);
         
         // Batch Lookup - All barcodes and history for a batch
-        Route::get('/batch/{batchId}', [\App\Http\Controllers\LookupController::class, 'batchLookup']);
+        Route::get('/batch/{batchId}', [LookupController::class, 'batchLookup']);
     });
 
     // ============================================
@@ -1654,15 +1685,15 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/export-summary', [BusinessAnalyticsController::class, 'exportSummary']);
 
         // Category Sales Report
-        Route::get('/csv/category-sales', [\App\Http\Controllers\ReportingController::class, 'exportCategorySalesCsv']);
+        Route::get('/csv/category-sales', [ReportingController::class, 'exportCategorySalesCsv']);
         // Sales Report
-        Route::get('/csv/sales', [\App\Http\Controllers\ReportingController::class, 'exportSalesCsv']);
+        Route::get('/csv/sales', [ReportingController::class, 'exportSalesCsv']);
         // Stock Report
-        Route::get('/csv/stock', [\App\Http\Controllers\ReportingController::class, 'exportStockCsv']);
+        Route::get('/csv/stock', [ReportingController::class, 'exportStockCsv']);
         // Booking Report
-        Route::get('/csv/booking', [\App\Http\Controllers\ReportingController::class, 'exportBookingCsv']);
+        Route::get('/csv/booking', [ReportingController::class, 'exportBookingCsv']);
         // Daily Sales Report
-        Route::get('/daily-sales', [\App\Http\Controllers\ReportingController::class, 'getDailySalesReport']);
+        Route::get('/daily-sales', [ReportingController::class, 'getDailySalesReport']);
     });
 
     // ============================================
@@ -1672,24 +1703,24 @@ Route::middleware('auth:api')->group(function () {
     
     Route::prefix('ad-campaigns')->group(function () {
         // Campaign CRUD
-        Route::get('/', [\App\Http\Controllers\AdCampaignController::class, 'index']);
-        Route::post('/', [\App\Http\Controllers\AdCampaignController::class, 'store']);
-        Route::get('/{id}', [\App\Http\Controllers\AdCampaignController::class, 'show']);
-        Route::put('/{id}', [\App\Http\Controllers\AdCampaignController::class, 'update']);
-        Route::patch('/{id}/status', [\App\Http\Controllers\AdCampaignController::class, 'updateStatus']);
-        Route::delete('/{id}', [\App\Http\Controllers\AdCampaignController::class, 'destroy']);
+        Route::get('/', [AdCampaignController::class, 'index']);
+        Route::post('/', [AdCampaignController::class, 'store']);
+        Route::get('/{id}', [AdCampaignController::class, 'show']);
+        Route::put('/{id}', [AdCampaignController::class, 'update']);
+        Route::patch('/{id}/status', [AdCampaignController::class, 'updateStatus']);
+        Route::delete('/{id}', [AdCampaignController::class, 'destroy']);
         
         // Product Targeting
-        Route::post('/{id}/products', [\App\Http\Controllers\AdCampaignController::class, 'addProducts']);
-        Route::get('/{id}/products', [\App\Http\Controllers\AdCampaignController::class, 'listProducts']);
-        Route::delete('/{id}/products/{mappingId}', [\App\Http\Controllers\AdCampaignController::class, 'removeProduct']);
+        Route::post('/{id}/products', [AdCampaignController::class, 'addProducts']);
+        Route::get('/{id}/products', [AdCampaignController::class, 'listProducts']);
+        Route::delete('/{id}/products/{mappingId}', [AdCampaignController::class, 'removeProduct']);
         
         // Reporting
-        Route::get('/reports/leaderboard', [\App\Http\Controllers\AdCampaignReportController::class, 'leaderboard']);
-        Route::get('/reports/health', [\App\Http\Controllers\AdCampaignReportController::class, 'attributionHealth']);
-        Route::get('/{id}/reports/summary', [\App\Http\Controllers\AdCampaignReportController::class, 'summary']);
-        Route::get('/{id}/reports/products', [\App\Http\Controllers\AdCampaignReportController::class, 'productBreakdown']);
-        Route::get('/{id}/reports/orders', [\App\Http\Controllers\AdCampaignReportController::class, 'ordersList']);
+        Route::get('/reports/leaderboard', [AdCampaignReportController::class, 'leaderboard']);
+        Route::get('/reports/health', [AdCampaignReportController::class, 'attributionHealth']);
+        Route::get('/{id}/reports/summary', [AdCampaignReportController::class, 'summary']);
+        Route::get('/{id}/reports/products', [AdCampaignReportController::class, 'productBreakdown']);
+        Route::get('/{id}/reports/orders', [AdCampaignReportController::class, 'ordersList']);
     });
 
 }); // End of auth:api middleware group
@@ -1699,4 +1730,4 @@ Route::middleware('auth:api')->group(function () {
 // Allow visitors to submit contact messages without authentication
 // ============================================
 
-Route::post('/contact-messages', [\App\Http\Controllers\ContactMessageController::class, 'store']);
+Route::post('/contact-messages', [ContactMessageController::class, 'store']);

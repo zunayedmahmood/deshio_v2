@@ -37,7 +37,7 @@ class ProductBatchFactory extends Factory
             'manufactured_date' => $this->faker->dateTimeBetween('-2 years', '-1 month'),
             'expiry_date' => $this->faker->dateTimeBetween('+6 months', '+2 years'),
             'store_id' => \App\Models\Store::factory(),
-            'barcode_id' => null,
+            'mother_barcode' => null,
             'notes' => $this->faker->sentence(),
             'is_active' => true,
         ];

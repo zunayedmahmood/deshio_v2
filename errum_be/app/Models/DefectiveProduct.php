@@ -13,7 +13,7 @@ class DefectiveProduct extends Model
 
     protected $fillable = [
         'product_id',
-        'product_barcode_id', // DEPRECATED: Track individual barcode
+        'mother_barcode',     // NEW: Track using mother barcode
         'product_batch_id',
         'store_id',
         'quantity',           // NEW: Track quantity of defective items
@@ -83,11 +83,6 @@ class DefectiveProduct extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
-    }
-
-    public function barcode(): BelongsTo
-    {
-        return $this->belongsTo(ProductBarcode::class, 'product_barcode_id');
     }
 
     public function batch(): BelongsTo

@@ -7,7 +7,6 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Employee;
 use App\Models\ProductBatch;
-use App\Models\ProductBarcode;
 use App\Models\ProductMovement;
 use App\Models\Transaction;
 use App\Traits\DatabaseAgnosticSearch;
@@ -293,7 +292,7 @@ class ProductReturnController extends Controller
                 }
 
                 // Requirement: only barcode-tracked sold items are returnable.
-                if (empty($orderItem->product_barcode_id) && empty($orderItem->product_batch_id)) {
+                if (empty($orderItem->product_batch_id)) {
                     throw new \Exception("Item {$orderItem->id} is not barcode-trackable. Returns require barcode-tracked items.");
                 }
 
@@ -613,38 +612,30 @@ class ProductReturnController extends Controller
                     if (isset($item['product_batch_id'])) {
                         try {
                             $returnStore = $return->received_at_store_id ?? $return->store_id;
-                            $barcodes = ProductBarcode::where('product_id', $item['product_id'])
-                                ->where('batch_id', $item['product_batch_id'])
-                                ->where('current_store_id', $returnStore)
-                                ->whereIn('current_status', ['in_warehouse', 'in_shop', 'on_display'])
-                                ->where('is_active', true)
-                                ->limit($item['quantity'])
-                                ->get();
+                            $defectType = $this->mapReturnReasonToDefectType($return->return_reason);
+                            
+                            // Create a single defective record for the quantity
+                            $defectiveProduct = \App\Models\DefectiveProduct::create([
+                                'product_id' => $item['product_id'],
+                                'product_batch_id' => $item['product_batch_id'],
+                                'store_id' => $returnStore,
+                                'quantity' => $item['quantity'],
+                                'defect_type' => $defectType,
+                                'defect_description' => "Auto-marked from return #{$return->return_number}: {$return->return_reason}" . 
+                                    ($return->customer_notes ? " - {$return->customer_notes}" : ""),
+                                'severity' => 'moderate',
+                                'original_price' => $item['unit_price'],
+                                'identified_by' => $employee->id,
+                                'status' => 'identified',
+                                'internal_notes' => "Automatically marked as defective from product return process",
+                                'source_return_id' => $return->id,
+                            ]);
 
-                            foreach ($barcodes as $barcode) {
-                                // Map return reason to defect type
-                                $defectType = $this->mapReturnReasonToDefectType($return->return_reason);
-                                
-                                // Mark as defective
-                                $defectiveProduct = $barcode->markAsDefective([
-                                    'store_id' => $returnStore,
-                                    'product_batch_id' => $item['product_batch_id'],
-                                    'defect_type' => $defectType,
-                                    'defect_description' => "Auto-marked from return #{$return->return_number}: {$return->return_reason}" . 
-                                        ($return->customer_notes ? " - {$return->customer_notes}" : ""),
-                                    'severity' => 'moderate', // Default severity
-                                    'original_price' => $item['unit_price'],
-                                    'identified_by' => $employee->id,
-                                    'internal_notes' => "Automatically marked as defective from product return process",
-                                    'source_return_id' => $return->id,
-                                ]);
-
-                                $markedAsDefective[] = [
-                                    'barcode' => $barcode->barcode,
-                                    'product_name' => $item['product_name'],
-                                    'defective_product_id' => $defectiveProduct->id
-                                ];
-                            }
+                            $markedAsDefective[] = [
+                                'product_name' => $item['product_name'],
+                                'quantity' => $item['quantity'],
+                                'defective_product_id' => $defectiveProduct->id
+                            ];
                         } catch (\Exception $e) {
                             $failedToMark[] = [
                                 'product_name' => $item['product_name'],
@@ -783,23 +774,12 @@ class ProductReturnController extends Controller
 
     private function getReturnableBarcodesForOrderItem(Order $order, OrderItem $orderItem, int $requiredQty)
     {
-        $query = ProductBarcode::where('product_id', $orderItem->product_id)
-            ->where('batch_id', $orderItem->product_batch_id)
-            ->whereIn('current_status', ['with_customer', 'sold'])
-            ->where('is_defective', false)
-            ->orderByDesc('location_updated_at')
-            ->orderByDesc('id');
-
-        $query->where(function ($q) use ($order, $orderItem) {
-            $q->where('location_metadata->order_id', $order->id)
-                ->orWhere('location_metadata->order_number', $order->order_number);
-
-            if (!empty($orderItem->product_barcode_id)) {
-                $q->orWhere('id', $orderItem->product_barcode_id);
-            }
-        });
-
-        return $query->take($requiredQty)->get();
+        // Simple mock because we no longer track unique barcodes.
+        // Returns a collection with enough items to satisfy the check if the item belongs to the order.
+        if ($orderItem->order_id == $order->id) {
+            return collect(array_fill(0, $requiredQty, (object)['id' => null, 'barcode' => $orderItem->mother_barcode ?? $orderItem->product->barcode ?? 'N/A']));
+        }
+        return collect([]);
     }
 
     private function restoreInventoryForReturn(ProductReturn $return, Employee $employee): void

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ProductBarcode;
 use App\Models\Order;
 use App\Models\ProductBatch;
 use App\Models\PurchaseOrderItem;

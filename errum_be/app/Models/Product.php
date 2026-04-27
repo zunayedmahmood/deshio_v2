@@ -18,7 +18,7 @@ class Product extends Model
      * Multiple products can share the same SKU with different variations 
      * defined through ProductFields (e.g., color, size, storage).
      * 
-     * Each physical item is uniquely tracked via ProductBarcode.
+     * Each product has a mother_barcode for bulk tracking.
      * Stock is managed through ProductBatch.
      * 
      * If SKU is not provided during creation, a unique 9-digit number is auto-generated.
@@ -286,19 +286,14 @@ class Product extends Model
         return $primaryImage ? $primaryImage->image_url : null;
     }
 
-    public function barcodes(): HasMany
-    {
-        return $this->hasMany(ProductBarcode::class);
-    }
-
     public function activeBarcodes()
     {
-        return $this->barcodes()->active();
+        return collect(); // Legacy support
     }
 
     public function primaryBarcode()
     {
-        return $this->barcodes()->primary()->active()->first();
+        return null; // Legacy support
     }
 
     public function scopeByMotherBarcode($query, $barcode)
@@ -308,16 +303,13 @@ class Product extends Model
 
     public function getPrimaryBarcodeAttribute()
     {
-        if (!empty($this->barcode)) {
-            return $this->barcode;
-        }
-        $primaryBarcode = $this->primaryBarcode();
-        return $primaryBarcode ? $primaryBarcode->barcode : null;
+        return $this->barcode;
     }
 
     public function generateBarcode($type = 'CODE128', $makePrimary = false)
     {
-        return ProductBarcode::createForProduct($this, $type, $makePrimary);
+        // Legacy support - no-op
+        return null;
     }
 
     public function priceOverrides(): HasMany
@@ -388,9 +380,7 @@ class Product extends Model
     public function getBatchByBarcode($barcode)
     {
         return $this->batches()
-                   ->whereHas('barcode', function ($query) use ($barcode) {
-                       $query->where('barcode', $barcode);
-                   })
+                   ->where('mother_barcode', $barcode)
                    ->first();
     }
 

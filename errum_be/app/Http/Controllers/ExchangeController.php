@@ -174,7 +174,6 @@ class ExchangeController extends Controller
                     'order_id' => $replacementOrder->id,
                     'product_id' => $product->id,
                     'product_batch_id' => $batch->id,
-                    'product_barcode_id' => null, // Unit-level barcodes deprecated
                     'product_name' => $product->name,
                     'product_sku' => $product->sku,
                     'quantity' => $quantity,

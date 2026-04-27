@@ -235,7 +235,6 @@ class ProductController extends Controller
             'vendor',
             'productFields.field',
             'images',
-            'barcodes',
             'batches.store',
             'priceOverrides'
         ])->findOrFail($id);

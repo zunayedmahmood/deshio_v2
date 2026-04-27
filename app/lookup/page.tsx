@@ -1693,7 +1693,6 @@ export default function LookupPage() {
         items: returnData.selectedProducts.map((item: any) => ({
           order_item_id: item.order_item_id,
           quantity: item.quantity,
-          product_barcode_id: item.product_barcode_id,
         })),
         customer_notes: returnData.customerNotes || 'Initiated from lookup page',
       };
@@ -1759,7 +1758,6 @@ export default function LookupPage() {
             quantity: item.quantity,
             unit_price: unitPrice,
             total_price: unitPrice * item.quantity,
-            product_barcode_id: item.product_barcode_id,
             return_reason: 'other', // Default reason
             quality_check_passed: true, // Defaulting for quick exchange
           };
@@ -1770,7 +1768,6 @@ export default function LookupPage() {
           quantity: p.quantity,
           unit_price: p.unit_price,
           barcode: p.barcode,
-          barcode_id: p.barcode_id,
         })),
         paymentRefund: {
           type: exchangeData.paymentRefund?.type === 'payment' ? 'surplus' : (exchangeData.paymentRefund?.type === 'refund' ? 'refund' : 'even'),
