@@ -987,7 +987,7 @@ class ProductDispatchController extends Controller
                     'batch' => [
                         'id' => $item->batch->id,
                         'batch_number' => $item->batch->batch_number,
-                        'barcode' => $item->batch->barcode?->barcode,
+                        'barcode' => $item->batch->mother_barcode ?? $item->batch->barcode,
                     ],
                     'quantity' => $item->quantity,
                     'received_quantity' => $item->received_quantity,

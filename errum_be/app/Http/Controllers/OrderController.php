@@ -157,7 +157,6 @@ class OrderController extends Controller
             'store',
             'items.product.reservedProduct',
             'items.batch',
-            'items.barcode',
             'payments.paymentMethod',
             'payments.processedBy',
             'payments.paymentSplits.paymentMethod',

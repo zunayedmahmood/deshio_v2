@@ -165,7 +165,7 @@ class ShipmentController extends Controller
 
         DB::beginTransaction();
         try {
-            $order = Order::with(['items.batch.barcode', 'customer', 'store', 'shipments'])->findOrFail($request->order_id);
+            $order = Order::with(['items.batch', 'customer', 'store', 'shipments'])->findOrFail($request->order_id);
 
             // Check if order already has active shipment
             $existingShipment = $order->shipments()->whereNotIn('status', ['cancelled', 'delivered'])->first();
@@ -180,8 +180,9 @@ class ShipmentController extends Controller
             // Collect package barcodes from order items
             $packageBarcodes = [];
             foreach ($order->items as $item) {
-                if ($item->batch && $item->batch->barcode) {
-                    $packageBarcodes[] = $item->batch->barcode->barcode;
+                $barcode = $item->mother_barcode ?? ($item->batch ? $item->batch->mother_barcode : null);
+                if ($barcode) {
+                    $packageBarcodes[] = $barcode;
                 }
             }
 

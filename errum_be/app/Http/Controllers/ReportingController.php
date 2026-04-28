@@ -676,7 +676,7 @@ class ReportingController extends Controller
 
         // Build query for order items with related data
         $query = OrderItem::query()
-            ->with(['order.customer', 'product', 'batch', 'barcode'])
+            ->with(['order.customer', 'product', 'batch'])
             ->whereHas('order', function($q) use ($request) {
                 $q->whereNull('deleted_at');
                 
@@ -749,7 +749,6 @@ class ReportingController extends Controller
                 $customer = $order ? $order->customer : null;
                 $product = $item->product;
                 $batch = $item->batch;
-                $barcode = $item->barcode;
                 
                 // Customer info
                 $orderNumber = $order ? $order->order_number : 'N/A';
@@ -761,7 +760,7 @@ class ReportingController extends Controller
                 // Product info
                 $productName = $item->product_name ?? 'N/A';
                 $productSku = $item->product_sku ?? 'N/A';
-                $productBarcode = $barcode ? $barcode->barcode : 'N/A';
+                $productBarcode = $item->mother_barcode ?? ($batch->mother_barcode ?? 'N/A');
                 $batchNumber = $batch ? $batch->batch_number : 'N/A';
                 
                 // Quantity
