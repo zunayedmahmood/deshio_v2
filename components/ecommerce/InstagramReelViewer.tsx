@@ -5,7 +5,11 @@ import { ChevronLeft, ChevronRight, Instagram } from 'lucide-react';
 import InstagramEmbed from './InstagramEmbed';
 
 const REEL_URLS = [
-  'https://www.instagram.com/reel/DXs4c_fkyfi/'
+  'https://www.instagram.com/reel/DXs4c_fkyfi/',
+  'https://www.instagram.com/reel/DXilJ-bjz9D/',
+  'https://www.instagram.com/reel/DXmdiHoD-PI/',
+  'https://www.instagram.com/reel/DXpBTNuDCj4/',
+  'https://www.instagram.com/reel/DXrmhmVj3UU/'
 ];
 
 export default function InstagramReelViewer() {
