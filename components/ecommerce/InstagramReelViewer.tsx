@@ -13,7 +13,7 @@ const REEL_URLS = [
 ];
 
 export default function InstagramReelViewer() {
-  const [activeIndex, setActiveIndex] = useState(0); // Start with middle
+  const [activeIndex, setActiveIndex] = useState(2); // Start with middle
   const [carouselHeight, setCarouselHeight] = useState<number>(700);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
