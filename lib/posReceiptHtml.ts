@@ -1,6 +1,6 @@
 // lib/posReceiptHtml.ts
 // POS receipt template used by POS and Purchase History prints.
-// Styled template with ERRUM branding/details.
+// Styled template with Deshio branding/details.
 
 import { normalizeOrderForReceipt, type ReceiptOrder } from '@/lib/receipt';
 
@@ -219,7 +219,7 @@ function pickAddressFromObject(obj: any): string {
 }
 
 function resolveStoreDisplay(order: any, r: ReceiptOrder): { brand: string; tagline: string; address: string; phone: string } {
-  const brand = 'ERRUM BD';
+  const brand = 'Deshio BD';
   const defaultAddress = 'Level 03, Lift 2, Haji Kujrot Ali Mollah Super Market, Dhaka 1216';
   const defaultPhone = '01942-565664';
 
@@ -304,8 +304,8 @@ function posReceiptBody(order: any) {
   const customerAddressLines = Array.isArray(r.customerAddressLines) && r.customerAddressLines.length > 0
     ? r.customerAddressLines
     : addressFromNotes
-    ? [addressFromNotes]
-    : [];
+      ? [addressFromNotes]
+      : [];
   const sanitizedNotes = sanitizeReceiptNotes(r.notes);
 
   const rows = (r.items || [])
@@ -320,8 +320,8 @@ function posReceiptBody(order: any) {
       const displayUnitValue = hasUnitPrice
         ? Number(it.unitPrice || 0)
         : qtyNum > 0
-        ? Number(it.lineTotal || 0) / qtyNum
-        : Number(it.lineTotal || 0);
+          ? Number(it.lineTotal || 0) / qtyNum
+          : Number(it.lineTotal || 0);
 
       const displayAmount = qtyNum > 0 ? displayUnitValue * qtyNum : Number(it.lineTotal || 0);
 
@@ -366,15 +366,15 @@ function posReceiptBody(order: any) {
         <table class="totals payment-details">
           <tbody>
             ${paymentRows
-              .map(
-                (p) => `<tr><td>${escapeHtml(p.label)}</td><td class="right">${escapeHtml(money(p.amount))}</td></tr>`
-              )
-              .join('')}
+        .map(
+          (p) => `<tr><td>${escapeHtml(p.label)}</td><td class="right">${escapeHtml(money(p.amount))}</td></tr>`
+        )
+        .join('')}
             ${paymentMap.OTHERS
-              .map(
-                (p) => `<tr><td>${escapeHtml(p.name)}</td><td class="right">${escapeHtml(money(p.amount))}</td></tr>`
-              )
-              .join('')}
+        .map(
+          (p) => `<tr><td>${escapeHtml(p.name)}</td><td class="right">${escapeHtml(money(p.amount))}</td></tr>`
+        )
+        .join('')}
           </tbody>
         </table>
       </div>`
@@ -400,8 +400,8 @@ function posReceiptBody(order: any) {
       <div><span class="lbl">Phone:</span> ${escapeHtml(r.customerPhone || 'WALK-IN')}</div>
       ${r.salesBy ? `<div><span class="lbl">Sales By:</span> ${escapeHtml(r.salesBy)}</div>` : ''}
       ${customerAddressLines.length > 0
-        ? `<div><span class="lbl">Address:</span> ${escapeHtml(customerAddressLines.join(', '))}</div>`
-        : ''}
+      ? `<div><span class="lbl">Address:</span> ${escapeHtml(customerAddressLines.join(', '))}</div>`
+      : ''}
     </div>
 
     <div class="dash"></div>
@@ -447,7 +447,7 @@ function posReceiptBody(order: any) {
     </div>
 
     <div class="footer">
-      Thank you for shopping at Errum BD.
+      Thank you for shopping at Deshio BD.
     </div>
     <div class="credits">Software solution from mADestic Digital</div>
   `;

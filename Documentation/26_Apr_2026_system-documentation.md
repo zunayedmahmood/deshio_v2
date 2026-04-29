@@ -6,15 +6,15 @@
 ### 1.2 Technology Stack Table
 | Layer       | Technology     | Version  | Evidence File          |
 |-------------|----------------|----------|------------------------|
-| Backend     | Laravel        | 11.x (est)| errum_be/composer.json |
-| Database    | MySQL / MariaDB| [UNRESOLVED] | errum_be/.env (inferred) |
-| Auth        | Passport/Sanctum| [UNRESOLVED] | errum_be/routes/api.php |
-| Background  | Laravel Jobs   | -        | errum_be/app/Jobs      |
+| Backend     | Laravel        | 11.x (est)| Deshio_be/composer.json |
+| Database    | MySQL / MariaDB| [UNRESOLVED] | Deshio_be/.env (inferred) |
+| Auth        | Passport/Sanctum| [UNRESOLVED] | Deshio_be/routes/api.php |
+| Background  | Laravel Jobs   | -        | Deshio_be/app/Jobs      |
 | Logging     | ActivityLog    | 4.x      | ProductBarcode.php     |
 
 ### 1.3 Directory Tree
 ```
-errum_be/
+Deshio_be/
 ├── app/
 │   ├── Console/Commands/ (CLI maintenance tools)
 │   ├── Http/
@@ -35,16 +35,16 @@ errum_be/
 ```
 
 ### 1.4 Entry Points
-- `errum_be/public/index.php`: Entry for all HTTP traffic.
-- `errum_be/app/Console/Kernel.php`: Entry for scheduled jobs and artisan commands.
-- `errum_be/app/Providers/AppServiceProvider.php`: Global service registrations.
+- `Deshio_be/public/index.php`: Entry for all HTTP traffic.
+- `Deshio_be/app/Console/Kernel.php`: Entry for scheduled jobs and artisan commands.
+- `Deshio_be/app/Providers/AppServiceProvider.php`: Global service registrations.
 
 ---
 
 ## 2. Feature Inventory (Full Breakdown)
 ### 2.1 Barcode & Unit Management (Strategic Unit Tracking)
 - **Barcode Generation & Management**
-    - **Unique Generation**: Ensures no collisions across the global product catalog (errum_be/app/Models/ProductBarcode.php:generateUniqueBarcode).
+    - **Unique Generation**: Ensures no collisions across the global product catalog (Deshio_be/app/Models/ProductBarcode.php:generateUniqueBarcode).
     - **Type Support**: CODE128 (standard), EAN13 (retail standard), and QR codes (for digital/extended tracking).
     - **Primary Barcode**: Each product has one primary barcode used for default identification.
 - **Physical Lifecycle Tracking**
@@ -62,7 +62,7 @@ errum_be/
     - Barcode scanning at the point of sale for immediate fulfillment.
 - **Social Commerce & E-commerce Fulfillment**
     - **Remote Order Creation**: Orders created by staff or customers without specific barcode binding.
-    - **Warehouse Scanning**: Physical units are scanned and "bound" to order items only when picking (errum_be/app/Http/Controllers/OrderController.php:fulfill).
+    - **Warehouse Scanning**: Physical units are scanned and "bound" to order items only when picking (Deshio_be/app/Http/Controllers/OrderController.php:fulfill).
     - **Batch Synchronization**: System aligns the order's batch with the physical unit scanned, ensuring accurate COGS.
 - **Pathao Integration**
     - Automated shipment creation for delivered orders.
@@ -80,7 +80,7 @@ errum_be/
 ---
 
 ## 3. Frontend Architecture
-*[UNRESOLVED: This documentation pass focuses exclusively on the Backend architecture (errum_be) as per user instructions]*
+*[UNRESOLVED: This documentation pass focuses exclusively on the Backend architecture (Deshio_be) as per user instructions]*
 
 ---
 

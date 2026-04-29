@@ -6,7 +6,7 @@
     "tailwind": true
   },
   "roots": {
-    "backend": "errum_be/",
+    "backend": "Deshio_be/",
     "frontend": "./"
   },
   "last_init": "2026-04-26T18:59:00Z",

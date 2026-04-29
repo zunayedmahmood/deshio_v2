@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ERRUM BD",
-  description: "ERRUM BD - Official Store",
+  title: "Deshio BD",
+  description: "Deshio BD - Official Store",
   icons: {
     icon: "/logo.png",
   },

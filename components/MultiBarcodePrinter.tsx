@@ -181,7 +181,7 @@ async function renderLabelBase64(opts: {
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.font = `900 ${Math.round(hPx * 0.11)}px Poppins, Arial, sans-serif`;
-  ctx.fillText("ERRUM BD", centerX, topPad);
+  ctx.fillText("Deshio BD", centerX, topPad);
 
   // Product name — up to 3 lines, shrinking font as needed
   const nameY = topPad + Math.round(hPx * 0.14);
@@ -277,13 +277,13 @@ async function resolvePrinterName(qz: any): Promise<string | null> {
   try {
     const def = await qz.printers.getDefault();
     if (def && String(def).trim()) return String(def);
-  } catch (_e) {}
+  } catch (_e) { }
 
   try {
     const found = await qz.printers.find();
     if (Array.isArray(found) && found.length > 0 && found[0]) return String(found[0]);
     if (typeof found === "string" && found.trim()) return found;
-  } catch (_e) {}
+  } catch (_e) { }
 
   try {
     const details = await qz.printers.details?.();
@@ -291,7 +291,7 @@ async function resolvePrinterName(qz: any): Promise<string | null> {
       const name = details[0]?.name || details[0];
       if (name) return String(name);
     }
-  } catch (_e) {}
+  } catch (_e) { }
 
   return null;
 }
@@ -444,7 +444,7 @@ export default function MultiBarcodePrinter({
             productName: it.productName || "Product",
             price: it.price,
             dpi,
-            brandName: "ERRUM BD",
+            brandName: "Deshio BD",
           });
           data.push({
             type: "pixel",

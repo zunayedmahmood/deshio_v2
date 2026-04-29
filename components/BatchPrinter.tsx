@@ -74,13 +74,13 @@ async function resolvePrinterName(): Promise<string | null> {
   try {
     const def = await qz.printers.getDefault();
     if (def && String(def).trim()) return String(def);
-  } catch (_e) {}
+  } catch (_e) { }
 
   try {
     const found = await qz.printers.find();
     if (Array.isArray(found) && found.length > 0 && found[0]) return String(found[0]);
     if (typeof found === "string" && found.trim()) return found;
-  } catch (_e) {}
+  } catch (_e) { }
 
   return null;
 }
@@ -184,7 +184,7 @@ export default function BatchPrinter({ batch, product }: BatchPrinterProps) {
           productName: product?.name || "Product",
           price: batch.sellingPrice,
           dpi,
-          brandName: "ERRUM BD",
+          brandName: "Deshio BD",
         });
 
         data.push({

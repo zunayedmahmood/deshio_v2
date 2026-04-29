@@ -91,7 +91,7 @@ function wrapHtml(title: string, inner: string, opts?: { embed?: boolean }) {
 function companyInfoBlock() {
   return `
     <div class="company">
-      <div class="name">Errum BD</div>
+      <div class="name">Deshio BD</div>
       <div class="line">Level 03, Lift 2, Haji Kujrot Ali Mollah Super Market, Dhaka 1216</div>
       <div class="line">Mobile: 01942-565664</div>
     </div>

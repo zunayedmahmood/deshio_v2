@@ -40,7 +40,7 @@ function cleanAddressText(value: unknown) {
 }
 
 function receiptBody(r: ReceiptOrder) {
-  const brand = 'ERRUMBD';
+  const brand = 'DeshioBD';
   const orderNo = r.orderNo || String(r.id || '—');
   const createdAt = r.dateTime || new Date().toLocaleString();
   const paidAmount = Math.max(0, Number(r.totals?.paid ?? 0));

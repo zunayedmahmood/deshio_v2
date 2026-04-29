@@ -6,4 +6,4 @@ Branch Manager:
 email: branchmanager@manager.com
 password: 12345678
 
-base frontend-url: https://errum-v2.vercel.app/ 
+base frontend-url: https://Deshio-v2.vercel.app/ 

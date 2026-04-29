@@ -145,7 +145,7 @@ export async function renderBarcodeLabelBase64(opts: {
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.font = `900 ${Math.round(hPx * 0.11)}px Poppins, Arial, sans-serif`;
-  ctx.fillText((opts.brandName || "ERRUM BD").trim() || "ERRUM BD", centerX, topPad);
+  ctx.fillText((opts.brandName || "Deshio BD").trim() || "Deshio BD", centerX, topPad);
 
   // Product name — up to 3 lines, shrinking font as needed
   const nameY = topPad + Math.round(hPx * 0.14);

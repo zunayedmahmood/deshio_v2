@@ -124,8 +124,8 @@ function ViewInventoryPageContent() {
 
   // --- Same approach as GalleryPage: normalize image paths to absolute URLs ---
   const getBaseUrl = () => {
-    // Example: NEXT_PUBLIC_API_URL = https://backend.errumbd.com/api
-    // We need base = https://backend.errumbd.com
+    // Example: NEXT_PUBLIC_API_URL = https://backend.Deshiobd.com/api
+    // We need base = https://backend.Deshiobd.com
     const api = process.env.NEXT_PUBLIC_API_URL || '';
     return api ? api.replace(/\/api\/?$/, '') : '';
   };
@@ -402,7 +402,7 @@ function ViewInventoryPageContent() {
       const qty = Number(item.total_quantity || 0);
       const avail = Number(item.available_quantity || 0);
       const res = Number(item.reserved_quantity || 0);
-      
+
       g.totalStock += qty;
       g.totalAvailable += avail;
       g.totalReserved += res;
@@ -798,18 +798,18 @@ function ViewInventoryPageContent() {
                                               </span>
                                             ) : null}
                                           </div>
-                                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                                              Available:{' '}
-                                              <span className="font-bold text-blue-600 dark:text-blue-400">
-                                                {variation.availableQuantity}
-                                              </span>{' '}
-                                              / {variation.quantity} Physical
+                                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                                            Available:{' '}
+                                            <span className="font-bold text-blue-600 dark:text-blue-400">
+                                              {variation.availableQuantity}
+                                            </span>{' '}
+                                            / {variation.quantity} Physical
+                                          </p>
+                                          {variation.reservedQuantity > 0 && (
+                                            <p className="text-xs text-amber-600 dark:text-amber-500 font-medium">
+                                              {variation.reservedQuantity} reserved units
                                             </p>
-                                            {variation.reservedQuantity > 0 && (
-                                              <p className="text-xs text-amber-600 dark:text-amber-500 font-medium">
-                                                {variation.reservedQuantity} reserved units
-                                              </p>
-                                            )}
+                                          )}
                                         </div>
                                       </div>
 

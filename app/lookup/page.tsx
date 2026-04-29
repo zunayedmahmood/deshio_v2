@@ -207,7 +207,7 @@ async function renderLabelBase64(opts: { code: string; productName: string; pric
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
   ctx.font = `900 ${Math.round(hPx * 0.11)}px Poppins, Arial, sans-serif`;
-  ctx.fillText("ERRUM BD", centerX, topPad);
+  ctx.fillText("Deshio BD", centerX, topPad);
 
   // Product name — up to 3 lines, shrinking font as needed
   const nameY = topPad + Math.round(hPx * 0.14);
@@ -1008,7 +1008,7 @@ export default function LookupPage() {
         productName: (params.productName || 'Product').trim(),
         price: safeNum(params.price),
         dpi,
-        brandName: "ERRUM BD",
+        brandName: "Deshio BD",
       });
 
       const config = qz.configs.create(printer, {
@@ -1772,9 +1772,9 @@ export default function LookupPage() {
         paymentRefund: {
           type: exchangeData.paymentRefund?.type === 'payment' ? 'surplus' : (exchangeData.paymentRefund?.type === 'refund' ? 'refund' : 'even'),
           amount: exchangeData.paymentRefund?.total || 0,
-          method: exchangeData.paymentRefund?.card > 0 ? 'card' : 
-                  (exchangeData.paymentRefund?.bkash > 0 ? 'bkash' : 
-                  (exchangeData.paymentRefund?.nagad > 0 ? 'nagad' : 'cash')),
+          method: exchangeData.paymentRefund?.card > 0 ? 'card' :
+            (exchangeData.paymentRefund?.bkash > 0 ? 'bkash' :
+              (exchangeData.paymentRefund?.nagad > 0 ? 'nagad' : 'cash')),
           details: {
             cash: exchangeData.paymentRefund?.cash || 0,
             card: exchangeData.paymentRefund?.card || 0,
@@ -1786,10 +1786,10 @@ export default function LookupPage() {
       };
 
       const response = await axiosInstance.post('/exchange/process', payload);
-      
+
       console.log('✅ Exchange processed successfully:', response.data);
       alert('Exchange processed successfully!');
-      
+
       // Close modal and refresh data
       setShowExchangeModal(false);
       setSelectedOrderForAction(null);
@@ -1831,10 +1831,10 @@ export default function LookupPage() {
         setError('Barcode not found');
         return;
       }
-      
+
       const data = res.data;
       setBarcodeData(data);
-      
+
       // Extract purchase info for display
       if (data.purchase_order || data.vendor) {
         setBarcodePurchaseInfo({
@@ -1965,8 +1965,8 @@ export default function LookupPage() {
                     <button
                       onClick={() => switchTab('customer')}
                       className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${activeTab === 'customer'
-                          ? 'bg-black dark:bg-white text-white dark:text-black'
-                          : 'bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800'
+                        ? 'bg-black dark:bg-white text-white dark:text-black'
+                        : 'bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800'
                         }`}
                     >
                       Customer Lookup
@@ -1975,8 +1975,8 @@ export default function LookupPage() {
                     <button
                       onClick={() => switchTab('order')}
                       className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${activeTab === 'order'
-                          ? 'bg-black dark:bg-white text-white dark:text-black'
-                          : 'bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800'
+                        ? 'bg-black dark:bg-white text-white dark:text-black'
+                        : 'bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800'
                         }`}
                     >
                       Order Lookup
@@ -1985,8 +1985,8 @@ export default function LookupPage() {
                     <button
                       onClick={() => switchTab('barcode')}
                       className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${activeTab === 'barcode'
-                          ? 'bg-black dark:bg-white text-white dark:text-black'
-                          : 'bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800'
+                        ? 'bg-black dark:bg-white text-white dark:text-black'
+                        : 'bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800'
                         }`}
                     >
                       Barcode History
@@ -1995,8 +1995,8 @@ export default function LookupPage() {
                     <button
                       onClick={() => switchTab('batch')}
                       className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${activeTab === 'batch'
-                          ? 'bg-black dark:bg-white text-white dark:text-black'
-                          : 'bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800'
+                        ? 'bg-black dark:bg-white text-white dark:text-black'
+                        : 'bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800'
                         }`}
                     >
                       Batch History
@@ -2585,7 +2585,7 @@ export default function LookupPage() {
                               </div>
                             </div>
                           </div>
-                      
+
                           {!barcodeData.purchase_order && !barcodeData.vendor && !barcodeData.summary?.has_purchase_order && (
                             <p className="mt-2 text-[10px] text-gray-500 dark:text-gray-400">
                               No purchase order/vendor info linked to this barcode.
@@ -2596,16 +2596,16 @@ export default function LookupPage() {
                         {/* SOLD / ORDER INFO */}
                         {barcodeData.summary?.total_sales > 0 && (
                           <div className="mt-3 border border-gray-200 dark:border-gray-800 rounded p-2 bg-gray-50 dark:bg-gray-900/40">
-                             <p className="text-[9px] text-gray-500 uppercase font-medium mb-1">Sales Summary</p>
-                             <p className="text-xs font-semibold text-black dark:text-white">
-                               Sold {barcodeData.summary.total_sales} unit(s) from this mother barcode.
-                               {barcodeData.summary.total_returns > 0 && <span className="ml-2 text-red-500 text-[10px]">({barcodeData.summary.total_returns} returned)</span>}
-                             </p>
+                            <p className="text-[9px] text-gray-500 uppercase font-medium mb-1">Sales Summary</p>
+                            <p className="text-xs font-semibold text-black dark:text-white">
+                              Sold {barcodeData.summary.total_sales} unit(s) from this mother barcode.
+                              {barcodeData.summary.total_returns > 0 && <span className="ml-2 text-red-500 text-[10px]">({barcodeData.summary.total_returns} returned)</span>}
+                            </p>
                           </div>
                         )}
                       </div>
 
-                       {/* Activity History Table */}
+                      {/* Activity History Table */}
                       <div className="border border-gray-200 dark:border-gray-800 rounded-md overflow-hidden">
                         <div className="bg-gray-50 dark:bg-gray-900 px-3 py-2 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
                           <h2 className="text-xs font-semibold text-black dark:text-white uppercase tracking-wide">Product Activity History</h2>
@@ -2779,9 +2779,8 @@ export default function LookupPage() {
                                     <td className="px-2 py-2 font-medium text-black dark:text-white">{b.barcode || '—'}</td>
                                     <td className="px-2 py-2 text-gray-600 dark:text-gray-400">{b.store?.name || '—'}</td>
                                     <td className="px-2 py-2">
-                                      <span className={`text-[9px] px-2 py-0.5 rounded font-semibold uppercase ${
-                                        sold ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30' : 'bg-green-100 text-green-700 dark:bg-green-900/30'
-                                      }`}>
+                                      <span className={`text-[9px] px-2 py-0.5 rounded font-semibold uppercase ${sold ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30' : 'bg-green-100 text-green-700 dark:bg-green-900/30'
+                                        }`}>
                                         {sold ? 'Sold' : 'Stock'}
                                       </span>
                                     </td>
@@ -2800,54 +2799,54 @@ export default function LookupPage() {
                                   </tr>
                                 );
                               })}
-                               {(!batchData.barcodes || !batchData.barcodes.length) && (
-                                  (batchData.batch as any).mother_barcode ? (
-                                    <tr>
-                                      <td className="px-2 py-2 font-medium text-black dark:text-white">{(batchData.batch as any).mother_barcode}</td>
-                                      <td className="px-2 py-2 text-gray-600 dark:text-gray-400">{batchData.store?.name || '—'}</td>
-                                      <td className="px-2 py-2">
-                                        <span className="text-[9px] px-2 py-0.5 rounded font-semibold uppercase bg-green-100 text-green-700 dark:bg-green-900/30">
-                                          Stock ({batchData.batch.quantity} units)
-                                        </span>
-                                      </td>
-                                      <td className="px-2 py-2">
-                                        <div className="flex flex-wrap gap-1">
-                                          <span className="text-[9px] px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">mother barcode</span>
-                                        </div>
-                                      </td>
-                                      <td className="px-2 py-2 text-right">
-                                        <BatchPrinter 
-                                          batch={{
-                                            id: batchData.batch.id,
-                                            productId: batchData.product.id,
-                                            quantity: batchData.batch.quantity,
-                                            costPrice: safeNum(batchData.batch.cost_price),
-                                            sellingPrice: safeNum(batchData.batch.sell_price),
-                                            baseCode: (batchData.batch as any).mother_barcode
-                                          }}
-                                          product={{
-                                            id: batchData.product.id,
-                                            name: batchData.product.name,
-                                            barcode: (batchData.batch as any).mother_barcode
-                                          }}
-                                        />
-                                      </td>
-                                    </tr>
-                                  ) : (
-                                    <tr>
-                                      <td colSpan={5} className="px-3 py-6 text-center text-xs text-gray-500 dark:text-gray-400">
-                                        No units found for this batch.
-                                      </td>
-                                    </tr>
-                                  )
-                                )}
+                              {(!batchData.barcodes || !batchData.barcodes.length) && (
+                                (batchData.batch as any).mother_barcode ? (
+                                  <tr>
+                                    <td className="px-2 py-2 font-medium text-black dark:text-white">{(batchData.batch as any).mother_barcode}</td>
+                                    <td className="px-2 py-2 text-gray-600 dark:text-gray-400">{batchData.store?.name || '—'}</td>
+                                    <td className="px-2 py-2">
+                                      <span className="text-[9px] px-2 py-0.5 rounded font-semibold uppercase bg-green-100 text-green-700 dark:bg-green-900/30">
+                                        Stock ({batchData.batch.quantity} units)
+                                      </span>
+                                    </td>
+                                    <td className="px-2 py-2">
+                                      <div className="flex flex-wrap gap-1">
+                                        <span className="text-[9px] px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">mother barcode</span>
+                                      </div>
+                                    </td>
+                                    <td className="px-2 py-2 text-right">
+                                      <BatchPrinter
+                                        batch={{
+                                          id: batchData.batch.id,
+                                          productId: batchData.product.id,
+                                          quantity: batchData.batch.quantity,
+                                          costPrice: safeNum(batchData.batch.cost_price),
+                                          sellingPrice: safeNum(batchData.batch.sell_price),
+                                          baseCode: (batchData.batch as any).mother_barcode
+                                        }}
+                                        product={{
+                                          id: batchData.product.id,
+                                          name: batchData.product.name,
+                                          barcode: (batchData.batch as any).mother_barcode
+                                        }}
+                                      />
+                                    </td>
+                                  </tr>
+                                ) : (
+                                  <tr>
+                                    <td colSpan={5} className="px-3 py-6 text-center text-xs text-gray-500 dark:text-gray-400">
+                                      No units found for this batch.
+                                    </td>
+                                  </tr>
+                                )
+                              )}
                             </tbody>
                           </table>
                         </div>
                       </div>
                     </div>
                   )}
-            {/* Return/Exchange Modals */}
+                  {/* Return/Exchange Modals */}
                 </>
               )}
             </div>
